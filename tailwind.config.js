@@ -7,11 +7,34 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Su paleta neutral y limpia para el sistema del hotel
-        plataformaBg: '#f8fafc',
-        sidebarGris: '#0f172a',
-        azulBoton: '#3b82f6'
-      }
+        violet: {
+          50: '#f5f3ff',
+          100: '#ede9fe',
+          200: '#ddd6fe',
+          300: '#c4b5fd',
+          400: '#a78bfa',
+          500: '#8b7be8',
+          600: '#6d5ed4',
+          700: '#5b4ec2',
+          800: '#4c3fa8',
+          900: '#3d3290',
+        },
+        sand: {
+          50: '#faf7f2',
+          100: '#f2ece0',
+          200: '#e5dbc8',
+          300: '#d0c4a8',
+        },
+      },
+      fontFamily: {
+        sans: ['Roboto', 'sans-serif'],
+        logo: ['"Archivo Black"', 'sans-serif'],
+      },
+      borderRadius: {
+        xl: '1rem',
+        '2xl': '1.25rem',
+        '3xl': '1.5rem',
+      },
     },
   },
   plugins: [],
