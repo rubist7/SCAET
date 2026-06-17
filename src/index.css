@@ -1,13 +1,123 @@
+@import url("https://fonts.googleapis.com/css2?family=Archivo+Black&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap");
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
-  --font-logo: "Archivo Black", sans-serif;
-  --font-sans: "Roboto", sans-serif;
+  --font-sans: Roboto, ui-sans-serif, system-ui, sans-serif;
+  --font-logo: "Archivo Black", Roboto, ui-sans-serif, system-ui, sans-serif;
 }
 
-html,
+html {
+  background: #f4f1ec;
+}
+
 body {
+  margin: 0;
+  min-width: 320px;
+  background: #f4f1ec;
   font-family: var(--font-sans);
+  font-weight: 400;
+}
+
+.font-logo {
+  font-family: var(--font-logo);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: 800;
+}
+
+html.dark {
+  color-scheme: dark;
+  background: #100d17;
+}
+
+html.dark body {
+  background: #100d17;
+}
+
+.dark .bg-\[\#f4f1ec\] {
+  background-color: #100d17;
+}
+
+.dark .bg-white {
+  background-color: #191521;
+}
+
+.dark .bg-\[\#eee8dc\],
+.dark .bg-\[\#e9e0cf\],
+.dark .bg-\[\#e6dfd2\] {
+  background-color: #282331;
+}
+
+.dark .bg-violet-50 {
+  background-color: #2b203d;
+}
+
+.dark .bg-violet-100 {
+  background-color: #34244c;
+}
+
+.dark .text-\[\#21192c\],
+.dark .text-\[\#241d2f\],
+.dark .text-\[\#3c3445\],
+.dark .text-\[\#554c62\] {
+  color: #f4f0fa;
+}
+
+.dark .text-\[\#6f6584\],
+.dark .text-\[\#887e96\],
+.dark .text-\[\#8f879b\],
+.dark .text-\[\#9c91aa\],
+.dark .text-\[\#9e95aa\] {
+  color: #b8aec7;
+}
+
+.dark .text-\[\#a9a0b8\],
+.dark .text-\[\#b1a58f\],
+.dark .text-\[\#b7ab9b\],
+.dark .text-\[\#b9ad9b\],
+.dark .text-\[\#c7bfcd\] {
+  color: #958aa6;
+}
+
+.dark .border-\[\#ded6c8\],
+.dark .border-\[\#d7cabc\],
+.dark .border-\[\#ebe5db\],
+.dark .border-\[\#eee8f6\],
+.dark .border-\[\#f0ebe3\] {
+  border-color: #393141;
+}
+
+.dark .ring-\[\#f0ebe3\] {
+  --tw-ring-color: #393141;
+}
+
+.dark input,
+.dark textarea,
+.dark select {
+  color: #f4f0fa;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #8f849d;
+}
+
+.dark table tbody tr:hover {
+  background-color: #211b2a;
+}
+
+.dark .shadow-sm,
+.dark .shadow-lg,
+.dark .shadow-2xl {
+  --tw-shadow-color: rgb(0 0 0 / 35%);
 }
 
 button,

@@ -1,0 +1,631 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown, Download, Eraser, Mail, PenLine, X } from "lucide-react";
+import DateInput from "./DateInput";
+import { formatDate } from "./dateUtils";
+import { colaboradores, equipos } from "./asignacionData";
+
+const defaultDevolucion = {
+  folio: "RSG-2026-049",
+  fecha: "2026-05-08",
+  colaborador: colaboradores[0],
+  equipo: equipos[1],
+  tipo: "Permanente",
+  estado: "Bueno",
+  observaciones: "",
+};
+
+const estadoOptionsByType = {
+  equipo: ["Bueno", "Regular", "Danado", "Incompleto"],
+  tarjeta: ["Entregada", "Danada", "Extraviada", "No devuelta"],
+  yubikey: ["Entregada", "Funcional", "Danada", "Extraviada", "No devuelta"],
+  mixto: ["Completa", "Parcial", "Con danios", "Incompleta"],
+};
+
+function fallbackItem(data) {
+  if (data.tipoResguardo === "tarjeta") {
+    return {
+      key: `tarjeta-${data.idTarjeta || "actual"}`,
+      tipoResguardo: "tarjeta",
+      tipoLabel: "Tarjeta comedor",
+      codigo: data.idTarjeta,
+      nombre: "Tarjeta comedor",
+      marca: "SCAET",
+      modelo: "Comedor",
+      serie: data.idTarjeta,
+      tipoAsignacion: data.tipo,
+      fechaAsignacion: data.fechaEntregaTarjeta || data.fecha,
+    };
+  }
+
+  if (data.tipoResguardo === "yubikey") {
+    return {
+      key: `yubikey-${data.serieYubikey || data.yubikey || "actual"}`,
+      tipoResguardo: "yubikey",
+      tipoLabel: "Yubikey",
+      codigo: data.serieYubikey,
+      nombre: data.yubikey,
+      marca: "Yubico",
+      modelo: data.modeloYubikey,
+      serie: data.serieYubikey,
+      tipoAsignacion: data.tipo,
+      fechaAsignacion: data.fecha,
+    };
+  }
+
+  return {
+    key: `equipo-${data.equipo.codigo}`,
+    tipoResguardo: "equipo",
+    tipoLabel: "Equipo tecnologico",
+    codigo: data.activoInventario || data.equipo.codigo,
+    nombre: data.equipo.nombre,
+    tipoActivo: data.equipo.tipo,
+    marca: data.equipo.marca,
+    modelo: data.equipo.modelo,
+    serie: data.equipo.serie,
+    tipoAsignacion: data.tipo,
+    fechaAsignacion: data.fecha,
+  };
+}
+
+function itemTitle(item) {
+  if (item.tipoResguardo === "tarjeta") return "tarjeta comedor";
+  if (item.tipoResguardo === "yubikey") return "Yubikey";
+
+  return item.tipoActivo?.toLowerCase() || "equipo tecnologico";
+}
+
+function selectionTitle(items) {
+  if (items.length === 1) return itemTitle(items[0]);
+
+  return `${items.length} activos`;
+}
+
+function returnStateLabel(items) {
+  if (items.length > 1) return "Estado general de la devolucion";
+  const item = items[0];
+
+  if (item.tipoResguardo === "tarjeta") return "Estado de la tarjeta al regresar";
+  if (item.tipoResguardo === "yubikey") return "Estado de la Yubikey al regresar";
+
+  return "Estado del equipo al regresar";
+}
+
+function returnObservationsPlaceholder(items) {
+  if (items.length > 1) return "Describe el estado general de los activos seleccionados, faltantes, danios o piezas no devueltas...";
+  const item = items[0];
+
+  if (item.tipoResguardo === "tarjeta") return "Describe si la tarjeta se entrega fisicamente, si esta danada o si no fue devuelta...";
+  if (item.tipoResguardo === "yubikey") return "Describe si la Yubikey funciona, si presenta dano fisico o si no fue devuelta...";
+
+  return "Describe el estado del equipo, accesorios devueltos, danios observados...";
+}
+
+function estadoOptionsForItems(items) {
+  const types = [...new Set(items.map((item) => item.tipoResguardo))];
+
+  if (items.length > 1 || types.length > 1) return estadoOptionsByType.mixto;
+
+  return estadoOptionsByType[types[0]] || estadoOptionsByType.equipo;
+}
+
+function Field({ label, children }) {
+  return (
+    <label className="block min-w-0">
+      <span className="mb-1.5 block text-[11px] font-semibold text-violet-300">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function SoftInput({ value, onChange, placeholder, icon }) {
+  return (
+    <div className="relative">
+      <input
+        value={value}
+        onChange={(event) => onChange?.(event.target.value)}
+        readOnly={!onChange}
+        placeholder={placeholder}
+        className="h-10 w-full min-w-0 rounded-[8px] border border-[#ded6c8] bg-[#eee8dc] px-4 pr-9 text-sm font-semibold text-[#3c3445] outline-none transition placeholder:text-[#9b927f] focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+      />
+      {icon && <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6f6584]">{icon}</div>}
+    </div>
+  );
+}
+
+function SoftSelect({ value, onChange, options }) {
+  return (
+    <div className="relative">
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-10 w-full min-w-0 appearance-none rounded-[8px] border border-[#ded6c8] bg-[#eee8dc] px-4 pr-9 text-sm font-semibold text-[#3c3445] outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+      >
+        {options.map((option) => {
+          const valueOption = typeof option === "string" ? option : option.value;
+          const labelOption = typeof option === "string" ? option : option.label;
+
+          return (
+          <option key={valueOption} value={valueOption}>
+            {labelOption}
+          </option>
+          );
+        })}
+      </select>
+      <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#6f6584]" />
+    </div>
+  );
+}
+
+function Tabs({ onGoResguardo }) {
+  return (
+    <div className="flex overflow-x-auto border-b border-violet-500">
+      <button type="button" onClick={onGoResguardo} className="px-5 py-3 text-xs font-bold text-[#8f879b]">
+        Resguardo
+      </button>
+      <button type="button" className="rounded-t-[8px] bg-violet-50 px-5 py-3 text-xs font-black text-violet-600">
+        Devolucion
+      </button>
+    </div>
+  );
+}
+
+function AssetReturnSelector({ items, selectedKeys, onChange }) {
+  const toggleAll = () => {
+    onChange(items.map((item) => item.key));
+  };
+
+  const toggleItem = (itemKey) => {
+    const nextKeys = selectedKeys.includes(itemKey)
+      ? selectedKeys.filter((key) => key !== itemKey)
+      : [...selectedKeys, itemKey];
+
+    onChange(nextKeys.length ? nextKeys : [itemKey]);
+  };
+
+  return (
+    <div className="rounded-[8px] border border-[#ded6c8] bg-[#eee8dc] p-3">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <span className="text-xs font-black text-[#3c3445]">{selectedKeys.length} de {items.length} seleccionados</span>
+        {items.length > 1 && selectedKeys.length !== items.length && (
+          <button
+            type="button"
+            onClick={toggleAll}
+            className="h-8 rounded-[8px] bg-white px-3 text-[11px] font-black text-violet-600 transition hover:bg-violet-50"
+          >
+            Seleccionar todo
+          </button>
+        )}
+      </div>
+      <div className="space-y-2">
+        {items.map((item) => {
+          const checked = selectedKeys.includes(item.key);
+
+          return (
+            <label key={item.key} className="flex min-w-0 cursor-pointer items-start gap-2 rounded-[8px] bg-white px-3 py-2 text-xs">
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={() => toggleItem(item.key)}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-violet-600"
+              />
+              <span className="min-w-0">
+                <span className="block break-words font-black text-[#21192c]">
+                  {item.nombre} {item.codigo ? `#${item.codigo}` : ""}
+                </span>
+                <span className="block break-words text-[#8f879b]">
+                  {item.tipoLabel} - {item.marca || "-"} {item.modelo || ""} - {item.serie || "Sin serie"}
+                </span>
+              </span>
+            </label>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function useCanCaptureTouchSignature() {
+  const [canCapture, setCanCapture] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(pointer: coarse)");
+    const update = () => setCanCapture(mediaQuery.matches);
+
+    update();
+    mediaQuery.addEventListener?.("change", update);
+
+    return () => mediaQuery.removeEventListener?.("change", update);
+  }, []);
+
+  return canCapture;
+}
+
+function SignaturePad({ value, onChange, disabled }) {
+  const canvasRef = useRef(null);
+  const drawingRef = useRef(false);
+  const lastPointRef = useRef(null);
+  const [hasPendingSignature, setHasPendingSignature] = useState(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const context = canvas.getContext("2d");
+    const ratio = window.devicePixelRatio || 1;
+
+    canvas.width = rect.width * ratio;
+    canvas.height = rect.height * ratio;
+    context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    context.lineCap = "round";
+    context.lineJoin = "round";
+    context.lineWidth = 2.3;
+    context.strokeStyle = "#21192c";
+    context.clearRect(0, 0, rect.width, rect.height);
+
+    if (value) {
+      const image = new Image();
+      image.onload = () => context.drawImage(image, 0, 0, rect.width, rect.height);
+      image.src = value;
+    }
+  }, [value]);
+
+  const getPoint = (event) => {
+    const rect = canvasRef.current.getBoundingClientRect();
+
+    return {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+    };
+  };
+
+  const saveSignature = () => {
+    const canvas = canvasRef.current;
+    onChange(canvas.toDataURL("image/png"));
+    setHasPendingSignature(false);
+  };
+
+  const handlePointerDown = (event) => {
+    if (disabled) return;
+
+    const canvas = canvasRef.current;
+    const context = canvas.getContext("2d");
+    const point = getPoint(event);
+
+    drawingRef.current = true;
+    lastPointRef.current = point;
+    setHasPendingSignature(true);
+    context.beginPath();
+    context.arc(point.x, point.y, 1.15, 0, Math.PI * 2);
+    context.fillStyle = "#21192c";
+    context.fill();
+    canvas.setPointerCapture?.(event.pointerId);
+  };
+
+  const handlePointerMove = (event) => {
+    if (disabled || !drawingRef.current) return;
+
+    const canvas = canvasRef.current;
+    const context = canvas.getContext("2d");
+    const nextPoint = getPoint(event);
+    const lastPoint = lastPointRef.current;
+
+    context.beginPath();
+    context.moveTo(lastPoint.x, lastPoint.y);
+    context.lineTo(nextPoint.x, nextPoint.y);
+    context.stroke();
+    lastPointRef.current = nextPoint;
+  };
+
+  const handlePointerUp = (event) => {
+    if (disabled || !drawingRef.current) return;
+
+    drawingRef.current = false;
+    lastPointRef.current = null;
+    canvasRef.current.releasePointerCapture?.(event.pointerId);
+  };
+
+  const handleClear = () => {
+    const canvas = canvasRef.current;
+    const context = canvas.getContext("2d");
+    const rect = canvas.getBoundingClientRect();
+
+    context.clearRect(0, 0, rect.width, rect.height);
+    onChange("");
+    setHasPendingSignature(false);
+  };
+
+  return (
+    <div>
+      <div className="relative h-32 overflow-hidden rounded-[8px] border border-dashed border-[#d7cabc] bg-[#eee8dc]">
+        {disabled && (
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1 bg-[#eee8dc]/90 px-4 text-center text-[#8f879b]">
+            <PenLine size={20} />
+            <span className="text-xs font-semibold">Firma disponible en celular o tablet</span>
+            <span className="text-[10px] font-semibold tracking-wide text-[#b9ad9b]">Activa vista movil para probarla</span>
+          </div>
+        )}
+        {!disabled && !value && (
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1 text-violet-400">
+            <PenLine size={20} />
+            <span className="text-xs font-semibold">Firma aqui</span>
+            <span className="text-[10px] font-semibold tracking-wide text-[#b9ad9b]">Usa dedo o lapiz tactil</span>
+          </div>
+        )}
+        <canvas
+          ref={canvasRef}
+          aria-label="Campo para firma del colaborador"
+          className="h-full w-full touch-none"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          onPointerLeave={handlePointerUp}
+        />
+      </div>
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={handleClear}
+          disabled={disabled || (!value && !hasPendingSignature)}
+          className="inline-flex h-9 items-center justify-center gap-2 rounded-[8px] bg-[#eee8dc] text-xs font-bold text-[#6f6584] transition hover:bg-[#e4dccf]"
+        >
+          <Eraser size={14} />
+          Limpiar
+        </button>
+        <button
+          type="button"
+          onClick={saveSignature}
+          disabled={disabled || !hasPendingSignature}
+          className="h-9 rounded-[8px] bg-violet-600 text-xs font-bold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {disabled ? "Bloqueado" : hasPendingSignature ? "Guardar firma" : value ? "Firma guardada" : "Pendiente"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AutoSignature() {
+  return (
+    <div className="flex h-20 items-center justify-center rounded-[8px] border border-[#ded6c8] bg-[#eee8dc]">
+      <div className="text-center">
+        <p className="font-serif text-2xl text-violet-700">~Inge. Javier~</p>
+        <p className="mt-1 text-[10px] font-semibold text-[#b1a58f]">Firma cargada automaticamente.</p>
+        <p className="text-[10px] font-semibold text-[#b1a58f]">Se aplica a cada documento.</p>
+      </div>
+    </div>
+  );
+}
+
+function PreviewRow({ label, value }) {
+  return (
+    <div className="grid min-w-0 grid-cols-[minmax(94px,0.45fr)_minmax(0,1fr)] gap-2 border-b border-[#eee8f6] py-2 text-xs sm:grid-cols-[140px_1fr]">
+      <span className="text-[#8f879b]">{label}</span>
+      <span className="min-w-0 break-words text-right font-bold text-[#21192c]">{value || "-"}</span>
+    </div>
+  );
+}
+
+function SignatureImage({ value }) {
+  if (!value) {
+    return <p className="min-h-12 text-[#b7ab9b]">Pendiente</p>;
+  }
+
+  return <img src={value} alt="Firma del colaborador" className="mx-auto h-12 w-full object-contain" />;
+}
+
+function PreviewAssetsList({ items }) {
+  return (
+    <div className="mt-4 rounded-[8px] border border-[#ded6c8]">
+      <div className="border-b border-[#ded6c8] bg-[#eee8dc] px-3 py-2 text-[9px] font-black uppercase tracking-[0.16em] text-[#6f6584]">
+        Activos devueltos
+      </div>
+      <div className="divide-y divide-[#eee8f6]">
+        {items.map((item) => (
+          <div key={item.key} className="grid min-w-0 gap-1 px-3 py-2 text-[10px] sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <span className="break-words font-black text-[#21192c]">
+              {item.nombre} {item.codigo ? `#${item.codigo}` : ""}
+            </span>
+            <span className="break-words text-[#6f6584]">
+              {item.tipoLabel} - {item.marca || "-"} {item.modelo || ""} - {item.serie || "Sin serie"}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DocumentPreview({ data, items, signature }) {
+  return (
+    <div className="min-w-0 rounded-2xl border border-[#eee8f6] bg-white px-4 py-6 shadow-sm sm:px-7">
+      <div className="text-center">
+        <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-[#b7ab9b]">Breathless Resorts - Depto. de Sistemas</p>
+        <h2 className="mt-1 text-sm font-black text-[#21192c]">Devolucion de {selectionTitle(items)}</h2>
+        <p className="mt-1 text-[10px] font-semibold text-[#b7ab9b]">
+          Folio: {data.folio} - Fecha: {formatDate(data.fecha)}
+        </p>
+      </div>
+
+      <div className="mt-5 border-t-2 border-violet-100 pt-3">
+        <PreviewRow label="Colaborador" value={data.colaborador.nombre} />
+        <PreviewRow label="Num. colaborador" value={data.colaborador.numero} />
+        <PreviewRow label="Area / Depto." value={`${data.colaborador.area} - ${data.colaborador.departamento || "-"}`} />
+        <PreviewRow label="Puesto" value={data.colaborador.puesto} />
+        <PreviewRow label="Total activos" value={items.length} />
+        <PreviewRow label="Fecha devolucion" value={formatDate(data.fecha)} />
+        <PreviewRow label="Estado" value={data.estado} />
+        <PreviewRow label="Observaciones" value={data.observaciones} />
+      </div>
+      <PreviewAssetsList items={items} />
+
+      <p className="mx-auto mt-7 max-w-xl border-b border-[#eee8f6] pb-4 text-center text-[10px] font-semibold text-[#9d927f]">
+        El colaborador confirma la devolucion de los activos seleccionados en las condiciones indicadas.
+      </p>
+
+      <div className="mt-7 grid gap-8 text-center sm:grid-cols-2">
+        <div>
+          <SignatureImage value={signature} />
+          <p className="mt-2 border-t border-[#b7ab9b] pt-2 text-[10px] font-semibold tracking-[0.18em] text-[#b7ab9b]">Firma del colaborador</p>
+        </div>
+        <div>
+          <p className="font-serif text-3xl text-[#21192c]">~Javier~</p>
+          <p className="mt-2 text-[10px] font-semibold tracking-[0.18em] text-[#b7ab9b]">Depto. Sistemas - Ing. Javier</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GeneratedDevolucionModal({ data, items, signature, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 px-3 py-4 sm:p-5">
+      <div className="mx-auto flex min-h-full w-full max-w-4xl items-start">
+        <section className="w-full overflow-hidden rounded-2xl bg-[#f4f1ec] shadow-2xl">
+          <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-[#e6deef] bg-white/95 px-4 py-3 backdrop-blur sm:px-5">
+            <div className="min-w-0">
+              <p className="text-[11px] font-black uppercase tracking-[0.24em] text-violet-300">Devolucion generada</p>
+              <h2 className="truncate text-sm font-black text-[#21192c]">Devolucion de {selectionTitle(items)}</h2>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#eee8dc] text-[#6f6584] transition hover:bg-[#e4dccf]"
+              aria-label="Cerrar devolucion generada"
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          <div className="p-4 sm:p-5">
+            <DocumentPreview data={data} items={items} signature={signature} />
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <button type="button" className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-violet-600 text-xs font-black text-white">
+                <Mail size={14} />
+                Enviar por Gmail
+              </button>
+              <button type="button" className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#eee8dc] text-xs font-black text-[#6f6584]">
+                <Download size={14} />
+                Descargar PDF
+              </button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+export default function DevolucionFirma({ devolucion, initialSelectedItemKeys, onBack, onGoResguardo }) {
+  const source = useMemo(() => ({ ...defaultDevolucion, ...devolucion }), [devolucion]);
+  const canCaptureSignature = useCanCaptureTouchSignature();
+  const items = useMemo(() => (source.items?.length ? source.items : [fallbackItem(source)]), [source]);
+  const [selectedItemKeys, setSelectedItemKeys] = useState(initialSelectedItemKeys?.length ? initialSelectedItemKeys : [items[items.length - 1]?.key]);
+  const selectedItems = items.filter((item) => selectedItemKeys.includes(item.key));
+  const activeItems = selectedItems.length ? selectedItems : [items[0]];
+  const estadoOptions = estadoOptionsForItems(activeItems);
+  const [fecha, setFecha] = useState(source.fecha);
+  const [estadoSeleccionado, setEstadoSeleccionado] = useState(source.estado || estadoOptions[0]);
+  const estado = estadoOptions.includes(estadoSeleccionado) ? estadoSeleccionado : estadoOptions[0];
+  const [observaciones, setObservaciones] = useState(source.observaciones || "");
+  const [signature, setSignature] = useState("");
+  const [generatedOpen, setGeneratedOpen] = useState(false);
+
+  const data = {
+    ...source,
+    fecha,
+    estado,
+    observaciones,
+  };
+
+  const collaboratorValue = `${data.colaborador.nombre} - ${data.colaborador.numero}`;
+  const assetValue = activeItems.length === 1
+    ? `${activeItems[0].nombre} ${activeItems[0].codigo ? `(#${activeItems[0].codigo})` : ""} - Asignado`
+    : `${activeItems.length} activos seleccionados`;
+  const typeValue = activeItems.length === 1 ? activeItems[0].tipoLabel : "Seleccion multiple";
+  const seriesValue = activeItems.length === 1 ? activeItems[0].serie || activeItems[0].codigo || "-" : "Ver lista de seleccion";
+
+  return (
+    <div className="min-w-0 space-y-4 overflow-hidden">
+      <div>
+        <h1 className="mt-1 text-sm font-bold text-violet-300">Resguardo - Firma Digital</h1>
+      </div>
+
+      <div className="grid min-w-0 gap-4">
+        <section className="min-w-0 rounded-2xl bg-white p-4 shadow-sm sm:p-5">
+          <Tabs onGoResguardo={onGoResguardo} />
+
+          <div className="mt-5">
+            <p className="mb-4 border-b border-[#eee8f6] pb-3 text-[11px] font-black uppercase tracking-[0.26em] text-violet-200">
+              Datos de la devolucion
+            </p>
+            <div className="grid min-w-0 gap-4 md:grid-cols-2">
+              <Field label="Colaborador">
+                <SoftInput value={collaboratorValue} />
+              </Field>
+              <Field label="Activo a devolver">
+                <SoftInput value={assetValue} />
+              </Field>
+              <Field label="Tipo de activo">
+                <SoftInput value={typeValue} />
+              </Field>
+              <Field label="Fecha de devolucion">
+                <DateInput value={fecha} onChange={setFecha} />
+              </Field>
+              <Field label={returnStateLabel(activeItems)}>
+                <SoftSelect value={estado} onChange={setEstadoSeleccionado} options={estadoOptions} />
+              </Field>
+              <Field label="Serie / ID">
+                <SoftInput value={seriesValue} />
+              </Field>
+            </div>
+            <div className="mt-4">
+              <AssetReturnSelector items={items} selectedKeys={selectedItemKeys} onChange={setSelectedItemKeys} />
+            </div>
+            <Field label="Observaciones de la Devolucion">
+              <textarea
+                value={observaciones}
+                onChange={(event) => setObservaciones(event.target.value)}
+                placeholder={returnObservationsPlaceholder(activeItems)}
+                className="mt-1 h-24 w-full min-w-0 resize-none rounded-[8px] border border-[#ded6c8] bg-[#eee8dc] px-4 py-3 text-sm text-[#3c3445] outline-none transition placeholder:text-[#9b927f] focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+              />
+            </Field>
+          </div>
+
+          <div className="mt-5 rounded-2xl bg-white">
+            <p className="mb-4 border-b border-[#eee8f6] pb-3 text-[11px] font-black uppercase tracking-[0.26em] text-violet-200">
+              Firmas de la devolucion
+            </p>
+            <div className="grid min-w-0 gap-3 md:grid-cols-2">
+              <Field label="Firma del colaborador *">
+                <SignaturePad value={signature} onChange={setSignature} disabled={!canCaptureSignature} />
+              </Field>
+              <Field label="Ing. Javier">
+                <div className="mb-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-500">
+                  Por defecto
+                </div>
+                <AutoSignature />
+              </Field>
+            </div>
+          </div>
+
+          <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <button type="button" onClick={onBack} className="h-10 rounded-[8px] bg-[#eee8dc] px-5 text-xs font-black text-[#6f6584]">
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={() => setGeneratedOpen(true)}
+              className="h-10 rounded-[8px] bg-violet-600 px-5 text-xs font-black text-white"
+            >
+              Confirmar y guardar pdf
+            </button>
+          </div>
+        </section>
+      </div>
+
+      {generatedOpen && <GeneratedDevolucionModal data={data} items={activeItems} signature={signature} onClose={() => setGeneratedOpen(false)} />}
+    </div>
+  );
+}

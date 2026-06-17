@@ -10,14 +10,14 @@ const mainLinks = [
   { label: 'Proveedores', href: '/proveedores', icon: 'briefcase' },
   { label: 'Colaboradores', href: '/colaboradores', icon: 'users' },
   { label: 'Equipos', href: '/equipos', icon: 'monitor' },
-  { label: 'Asignación', href: '#asignacion', icon: 'clipboard' },
-  { label: 'Mantenimiento', href: '#mantenimiento', icon: 'tool' },
+  { label: 'Asignación', href: '/asignacion', icon: 'clipboard' },
+  { label: 'Mantenimiento', href: '/asignacion/mantenimiento', icon: 'tool' },
 ]
 
 // Links del apartado de sistema.
 const systemLinks = [
-  { label: 'Logs', href: '#logs', icon: 'file' },
-  { label: 'Auditoría', href: '#auditoria', icon: 'check' },
+  { label: 'Logs', href: '/asignacion/logs', icon: 'file' },
+  { label: 'Auditoría', href: '/asignacion/auditoria', icon: 'check' },
 ]
 
 export function AppIcon({ name, className = 'h-4 w-4' }) {
