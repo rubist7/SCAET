@@ -1,0 +1,153 @@
+export const mantenimientoEquipos = [
+  {
+    id: 1,
+    codigo: "001",
+    tipo: "Laptop",
+    nombre: "Dell XPS 15",
+    marca: "Dell",
+    modelo: "XPS 15 9500",
+    serie: "SN-4829Y047",
+    area: "Recepcion",
+    estado: "Asignado",
+    ultimoMant: "10/01/2026",
+  },
+  {
+    id: 2,
+    codigo: "002",
+    tipo: "Tablet",
+    nombre: "Samsung Tab A8",
+    marca: "Samsung",
+    modelo: "Tab A8",
+    serie: "SN-20184790",
+    area: "-",
+    estado: "Disponible",
+    ultimoMant: "Sin registros",
+  },
+  {
+    id: 3,
+    codigo: "003",
+    tipo: "Computadora",
+    nombre: "HP EliteDesk 800",
+    marca: "HP",
+    modelo: "EliteDesk 800",
+    serie: "SN-77432180",
+    area: "Restaurante",
+    estado: "Mantenimiento",
+    ultimoMant: "05/06/2026 (activo)",
+  },
+];
+
+export const bitacoraInicial = [
+  {
+    id: 1,
+    equipoCodigo: "001",
+    equipoNombre: "Dell XPS 15",
+    categoria: "Falla",
+    titulo: "Pantalla con lineas horizontales",
+    descripcion: "Se detectaron lineas horizontales en la pantalla al encender el equipo. Se envia a revision de hardware.",
+    tecnico: "Ing. Rosario",
+    estado: "En proceso",
+    fecha: "05/06/2026",
+    costo: "$2,500.00",
+  },
+  {
+    id: 2,
+    equipoCodigo: "001",
+    equipoNombre: "Dell XPS 15",
+    categoria: "Preventivo",
+    titulo: "Limpieza general y actualizacion de drivers",
+    descripcion: "Limpieza de polvo, actualizacion de Windows y drivers. Equipo en buen estado general.",
+    tecnico: "Ing. Rosario",
+    estado: "Resuelto",
+    fecha: "18/01/2026",
+    costo: "$0.00",
+  },
+];
+
+export const historialUsuariosPorEquipo = {
+  "001": [
+    {
+      id: 1,
+      usuario: "Ana Lopez Garcia",
+      numero: "3612",
+      puesto: "Recepcionista",
+      departamento: "Recepcion",
+      periodo: "08/05/2025 - Actual",
+      estadoEntrega: "Asignado",
+      mantenimientos: [
+        {
+          fecha: "18/01/2026",
+          tipo: "Preventivo",
+          descripcion: "Limpieza general y actualizacion de drivers.",
+          tecnico: "Ing. Rosario",
+          costo: "$0.00",
+        },
+        {
+          fecha: "05/06/2026",
+          tipo: "Falla",
+          descripcion: "Pantalla con lineas horizontales. Se envia a revision de hardware.",
+          tecnico: "Ing. Rosario",
+          costo: "$2,500.00",
+        },
+      ],
+    },
+    {
+      id: 2,
+      usuario: "Luis Martinez",
+      numero: "2184",
+      puesto: "Tecnico",
+      departamento: "Almacen",
+      periodo: "14/08/2024 - 30/04/2025",
+      estadoEntrega: "Devuelto",
+      mantenimientos: [
+        {
+          fecha: "20/11/2024",
+          tipo: "Correctivo",
+          descripcion: "Cambio de cargador por falso contacto.",
+          tecnico: "Ing. Javier",
+          costo: "$850.00",
+        },
+      ],
+    },
+  ],
+  "002": [
+    {
+      id: 1,
+      usuario: "Maria Fuentes",
+      numero: "1430",
+      puesto: "Jefe de RRHH",
+      departamento: "Recursos Humanos",
+      periodo: "12/02/2025 - 04/04/2026",
+      estadoEntrega: "Devuelto",
+      mantenimientos: [
+        {
+          fecha: "10/01/2026",
+          tipo: "Preventivo",
+          descripcion: "Revision de bateria y actualizacion de aplicaciones.",
+          tecnico: "Ing. Rosario",
+          costo: "$0.00",
+        },
+      ],
+    },
+  ],
+  "003": [
+    {
+      id: 1,
+      usuario: "Carlos Medina",
+      numero: "3290",
+      puesto: "Supervisor",
+      departamento: "Restaurante",
+      periodo: "01/03/2026 - Actual",
+      estadoEntrega: "En mantenimiento",
+      mantenimientos: [
+        {
+          fecha: "05/06/2026",
+          tipo: "Falla",
+          descripcion: "Equipo no inicia correctamente. Pendiente diagnostico de fuente.",
+          tecnico: "Ing. Rosario",
+          costo: "$1,200.00",
+        },
+      ],
+    },
+  ],
+};
