@@ -14,7 +14,7 @@ import {
   Users,
   Wrench,
 } from "lucide-react";
-import scaetLogo from "./assets/Scaet_logo_final.png";
+import scaetLogo from "./assets/scaet.png";
 
 const navItems = [
   { label: "Dashboard", icon: Gauge },
