@@ -146,7 +146,7 @@ function EquipoAlta() {
     <EquipmentShell>
       <div className="space-y-6 px-4 py-7 sm:px-6 lg:px-8">
         <section>
-          <p className="text-[10px] font-extrabold uppercase tracking-[0.3em] text-violet-300">Equipos - dar de alta</p>
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.3em] text-violet-300">Equipos - Dar de alta</p>
           <h1 className="mt-3 text-2xl font-extrabold text-[#201d31] sm:text-3xl">
             {editingEquipment ? 'Editar equipo' : 'Alta de equipo'}
           </h1>
@@ -155,7 +155,7 @@ function EquipoAlta() {
         <section className="rounded-2xl bg-white p-4 shadow-sm sm:p-6">
           <div className="border-b border-violet-500 pb-5">
             <p className="text-[10px] font-extrabold uppercase tracking-[0.28em] text-violet-300">
-              Informacion del equipo
+              Información del equipo
             </p>
           </div>
 
@@ -164,7 +164,7 @@ function EquipoAlta() {
               <Field label="Proveedor" name="provider" value={form.provider} onChange={handleInputChange} placeholder="Ej. Dell" required />
 
               <label className="block">
-                <span className="mb-2 block text-[11px] font-extrabold text-[#8d88a2]">Tipo de equipo</span>
+                <span className="mb-2 block text-[11px] font-extrabold text-[#8d88a2]">Tipo de Equipo</span>
                 <select
                   name="type"
                   value={form.type}
@@ -187,7 +187,7 @@ function EquipoAlta() {
               <Field label="Vence garantia" name="warrantyEnd" value={form.warrantyEnd} onChange={handleInputChange} placeholder="Se calcula automaticamente" readOnly />
 
               <label className="block lg:col-span-2">
-                <span className="mb-2 block text-[11px] font-extrabold text-[#8d88a2]">Especificaciones tecnicas</span>
+                <span className="mb-2 block text-[11px] font-extrabold text-[#8d88a2]">Especificaciones Tecnicas</span>
                 <textarea
                   name="specifications"
                   value={form.specifications}
@@ -201,7 +201,7 @@ function EquipoAlta() {
 
             <div className="space-y-3">
               <p className="border-b border-[#f0edf6] pb-3 text-[10px] font-extrabold uppercase tracking-[0.28em] text-violet-300">
-                Fotografia del equipo
+                Fotografia del Equipo
               </p>
               <div className={`grid gap-3 ${canTakePhoto ? 'sm:grid-cols-[160px_1fr]' : ''}`}>
                 {canTakePhoto && (
@@ -257,13 +257,13 @@ function EquipoAlta() {
 
             <div className="space-y-3">
               <p className="border-b border-[#f0edf6] pb-3 text-[10px] font-extrabold uppercase tracking-[0.28em] text-violet-300">
-                Codigo QR
+                Código QR
               </p>
               <div className="rounded-2xl bg-[#f2ece0] p-4">
                 <div className="flex items-center gap-3">
                   <QrCode />
                   <div>
-                    <p className="text-sm font-extrabold text-[#201d31]">Codigo QR</p>
+                    <p className="text-sm font-extrabold text-[#201d31]">Código QR</p>
                     <p className="mt-1 text-xs font-bold text-[#8d88a2]">Se genera automaticamente al guardar</p>
                   </div>
                 </div>

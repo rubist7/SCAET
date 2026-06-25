@@ -89,7 +89,7 @@ function EquipoFichaTecnica() {
         <section className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-[10px] font-extrabold uppercase tracking-[0.3em] text-violet-300">
-              Equipos - seleccionar equipo - {equipment.title}
+              Equipos - Seleccionar equipo - {equipment.title}
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <h1 className="text-2xl font-extrabold text-[#201d31] sm:text-3xl">{equipment.title}</h1>
@@ -140,7 +140,7 @@ function EquipoFichaTecnica() {
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-base font-extrabold text-[#201d31]">Asignacion actual</h2>
+          <h2 className="text-base font-extrabold text-[#201d31]">Asignación actual</h2>
           <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
             <InfoRow label="Asignado a" value={equipment.assignmentName} />
             <InfoRow label="Tipo">

@@ -32,7 +32,7 @@ export function EquipmentShell({ children }) {
                 <AppIcon name="menu" />
               </button>
               <p className="truncate text-[11px] font-extrabold uppercase tracking-[0.32em] text-[#8d88a2] sm:text-sm">
-                Inventario de equipos
+                Inventario de Equipos
               </p>
             </div>
 

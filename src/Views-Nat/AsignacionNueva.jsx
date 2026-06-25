@@ -568,7 +568,6 @@ export default function NuevaAsignacion({ initialColaborador, initialStep = 0, a
           )}
         </div>
       </div>
-
       <ActiveAssignments rows={asignacionesActivas} onOpenResguardo={onOpenResguardo} onOpenDevolucion={onOpenDevolucion} />
     </div>
   );

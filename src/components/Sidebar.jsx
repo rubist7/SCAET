@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import logo from '../assets/scaet.png'
+import logo from '../assets/logo_final.png'
 import { getUserInitials, loadUserProfile } from '../utils/userProfile'
 
 // Links principales del sistema.

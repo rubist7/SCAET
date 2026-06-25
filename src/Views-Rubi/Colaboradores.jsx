@@ -653,8 +653,8 @@ function Colaboradores() {
                         required
                       />
                       <Field
-                        label="Area"
-                        name="area"
+                        label="Área"
+                        name="área"
                         value={form.area}
                         onChange={handleInputChange}
                         placeholder="Recepcion"

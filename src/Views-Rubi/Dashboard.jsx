@@ -52,7 +52,7 @@ function Dashboard() {
         {sidebarOpen && (
           <button
             type="button"
-            aria-label="Cerrar menú"
+            aria-label="Cerrar Menú"
             onClick={() => setSidebarOpen(false)}
             className="fixed inset-0 z-20 bg-[#201d31]/30 lg:hidden"
           />
@@ -71,7 +71,7 @@ function Dashboard() {
                 <AppIcon name="menu" />
               </button>
               <p className="text-[11px] font-extrabold uppercase tracking-[0.32em] text-[#8d88a2] sm:text-sm">
-                Inventario de los equipos
+                Inventario de los Equipos
               </p>
             </div>
 
@@ -88,7 +88,7 @@ function Dashboard() {
           {/* Contenido del dashboard: todos los datos estan en cero hasta conectar la base. */}
           <div className="space-y-8 px-4 py-7 sm:px-6 lg:px-8">
             <section className="space-y-5">
-              <h1 className="text-2xl font-extrabold text-[#201d31] sm:text-3xl">Resumen general</h1>
+              <h1 className="text-2xl font-extrabold text-[#201d31] sm:text-3xl">Resumen General</h1>
 
               {/* Tarjetas de metricas. Cambia summaryCards para actualizar los numeros. */}
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">

@@ -73,7 +73,6 @@ async function startScanner(scanner, onSuccess, cameraMode) {
       await scanner.start(preferredCamera.id, qrScannerConfig, onSuccess)
       return
     } catch {
-      // Some browsers expose camera ids that later fail; fall back to facingMode.
     }
   }
 
@@ -143,7 +142,6 @@ function stopScanner(scanner, shouldClear = true) {
       try {
         scanner.clear()
       } catch {
-        // html5-qrcode can already be clear during StrictMode cleanup.
       }
     })
 }

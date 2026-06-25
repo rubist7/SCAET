@@ -128,7 +128,7 @@ function Configuracion() {
                 <AppIcon name="menu" />
               </button>
               <p className="truncate text-[11px] font-extrabold uppercase tracking-[0.32em] text-[#8d88a2] sm:text-sm">
-                Configuracion de cuenta
+                Configuración de cuenta
               </p>
             </div>
 
@@ -145,14 +145,14 @@ function Configuracion() {
           <div className="space-y-6 px-4 py-7 sm:px-6 lg:px-8">
             <section>
               <p className="text-[10px] font-extrabold uppercase tracking-[0.3em] text-violet-300">Cuenta</p>
-              <h1 className="mt-3 text-2xl font-extrabold text-[#201d31] sm:text-3xl">Configuracion</h1>
+              <h1 className="mt-3 text-2xl font-extrabold text-[#201d31] sm:text-3xl">Configuración</h1>
             </section>
 
             <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(340px,0.75fr)]">
               <form onSubmit={handleProfileSubmit} className="space-y-5 rounded-2xl bg-white p-5 shadow-sm">
                 <div className="flex items-center justify-between gap-4 border-b border-[#f1edf5] pb-4">
                   <div>
-                    <h2 className="text-base font-extrabold text-[#201d31]">Datos del perfil</h2>
+                    <h2 className="text-base font-extrabold text-[#201d31]">Datos del Perfil</h2>
                     <p className="mt-1 text-xs font-bold text-[#8d88a2]">{profile.email}</p>
                   </div>
                   <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-violet-300 bg-violet-50 text-sm font-extrabold text-violet-500">
@@ -188,7 +188,7 @@ function Configuracion() {
                     className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-violet-500 px-5 text-sm font-extrabold text-white shadow-sm transition hover:bg-violet-600"
                   >
                     <AppIcon name="check" />
-                    Guardar perfil
+                    Guardar Perfil
                   </button>
                 </div>
               </form>

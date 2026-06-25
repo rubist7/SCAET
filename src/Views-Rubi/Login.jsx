@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import logo from '../assets/scaet.png'
+import logo from '../assets/logo_final.png'
 
 function Login() {
   const navigate = useNavigate()
