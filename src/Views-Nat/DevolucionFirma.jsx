@@ -377,7 +377,7 @@ function SignaturePad({ value, onChange, disabled }) {
           type="button"
           onClick={saveSignature}
           disabled={disabled || !hasPendingSignature}
-          className="h-9 rounded-[8px] bg-violet-600 text-xs font-bold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
+          className="h-9 rounded-[8px] bg-[#91C6F8] text-xs font-bold text-[#0F5FAF] transition hover:bg-[#79B8F4] disabled:cursor-not-allowed disabled:opacity-40"
         >
           {disabled ? "Bloqueado" : hasPendingSignature ? "Guardar firma" : value ? "Firma guardada" : "Pendiente"}
         </button>
@@ -501,7 +501,7 @@ function GeneratedDevolucionModal({ data, items, signature, onClose }) {
           <div className="p-4 sm:p-5">
             <DocumentPreview data={data} items={items} signature={signature} />
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              <button type="button" className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-violet-600 text-xs font-black text-white">
+              <button type="button" className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#91C6F8] text-xs font-black text-[#0F5FAF] transition hover:bg-[#79B8F4]">
                 <Mail size={14} />
                 Enviar por Gmail
               </button>
@@ -617,7 +617,7 @@ export default function DevolucionFirma({ devolucion, initialSelectedItemKeys, o
             <button
               type="button"
               onClick={() => setGeneratedOpen(true)}
-              className="h-10 rounded-[8px] bg-violet-600 px-5 text-xs font-black text-white"
+              className="h-10 rounded-[8px] bg-[#91C6F8] px-5 text-xs font-black text-[#0F5FAF] transition hover:bg-[#79B8F4]"
             >
               Confirmar y guardar pdf
             </button>

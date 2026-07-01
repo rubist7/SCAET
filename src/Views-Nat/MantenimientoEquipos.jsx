@@ -202,7 +202,7 @@ export default function MantenimientoEquipos({ entries = [], onOpenBitacora }) {
                                         <button
                                             type="button"
                                             onClick={() => onOpenBitacora(equipo)}
-                                            className="inline-flex h-8 min-w-[112px] items-center justify-center whitespace-nowrap rounded-[8px] bg-violet-600 px-3 text-xs font-black text-white transition hover:bg-violet-700"
+                                            className="inline-flex h-8 min-w-[112px] items-center justify-center whitespace-nowrap rounded-[8px] bg-[#91C6F8] px-3 text-xs font-black text-[#0F5FAF] transition hover:bg-[#79B8F4]"
                                         >
                                             Abrir bitacora
                                         </button>

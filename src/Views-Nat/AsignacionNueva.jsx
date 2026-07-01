@@ -180,7 +180,7 @@ function Step2({ tipoActivo, setTipoActivo, selected, onSelect }) {
                   setSearch("");
                 }}
                 className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-lg border px-2 text-xs font-semibold transition ${active
-                    ? "border-violet-500 bg-violet-600 text-white shadow-sm"
+                    ? "border-[#91C6F8] bg-[#91C6F8] text-[#0F5FAF] shadow-sm"
                     : "border-gray-200 bg-white text-gray-500 hover:border-violet-300 hover:bg-violet-50 dark:border-gray-700 dark:bg-gray-800/40 dark:text-gray-300"
                   }`}
               >
@@ -249,7 +249,7 @@ function Step3({ tipo, setTipo, fechaDev, setFechaDev }) {
               type="button"
               onClick={() => setTipo(option)}
               className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition ${tipo === option
-                ? "border-violet-500 bg-violet-600 text-white shadow-sm"
+                ? "border-[#91C6F8] bg-[#91C6F8] text-[#0F5FAF] shadow-sm"
                 : "border-gray-200 bg-white text-gray-600 hover:border-violet-300 dark:border-gray-700 dark:bg-gray-800/40 dark:text-gray-300"
                 }`}
             >
@@ -554,7 +554,7 @@ export default function NuevaAsignacion({ initialColaborador, initialStep = 0, a
               type="button"
               onClick={() => setStep((value) => value + 1)}
               disabled={!canNext[step]}
-              className="rounded-lg bg-violet-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-lg bg-[#91C6F8] px-5 py-2 text-sm font-semibold text-[#0F5FAF] shadow-sm transition hover:bg-[#79B8F4] disabled:cursor-not-allowed disabled:opacity-40"
             >
               Continuar
             </button>
@@ -562,7 +562,7 @@ export default function NuevaAsignacion({ initialColaborador, initialStep = 0, a
             <button
               type="button"
               onClick={handleConfirm}
-              className="rounded-lg bg-violet-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-700">
+              className="rounded-lg bg-[#91C6F8] px-5 py-2 text-sm font-semibold text-[#0F5FAF] shadow-sm transition hover:bg-[#79B8F4]">
               Confirmar y generar resguardo
             </button>
           )}

@@ -104,14 +104,17 @@ function Register() {
         ${isDark ? 'border-white/8 bg-[#09060f]/75 shadow-[0_24px_70px_rgba(0,0,0,0.55)]' : 'border-violet-100/80 bg-white/55 shadow-lg'}
       `}>
         <div className="w-full max-w-[330px] sm:max-w-sm md:max-w-md flex flex-col items-center gap-3 sm:gap-4">
-          <div className="flex flex-col items-center gap-2">
+          <div className="flex flex-col items-center gap-0">
             <img
               src={logo}
               alt="SCAET"
-              className="h-auto w-44 max-w-full object-contain sm:w-56"
+              className="w-35 h-35 sm:w-50 sm:h-50 object-contain"
             />
             <div className="text-center">
-              <p className={`text-[12px] sm:text-[16px] leading-relaxed ${isDark ? 'text-violet-400/80' : 'text-gray-400'}`}>
+              <h1 className="text-lg sm:text-3xl font-logo tracking-widest -mt-6 text-[#0F83F0]">
+                SCAET
+              </h1>
+              <p className={`text-[12px] sm:text-[16px] leading-relaxed mt-1 ${isDark ? 'text-violet-400/80' : 'text-gray-400'}`}>
                 Sistema de Control y Administración<br />de Equipos Tecnológicos
               </p>
             </div>
@@ -200,8 +203,8 @@ function Register() {
               disabled={loading}
               className="
                 w-full py-2.5 sm:py-2.5 mt-0.5 rounded-lg sm:rounded-xl
-                bg-violet-500 hover:bg-violet-600
-                text-white text-[16px] sm:text-[25px] font-semibold tracking-wide
+                bg-[#91C6F8] hover:bg-[#79B8F4]
+                text-[#0F5FAF] text-[16px] sm:text-[25px] font-semibold tracking-wide
                 transition-colors disabled:opacity-60
                 active:scale-[0.98]
               "

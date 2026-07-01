@@ -330,7 +330,7 @@ export default function Reportes() {
                   onClick={() => toggleField(field)}
                   className={`h-9 rounded-full border px-4 text-xs font-black transition ${
                     active
-                      ? "border-violet-500 bg-violet-600 text-white shadow-sm"
+                      ? "border-[#91C6F8] bg-[#91C6F8] text-[#0F5FAF] shadow-sm"
                       : "border-gray-200 bg-gray-50 text-[#6f6584] hover:border-violet-300 hover:bg-violet-50/60 dark:border-gray-700 dark:bg-gray-800/40 dark:text-violet-200 dark:hover:border-violet-600 dark:hover:bg-violet-900/20"
                   }`}
                 >

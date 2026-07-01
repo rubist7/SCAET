@@ -279,7 +279,7 @@ function EquipoAlta() {
               </Link>
               <button
                 type="submit"
-                className="h-11 rounded-xl bg-violet-500 px-8 text-sm font-extrabold text-white transition hover:bg-violet-600 focus:outline-none focus:ring-4 focus:ring-violet-200"
+                className="h-11 rounded-xl bg-[#91C6F8] px-8 text-sm font-extrabold text-[#0F5FAF] transition hover:bg-[#79B8F4] focus:outline-none focus:ring-4 focus:ring-blue-100"
               >
                 Guardar equipo y generar código QR
               </button>

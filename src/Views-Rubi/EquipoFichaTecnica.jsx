@@ -73,7 +73,7 @@ function EquipoFichaTecnica() {
             <p className="mt-2 text-sm font-bold text-[#8d88a2]">Ese equipo no existe en los registros.</p>
             <Link
               to="/equipos"
-              className="mt-5 inline-flex h-11 items-center justify-center rounded-xl bg-violet-500 px-6 text-sm font-extrabold text-white"
+              className="mt-5 inline-flex h-11 items-center justify-center rounded-xl bg-[#91C6F8] px-6 text-sm font-extrabold text-[#0F5FAF] transition hover:bg-[#79B8F4]"
             >
               Volver al listado
             </Link>

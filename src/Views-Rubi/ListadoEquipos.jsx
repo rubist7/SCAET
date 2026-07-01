@@ -465,7 +465,7 @@ function ListadoEquipos() {
             </button>
             <Link
               to="/equipos/alta"
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-violet-500 px-5 text-sm font-extrabold text-white shadow-sm transition hover:bg-violet-600"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#91C6F8] px-5 text-sm font-extrabold text-[#0F5FAF] shadow-sm transition hover:bg-[#79B8F4]"
             >
               <AppIcon name="plus" />
               Dar de alta
@@ -525,14 +525,14 @@ function ListadoEquipos() {
               <button
                 type="button"
                 onClick={() => setViewMode('cards')}
-                className={`rounded-xl px-4 text-xs font-extrabold transition ${viewMode === 'cards' ? 'bg-violet-500 text-white' : 'text-[#6f6a85]'}`}
+                className={`rounded-xl px-4 text-xs font-extrabold transition ${viewMode === 'cards' ? 'bg-[#91C6F8] text-[#0F5FAF]' : 'text-[#6f6a85]'}`}
               >
                 Cards
               </button>
               <button
                 type="button"
                 onClick={() => setViewMode('table')}
-                className={`rounded-xl px-4 text-xs font-extrabold transition ${viewMode === 'table' ? 'bg-violet-500 text-white' : 'text-[#6f6a85]'}`}
+                className={`rounded-xl px-4 text-xs font-extrabold transition ${viewMode === 'table' ? 'bg-[#91C6F8] text-[#0F5FAF]' : 'text-[#6f6a85]'}`}
               >
                 Tabla
               </button>
@@ -641,14 +641,14 @@ function ListadoEquipos() {
                   <button
                     type="button"
                     onClick={() => handleCameraModeChange('back')}
-                    className={`rounded-lg text-xs font-extrabold transition ${cameraMode === 'back' ? 'bg-violet-500 text-white shadow-sm' : 'text-[#6f6a85]'}`}
+                    className={`rounded-lg text-xs font-extrabold transition ${cameraMode === 'back' ? 'bg-[#91C6F8] text-[#0F5FAF] shadow-sm' : 'text-[#6f6a85]'}`}
                   >
                     Trasera
                   </button>
                   <button
                     type="button"
                     onClick={() => handleCameraModeChange('front')}
-                    className={`rounded-lg text-xs font-extrabold transition ${cameraMode === 'front' ? 'bg-violet-500 text-white shadow-sm' : 'text-[#6f6a85]'}`}
+                    className={`rounded-lg text-xs font-extrabold transition ${cameraMode === 'front' ? 'bg-[#91C6F8] text-[#0F5FAF] shadow-sm' : 'text-[#6f6a85]'}`}
                   >
                     Frontal
                   </button>
@@ -688,7 +688,7 @@ function ListadoEquipos() {
               />
               <button
                 type="submit"
-                className="h-11 rounded-xl bg-violet-500 px-5 text-sm font-extrabold text-white"
+                className="h-11 rounded-xl bg-[#91C6F8] px-5 text-sm font-extrabold text-[#0F5FAF] transition hover:bg-[#79B8F4]"
               >
                 Abrir ficha
               </button>

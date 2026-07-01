@@ -331,7 +331,7 @@ function SignaturePad({ value, onChange, disabled }) {
           type="button"
           onClick={saveSignature}
           disabled={disabled || !hasPendingSignature}
-          className="h-9 rounded-[8px] bg-violet-600 text-xs font-bold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
+          className="h-9 rounded-[8px] bg-[#91C6F8] text-xs font-bold text-[#0F5FAF] transition hover:bg-[#79B8F4] disabled:cursor-not-allowed disabled:opacity-40"
         >
           {disabled ? "Bloqueado" : hasPendingSignature ? "Guardar firma" : value ? "Firma guardada" : "Pendiente"}
         </button>
@@ -572,7 +572,7 @@ function GeneratedResguardoModal({ data, signature, onClose }) {
           <div className="p-4 sm:p-5">
             <DocumentPreview data={data} signature={signature} />
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              <button type="button" className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-violet-600 text-xs font-black text-white">
+              <button type="button" className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#91C6F8] text-xs font-black text-[#0F5FAF] transition hover:bg-[#79B8F4]">
                 <Mail size={14} />
                 Enviar por Gmail
               </button>
@@ -598,7 +598,7 @@ function ResguardoItemsSummary({ items, onAddItem, onRemoveItem }) {
         <button
           type="button"
           onClick={onAddItem}
-          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-violet-600 text-white transition hover:bg-violet-700"
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#91C6F8] text-[#0F5FAF] transition hover:bg-[#79B8F4]"
           aria-label="Agregar otro activo al resguardo"
           title="Agregar otro activo"
         >
@@ -876,7 +876,7 @@ export default function ResguardoFirma({ resguardo, onBack, onGoDevolucion, onAd
             <button
               type="button"
               onClick={() => setGeneratedOpen(true)}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-violet-600 px-5 text-xs font-black text-white"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#91C6F8] px-5 text-xs font-black text-[#0F5FAF] transition hover:bg-[#79B8F4]"
             >
               <Send size={14} />
               Generar resguardo

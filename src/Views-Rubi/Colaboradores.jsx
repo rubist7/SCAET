@@ -369,7 +369,7 @@ function Colaboradores() {
                 <button
                   type="button"
                   onClick={handleNewCollaborator}
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-violet-500 px-5 text-sm font-extrabold text-white shadow-sm transition hover:bg-violet-600 focus:outline-none focus:ring-4 focus:ring-violet-200"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#91C6F8] px-5 text-sm font-extrabold text-[#0F5FAF] shadow-sm transition hover:bg-[#79B8F4] focus:outline-none focus:ring-4 focus:ring-blue-100"
                 >
                   <AppIcon name="plus" />
                   Nuevo colaborador
@@ -446,7 +446,7 @@ function Colaboradores() {
                                     onClick={() => handleToggleDetails(collaborator.id)}
                                     className={`flex h-9 w-9 items-center justify-center rounded-xl transition ${
                                       isExpanded
-                                        ? 'bg-violet-500 text-white'
+                                        ? 'bg-[#91C6F8] text-[#0F5FAF]'
                                         : 'bg-violet-50 text-violet-500 hover:bg-violet-100'
                                     }`}
                                     aria-label={`${isExpanded ? 'Ocultar' : 'Ver'} informacion de ${collaborator.fullName}`}
@@ -545,7 +545,7 @@ function Colaboradores() {
                               onClick={() => handleToggleDetails(collaborator.id)}
                               className={`inline-flex h-10 items-center justify-center gap-2 rounded-xl text-xs font-extrabold transition ${
                                 isExpanded
-                                  ? 'bg-violet-500 text-white'
+                                  ? 'bg-[#91C6F8] text-[#0F5FAF]'
                                   : 'bg-violet-50 text-violet-500 hover:bg-violet-100'
                               }`}
                               aria-label={`${isExpanded ? 'Ocultar' : 'Ver'} informacion de ${collaborator.fullName}`}
@@ -748,7 +748,7 @@ function Colaboradores() {
                     </button>
                     <button
                       type="submit"
-                      className="h-11 rounded-xl bg-violet-500 px-8 text-sm font-extrabold text-white transition hover:bg-violet-600 focus:outline-none focus:ring-4 focus:ring-violet-200"
+                      className="h-11 rounded-xl bg-[#91C6F8] px-8 text-sm font-extrabold text-[#0F5FAF] transition hover:bg-[#79B8F4] focus:outline-none focus:ring-4 focus:ring-blue-100"
                     >
                       {isEditing ? 'Guardar cambios' : 'Guardar colaborador'}
                     </button>

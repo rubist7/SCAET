@@ -185,7 +185,7 @@ function Configuracion() {
                 <div className="flex justify-end">
                   <button
                     type="submit"
-                    className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-violet-500 px-5 text-sm font-extrabold text-white shadow-sm transition hover:bg-violet-600"
+                    className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#91C6F8] px-5 text-sm font-extrabold text-[#0F5FAF] shadow-sm transition hover:bg-[#79B8F4]"
                   >
                     <AppIcon name="check" />
                     Guardar Perfil
