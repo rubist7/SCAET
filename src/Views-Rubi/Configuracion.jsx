@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import AppSidebar, { AppIcon } from '../components/Sidebar'
+import { AppIcon } from '../components/Sidebar'
 import { getUserInitials, loadUserProfile, saveUserProfile } from '../utils/userProfile'
 
 const emptyPasswordForm = {
@@ -20,7 +20,7 @@ function SettingsField({ label, name, value, onChange, type = 'text', placeholde
         placeholder={placeholder}
         autoComplete={autoComplete}
         required={required}
-        className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition placeholder:text-[#9b95ac] focus:border-violet-300 focus:bg-white focus:ring-4 focus:ring-violet-100"
+        className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition placeholder:text-[#9b95ac] focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
       />
     </label>
   )
@@ -43,7 +43,6 @@ function StatusMessage({ status }) {
 }
 
 function Configuracion() {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [profile, setProfile] = useState(() => loadUserProfile())
   const [passwordForm, setPasswordForm] = useState(emptyPasswordForm)
   const [showPasswords, setShowPasswords] = useState(false)
@@ -103,48 +102,9 @@ function Configuracion() {
   const passwordInputType = showPasswords ? 'text' : 'password'
 
   return (
-    <div className="min-h-screen bg-[#f6f2ec] font-sans text-[#2a263a]">
-      <div className="mx-auto flex min-h-screen max-w-[1920px] bg-[#f6f2ec]">
-        <AppSidebar isOpen={sidebarOpen} activePage="Configuracion" />
-
-        {sidebarOpen && (
-          <button
-            type="button"
-            aria-label="Cerrar menu"
-            onClick={() => setSidebarOpen(false)}
-            className="fixed inset-0 z-20 bg-[#201d31]/30 lg:hidden"
-          />
-        )}
-
-        <main className="min-w-0 flex-1">
-          <header className="sticky top-0 z-10 flex h-20 items-center justify-between border-b border-[#ece7df] bg-white/95 px-4 backdrop-blur sm:px-6 lg:px-8">
-            <div className="flex min-w-0 items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setSidebarOpen(true)}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-violet-100 bg-white text-[#6f6a85] shadow-sm lg:hidden"
-                aria-label="Abrir menu"
-              >
-                <AppIcon name="menu" />
-              </button>
-              <p className="truncate text-[11px] font-extrabold uppercase tracking-[0.32em] text-[#8d88a2] sm:text-sm">
-                Configuración de cuenta
-              </p>
-            </div>
-
-            <div className="flex shrink-0 items-center gap-2">
-              <span className="hidden rounded-full bg-violet-50 px-5 py-2 text-sm font-extrabold text-violet-500 sm:inline-flex">
-                {profile.role}
-              </span>
-              <span className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-violet-300 bg-violet-50 text-xs font-extrabold text-violet-500">
-                {getUserInitials(profile.name)}
-              </span>
-            </div>
-          </header>
-
-          <div className="space-y-6 px-4 py-7 sm:px-6 lg:px-8">
+    <div className="space-y-6">
             <section>
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.3em] text-violet-300">Cuenta</p>
+              <p className="text-[10px] font-extrabold uppercase tracking-[0.3em] text-blue-300">Cuenta</p>
               <h1 className="mt-3 text-2xl font-extrabold text-[#201d31] sm:text-3xl">Configuración</h1>
             </section>
 
@@ -155,7 +115,7 @@ function Configuracion() {
                     <h2 className="text-base font-extrabold text-[#201d31]">Datos del Perfil</h2>
                     <p className="mt-1 text-xs font-bold text-[#8d88a2]">{profile.email}</p>
                   </div>
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-violet-300 bg-violet-50 text-sm font-extrabold text-violet-500">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-blue-300 bg-blue-50 text-sm font-extrabold text-blue-500">
                     {getUserInitials(profile.name)}
                   </span>
                 </div>
@@ -185,7 +145,7 @@ function Configuracion() {
                 <div className="flex justify-end">
                   <button
                     type="submit"
-                    className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#91C6F8] px-5 text-sm font-extrabold text-[#0F5FAF] shadow-sm transition hover:bg-[#79B8F4]"
+                    className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#3A9AF2] px-5 text-sm font-extrabold text-[#FFFFFF] shadow-sm transition hover:bg-[#238BEA]"
                   >
                     <AppIcon name="check" />
                     Guardar Perfil
@@ -254,9 +214,6 @@ function Configuracion() {
               </form>
             </section>
           </div>
-        </main>
-      </div>
-    </div>
   )
 }
 

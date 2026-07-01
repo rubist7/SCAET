@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BrowserRouter, Navigate, Route, Routes, useNavigate } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import Layout from "./Layout";
 import NuevaAsignacion from "./Views-Nat/AsignacionNueva";
 import AuditoriaList from "./Views-Nat/AuditoriaList";
@@ -10,15 +10,15 @@ import MantenimientoEquipos from "./Views-Nat/MantenimientoEquipos";
 import { bitacoraInicial } from "./Views-Nat/mantenimientoData";
 import Reportes from "./Views-Nat/Reportes";
 import ResguardoFirma from "./Views-Nat/ResguardoFirma";
-import Login from "./views-rubi/Login";
-import Register from "./views-rubi/Register";
-import Dashboard from "./views-rubi/Dashboard";
-import Proveedores from "./views-rubi/Proveedores";
-import Colaboradores from "./views-rubi/Colaboradores";
-import ListadoEquipos from "./views-rubi/ListadoEquipos";
-import EquipoAlta from "./views-rubi/EquipoAlta";
-import EquipoFichaTecnica from "./views-rubi/EquipoFichaTecnica";
-import Configuracion from "./views-rubi/Configuracion";
+import Login from "./Views-Rubi/Login";
+import Register from "./Views-Rubi/Register";
+import Dashboard from "./Views-Rubi/Dashboard";
+import Proveedores from "./Views-Rubi/Proveedores";
+import Colaboradores from "./Views-Rubi/Colaboradores";
+import ListadoEquipos from "./Views-Rubi/ListadoEquipos";
+import EquipoAlta from "./Views-Rubi/EquipoAlta";
+import EquipoFichaTecnica from "./Views-Rubi/EquipoFichaTecnica";
+import Configuracion from "./Views-Rubi/Configuracion";
 
 const natRoutes = {
   Asignacion: "/asignacion",
@@ -33,7 +33,28 @@ const appRoutes = {
   Proveedores: "/proveedores",
   Colaboradores: "/colaboradores",
   Equipos: "/equipos",
+  Configuracion: "/configuracion",
 };
+
+function activeNavFromPath(pathname) {
+  if (pathname.startsWith("/proveedores")) return "Proveedores";
+  if (pathname.startsWith("/colaboradores")) return "Colaboradores";
+  if (pathname.startsWith("/equipos")) return "Equipos";
+  if (pathname.startsWith("/configuracion")) return "Configuracion";
+  return "Dashboard";
+}
+
+function AppLayoutRoute({ children }) {
+  const location = useLocation();
+
+  return (
+    <Layout activeNav={activeNavFromPath(location.pathname)}>
+      <div className="rubi-content">
+        {children}
+      </div>
+    </Layout>
+  );
+}
 
 function NataliaFlow({ initialScreen = "asignacion" }) {
   const navigate = useNavigate();
@@ -278,14 +299,15 @@ export default function App() {
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/proveedores" element={<Proveedores />} />
-        <Route path="/colaboradores" element={<Colaboradores />} />
-        <Route path="/equipos" element={<ListadoEquipos />} />
-        <Route path="/equipos/alta" element={<EquipoAlta />} />
-        <Route path="/equipos/alta/:equipmentId" element={<EquipoAlta />} />
-        <Route path="/equipos/ficha/:equipmentId" element={<EquipoFichaTecnica />} />
-        <Route path="/configuracion" element={<Configuracion />} />
+        <Route path="/dashboard" element={<AppLayoutRoute><Dashboard /></AppLayoutRoute>} />
+        <Route path="/proveedores" element={<AppLayoutRoute><Proveedores /></AppLayoutRoute>} />
+        <Route path="/colaboradores" element={<AppLayoutRoute><Colaboradores /></AppLayoutRoute>} />
+        <Route path="/equipos" element={<AppLayoutRoute><ListadoEquipos /></AppLayoutRoute>} />
+        <Route path="/equipos/alta" element={<AppLayoutRoute><EquipoAlta /></AppLayoutRoute>} />
+        <Route path="/equipos/alta/:equipmentId" element={<AppLayoutRoute><EquipoAlta /></AppLayoutRoute>} />
+        <Route path="/equipos/editar/:equipmentId" element={<AppLayoutRoute><EquipoAlta /></AppLayoutRoute>} />
+        <Route path="/equipos/ficha/:equipmentId" element={<AppLayoutRoute><EquipoFichaTecnica /></AppLayoutRoute>} />
+        <Route path="/configuracion" element={<AppLayoutRoute><Configuracion /></AppLayoutRoute>} />
         <Route path="/asignacion" element={<NataliaFlow initialScreen="asignacion" />} />
         <Route path="/asignacion/mantenimiento" element={<NataliaFlow initialScreen="mantenimiento" />} />
         <Route path="/asignacion/reportes" element={<NataliaFlow initialScreen="reportes" />} />

@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { AppIcon } from '../components/Sidebar'
 import {
   calculateWarrantyEnd,
@@ -30,9 +30,40 @@ const emptyForm = {
   photoName: '',
 }
 
+function getDraftFormFromReport(row) {
+  if (!row) {
+    return null
+  }
+
+  const warrantyMonths = row['Gar.Tipo'] && row['Gar.Tipo'] !== '-' ? row['Gar.Tipo'] : ''
+  const warrantyEndParts = row['Gar.Fin']?.split('/')
+  const warrantyEnd = warrantyEndParts?.length === 3
+    ? `${warrantyEndParts[2]}-${warrantyEndParts[1]}-${warrantyEndParts[0]}`
+    : ''
+
+  return {
+    provider: row.Proveedor === '-' ? '' : row.Proveedor || '',
+    type: row.Tipo || 'Laptop',
+    brand: row.Marca || '',
+    model: row.Modelo || '',
+    serialNumber: row.Serie === '-' ? '' : row.Serie || '',
+    purchaseDate: '',
+    company: '',
+    sellerName: '',
+    warrantyMonths,
+    warrantyEnd,
+    specifications: '',
+    photoUrl: '',
+    photoName: '',
+  }
+}
+
 function EquipoAlta() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { equipmentId } = useParams()
+  const returnTo = location.state?.returnTo || '/equipos'
+  const reportDraft = location.state?.reportDraft
   const editingEquipment = useMemo(() => (
     equipmentId ? getEquipmentById(equipmentId) : null
   ), [equipmentId])
@@ -53,7 +84,7 @@ function EquipoAlta() {
           photoUrl: editingEquipment.photoUrl || '',
           photoName: editingEquipment.photoName || '',
         }
-      : emptyForm
+      : getDraftFormFromReport(reportDraft) || emptyForm
   ))
   const cameraInputRef = useRef(null)
   const uploadInputRef = useRef(null)
@@ -121,10 +152,10 @@ function EquipoAlta() {
       purchaseDate: form.purchaseDate,
       warrantyEnd: form.warrantyEnd,
       warrantyMonths: form.warrantyMonths,
-      area: editingEquipment?.area ?? '-',
-      status: editingEquipment?.status ?? 'Disponible',
+      area: editingEquipment?.area ?? reportDraft?.Ubicacion ?? '-',
+      status: editingEquipment?.status ?? reportDraft?.Estado ?? 'Disponible',
       specs: form.specifications.trim(),
-      assignmentName: editingEquipment?.assignmentName ?? '-',
+      assignmentName: editingEquipment?.assignmentName ?? reportDraft?.Asignado ?? '-',
       assignmentType: editingEquipment?.assignmentType ?? '-',
       assignmentDate: editingEquipment?.assignmentDate ?? '-',
       photoKind: form.type.toLowerCase(),
@@ -139,22 +170,22 @@ function EquipoAlta() {
       : [nextEquipment, ...equipments]
 
     saveEquipments(nextEquipments)
-    navigate('/equipos')
+    navigate(returnTo)
   }
 
   return (
     <EquipmentShell>
       <div className="space-y-6 px-4 py-7 sm:px-6 lg:px-8">
         <section>
-          <p className="text-[10px] font-extrabold uppercase tracking-[0.3em] text-violet-300">Equipos - Dar de alta</p>
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.3em] text-blue-300">Equipos - Dar de alta</p>
           <h1 className="mt-3 text-2xl font-extrabold text-[#201d31] sm:text-3xl">
             {editingEquipment ? 'Editar equipo' : 'Alta de equipo'}
           </h1>
         </section>
 
         <section className="rounded-2xl bg-white p-4 shadow-sm sm:p-6">
-          <div className="border-b border-violet-500 pb-5">
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.28em] text-violet-300">
+          <div className="border-b border-blue-500 pb-5">
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.28em] text-blue-300">
               Información del equipo
             </p>
           </div>
@@ -169,7 +200,7 @@ function EquipoAlta() {
                   name="type"
                   value={form.type}
                   onChange={handleInputChange}
-                  className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:border-violet-300 focus:bg-white focus:ring-4 focus:ring-violet-100"
+                  className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
                 >
                   {typeOptions.map((type) => (
                     <option key={type} value={type}>{type}</option>
@@ -194,13 +225,13 @@ function EquipoAlta() {
                   onChange={handleInputChange}
                   placeholder="Ej. Intel Core i7, 16GB RAM, 512GB SSD, Windows 11..."
                   rows="4"
-                  className="min-h-28 w-full resize-y rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 py-3 text-sm font-bold text-[#2a263a] outline-none transition focus:border-violet-300 focus:bg-white focus:ring-4 focus:ring-violet-100"
+                  className="min-h-28 w-full resize-y rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 py-3 text-sm font-bold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
                 />
               </label>
             </div>
 
             <div className="space-y-3">
-              <p className="border-b border-[#f0edf6] pb-3 text-[10px] font-extrabold uppercase tracking-[0.28em] text-violet-300">
+              <p className="border-b border-[#f0edf6] pb-3 text-[10px] font-extrabold uppercase tracking-[0.28em] text-blue-300">
                 Fotografia del Equipo
               </p>
               <div className={`grid gap-3 ${canTakePhoto ? 'sm:grid-cols-[160px_1fr]' : ''}`}>
@@ -256,7 +287,7 @@ function EquipoAlta() {
             </div>
 
             <div className="space-y-3">
-              <p className="border-b border-[#f0edf6] pb-3 text-[10px] font-extrabold uppercase tracking-[0.28em] text-violet-300">
+              <p className="border-b border-[#f0edf6] pb-3 text-[10px] font-extrabold uppercase tracking-[0.28em] text-blue-300">
                 Código QR
               </p>
               <div className="rounded-2xl bg-[#f2ece0] p-4">
@@ -271,15 +302,16 @@ function EquipoAlta() {
             </div>
 
             <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <Link
-                to="/equipos"
+              <button
+                type="button"
+                onClick={() => navigate(returnTo)}
                 className="inline-flex h-11 items-center justify-center rounded-xl bg-[#f2ece0] px-8 text-sm font-extrabold text-[#6f6a85] transition hover:bg-[#e9dfd0]"
               >
                 Cancelar
-              </Link>
+              </button>
               <button
                 type="submit"
-                className="h-11 rounded-xl bg-[#91C6F8] px-8 text-sm font-extrabold text-[#0F5FAF] transition hover:bg-[#79B8F4] focus:outline-none focus:ring-4 focus:ring-blue-100"
+                className="h-11 rounded-xl bg-[#3A9AF2] px-8 text-sm font-extrabold text-[#FFFFFF] transition hover:bg-[#238BEA] focus:outline-none focus:ring-4 focus:ring-blue-100"
               >
                 Guardar equipo y generar código QR
               </button>

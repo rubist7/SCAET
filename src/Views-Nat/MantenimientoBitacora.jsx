@@ -8,7 +8,7 @@ import { historialUsuariosPorEquipo, mantenimientoEquipos } from "./mantenimient
 function Field({ label, children }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[11px] font-semibold text-violet-300">{label}</span>
+      <span className="mb-1.5 block text-[11px] font-semibold text-blue-300">{label}</span>
       {children}
     </label>
   );
@@ -21,7 +21,7 @@ function SoftInput({ value, onChange, placeholder, type = "text" }) {
       value={value}
       onChange={(event) => onChange(event.target.value)}
       placeholder={placeholder}
-      className="h-10 w-full rounded-[8px] border border-[#ded6c8] bg-[#eee8dc] px-4 text-sm font-semibold text-[#3c3445] outline-none transition placeholder:text-[#9b927f] focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+      className="h-10 w-full rounded-[8px] border border-[#ded6c8] bg-[#eee8dc] px-4 text-sm font-semibold text-[#3c3445] outline-none transition placeholder:text-[#9b927f] focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
     />
   );
 }
@@ -60,7 +60,7 @@ function MoneyInput({ value, onChange }) {
       onKeyDown={handleKeyDown}
       onPaste={handlePaste}
       placeholder="$0.00"
-      className="h-10 w-full rounded-[8px] border border-[#ded6c8] bg-[#eee8dc] px-4 text-sm font-semibold text-[#3c3445] outline-none transition placeholder:text-[#9b927f] focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+      className="h-10 w-full rounded-[8px] border border-[#ded6c8] bg-[#eee8dc] px-4 text-sm font-semibold text-[#3c3445] outline-none transition placeholder:text-[#9b927f] focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
     />
   );
 }
@@ -71,7 +71,7 @@ function SoftSelect({ value, onChange, options }) {
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-10 w-full appearance-none rounded-[8px] border border-[#ded6c8] bg-[#eee8dc] px-4 pr-9 text-sm font-semibold text-[#3c3445] outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+        className="h-10 w-full appearance-none rounded-[8px] border border-[#ded6c8] bg-[#eee8dc] px-4 pr-9 text-sm font-semibold text-[#3c3445] outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
       >
         {options.map((option) => (
           <option key={option}>{option}</option>
@@ -93,10 +93,10 @@ function UserHistoryCard({ record }) {
           <p className="mt-1 text-xs font-semibold text-[#8f879b]">
             #{record.numero} - {record.puesto} - {record.departamento}
           </p>
-          <p className="mt-2 text-[11px] font-black uppercase tracking-[0.12em] text-violet-300">{record.periodo}</p>
+          <p className="mt-2 text-[11px] font-black uppercase tracking-[0.12em] text-blue-300">{record.periodo}</p>
         </div>
         <div className="shrink-0 sm:text-right">
-          <span className="inline-flex rounded-full bg-violet-50 px-3 py-1 text-[11px] font-black text-violet-600">{record.estadoEntrega}</span>
+          <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-[11px] font-black text-blue-600">{record.estadoEntrega}</span>
           <p className="mt-2 text-sm font-black text-[#21192c]">
             {formatCurrency(total)}
           </p>
@@ -110,7 +110,7 @@ function UserHistoryCard({ record }) {
               <div>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="rounded-full bg-[#eee8dc] px-2.5 py-0.5 text-[10px] font-black text-[#6f6584]">{item.tipo}</span>
-                  <span className="text-[11px] font-bold text-violet-300">{formatDate(item.fecha)}</span>
+                  <span className="text-[11px] font-bold text-blue-300">{formatDate(item.fecha)}</span>
                 </div>
                 <p className="mt-2 text-xs font-semibold text-[#6f6584]">{item.descripcion}</p>
                 <p className="mt-1 text-[11px] font-bold text-[#b1a58f]">Tec. {item.tecnico}</p>
@@ -134,16 +134,16 @@ function UserHistory({ records }) {
   return (
     <div className="mt-5">
       <div className="mb-4 grid gap-3 sm:grid-cols-3">
-        <div className="rounded-[8px] bg-violet-50 px-4 py-3">
-          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-violet-300">Usuarios</p>
+        <div className="rounded-[8px] bg-blue-50 px-4 py-3">
+          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-blue-300">Usuarios</p>
           <p className="mt-1 text-lg font-black text-[#21192c]">{records.length}</p>
         </div>
-        <div className="rounded-[8px] bg-violet-50 px-4 py-3">
-          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-violet-300">Mantenimientos</p>
+        <div className="rounded-[8px] bg-blue-50 px-4 py-3">
+          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-blue-300">Mantenimientos</p>
           <p className="mt-1 text-lg font-black text-[#21192c]">{maintenanceCount}</p>
         </div>
-        <div className="rounded-[8px] bg-violet-50 px-4 py-3">
-          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-violet-300">Costo total</p>
+        <div className="rounded-[8px] bg-blue-50 px-4 py-3">
+          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-blue-300">Costo total</p>
           <p className="mt-1 text-lg font-black text-[#21192c]">{formatCurrency(total)}</p>
         </div>
       </div>
@@ -206,7 +206,7 @@ export default function MantenimientoBitacora({ equipo, onBack, onAddEntry }) {
       <section className="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
-            <p className="text-[11px] font-black uppercase tracking-[0.26em] text-violet-200">
+            <p className="text-[11px] font-black uppercase tracking-[0.26em] text-blue-200">
               Mantenimiento / {selected.nombre} / Bitacora
             </p>
             <h2 className="mt-3 flex flex-col gap-2 text-lg font-black text-[#21192c] sm:block sm:text-xl">
@@ -216,29 +216,29 @@ export default function MantenimientoBitacora({ equipo, onBack, onAddEntry }) {
           </div>
         </div>
 
-        <button type="button" onClick={onBack} className="mt-3 text-xs font-black text-violet-600 hover:underline">
+        <button type="button" onClick={onBack} className="mt-3 text-xs font-black text-blue-600 hover:underline">
           Volver a seleccionar equipo
         </button>
 
-        <div className="mt-4 flex overflow-x-auto border-b border-violet-500">
+        <div className="mt-4 flex overflow-x-auto border-b border-blue-500">
           <button
             type="button"
             onClick={() => setActiveTab("bitacora")}
-            className={`rounded-t-[8px] px-5 py-3 text-xs ${activeTab === "bitacora" ? "bg-violet-50 font-black text-violet-600" : "font-bold text-[#8f879b]"}`}
+            className={`rounded-t-[8px] px-5 py-3 text-xs ${activeTab === "bitacora" ? "bg-blue-50 font-black text-blue-600" : "font-bold text-[#8f879b]"}`}
           >
             Bitacora de fallas
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("usuarios")}
-            className={`shrink-0 rounded-t-[8px] px-5 py-3 text-xs ${activeTab === "usuarios" ? "bg-violet-50 font-black text-violet-600" : "font-bold text-[#8f879b]"}`}
+            className={`shrink-0 rounded-t-[8px] px-5 py-3 text-xs ${activeTab === "usuarios" ? "bg-blue-50 font-black text-blue-600" : "font-bold text-[#8f879b]"}`}
           >
             Historial de usuarios
           </button>
         </div>
 
         {activeTab === "bitacora" ? <div className="mt-5">
-          <p className="mb-4 text-[11px] font-black uppercase tracking-[0.26em] text-violet-200">Nueva entrada</p>
+          <p className="mb-4 text-[11px] font-black uppercase tracking-[0.26em] text-blue-200">Nueva entrada</p>
           <div className="grid gap-4 md:grid-cols-2">
             <Field label="Fecha">
               <DateInput value={fecha} onChange={setFecha} />
@@ -253,7 +253,7 @@ export default function MantenimientoBitacora({ equipo, onBack, onAddEntry }) {
               value={descripcion}
               onChange={(event) => setDescripcion(event.target.value)}
               placeholder="Describe el problema o el mantenimiento realizado..."
-              className="mt-1 h-20 w-full resize-none rounded-[8px] border border-[#ded6c8] bg-[#eee8dc] px-4 py-3 text-sm font-semibold text-[#3c3445] outline-none transition placeholder:text-[#9b927f] focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+              className="mt-1 h-20 w-full resize-none rounded-[8px] border border-[#ded6c8] bg-[#eee8dc] px-4 py-3 text-sm font-semibold text-[#3c3445] outline-none transition placeholder:text-[#9b927f] focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
             />
           </Field>
 
@@ -276,7 +276,7 @@ export default function MantenimientoBitacora({ equipo, onBack, onAddEntry }) {
             <button
               type="button"
               onClick={handleSave}
-              className="h-9 w-full rounded-[8px] bg-[#91C6F8] px-5 text-xs font-black text-[#0F5FAF] transition hover:bg-[#79B8F4] sm:w-auto"
+              className="h-9 w-full rounded-[8px] bg-[#3A9AF2] px-5 text-xs font-black text-[#FFFFFF] transition hover:bg-[#238BEA] sm:w-auto"
             >
               Guardar entrada
             </button>

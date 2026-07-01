@@ -111,7 +111,7 @@ function estadoOptionsForItems(items) {
 function Field({ label, children }) {
   return (
     <label className="block min-w-0">
-      <span className="mb-1.5 block text-[11px] font-semibold text-violet-300">{label}</span>
+      <span className="mb-1.5 block text-[11px] font-semibold text-blue-300">{label}</span>
       {children}
     </label>
   );
@@ -125,7 +125,7 @@ function SoftInput({ value, onChange, placeholder, icon }) {
         onChange={(event) => onChange?.(event.target.value)}
         readOnly={!onChange}
         placeholder={placeholder}
-        className="h-10 w-full min-w-0 rounded-[8px] border border-[#ded6c8] bg-[#eee8dc] px-4 pr-9 text-sm font-semibold text-[#3c3445] outline-none transition placeholder:text-[#9b927f] focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+        className="h-10 w-full min-w-0 rounded-[8px] border border-[#ded6c8] bg-[#eee8dc] px-4 pr-9 text-sm font-semibold text-[#3c3445] outline-none transition placeholder:text-[#9b927f] focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
       />
       {icon && <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6f6584]">{icon}</div>}
     </div>
@@ -138,16 +138,16 @@ function SoftSelect({ value, onChange, options }) {
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-10 w-full min-w-0 appearance-none rounded-[8px] border border-[#ded6c8] bg-[#eee8dc] px-4 pr-9 text-sm font-semibold text-[#3c3445] outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+        className="h-10 w-full min-w-0 appearance-none rounded-[8px] border border-[#ded6c8] bg-[#eee8dc] px-4 pr-9 text-sm font-semibold text-[#3c3445] outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
       >
         {options.map((option) => {
           const valueOption = typeof option === "string" ? option : option.value;
           const labelOption = typeof option === "string" ? option : option.label;
 
           return (
-          <option key={valueOption} value={valueOption}>
-            {labelOption}
-          </option>
+            <option key={valueOption} value={valueOption}>
+              {labelOption}
+            </option>
           );
         })}
       </select>
@@ -158,11 +158,11 @@ function SoftSelect({ value, onChange, options }) {
 
 function Tabs({ onGoResguardo }) {
   return (
-    <div className="flex overflow-x-auto border-b border-violet-500">
+    <div className="flex overflow-x-auto border-b border-blue-500">
       <button type="button" onClick={onGoResguardo} className="px-5 py-3 text-xs font-bold text-[#8f879b]">
         Resguardo
       </button>
-      <button type="button" className="rounded-t-[8px] bg-violet-50 px-5 py-3 text-xs font-black text-violet-600">
+      <button type="button" className="rounded-t-[8px] bg-blue-50 px-5 py-3 text-xs font-black text-blue-600">
         Devolucion
       </button>
     </div>
@@ -190,7 +190,7 @@ function AssetReturnSelector({ items, selectedKeys, onChange }) {
           <button
             type="button"
             onClick={toggleAll}
-            className="h-8 rounded-[8px] bg-white px-3 text-[11px] font-black text-violet-600 transition hover:bg-violet-50"
+            className="h-8 rounded-[8px] bg-white px-3 text-[11px] font-black text-blue-600 transition hover:bg-blue-50"
           >
             Seleccionar todo
           </button>
@@ -206,7 +206,7 @@ function AssetReturnSelector({ items, selectedKeys, onChange }) {
                 type="checkbox"
                 checked={checked}
                 onChange={() => toggleItem(item.key)}
-                className="mt-0.5 h-4 w-4 shrink-0 accent-violet-600"
+                className="mt-0.5 h-4 w-4 shrink-0 accent-blue-600"
               />
               <span className="min-w-0">
                 <span className="block break-words font-black text-[#21192c]">
@@ -346,7 +346,7 @@ function SignaturePad({ value, onChange, disabled }) {
           </div>
         )}
         {!disabled && !value && (
-          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1 text-violet-400">
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1 text-blue-400">
             <PenLine size={20} />
             <span className="text-xs font-semibold">Firma aqui</span>
             <span className="text-[10px] font-semibold tracking-wide text-[#b9ad9b]">Usa dedo o lapiz tactil</span>
@@ -355,7 +355,7 @@ function SignaturePad({ value, onChange, disabled }) {
         <canvas
           ref={canvasRef}
           aria-label="Campo para firma del colaborador"
-          className="h-full w-full touch-none"
+          className="h-full w-full touch-none dark:brightness-0 dark:invert"
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
@@ -377,7 +377,7 @@ function SignaturePad({ value, onChange, disabled }) {
           type="button"
           onClick={saveSignature}
           disabled={disabled || !hasPendingSignature}
-          className="h-9 rounded-[8px] bg-[#91C6F8] text-xs font-bold text-[#0F5FAF] transition hover:bg-[#79B8F4] disabled:cursor-not-allowed disabled:opacity-40"
+          className="h-9 rounded-[8px] bg-[#3A9AF2] text-xs font-bold text-[#FFFFFF] transition hover:bg-[#238BEA] disabled:cursor-not-allowed disabled:opacity-40"
         >
           {disabled ? "Bloqueado" : hasPendingSignature ? "Guardar firma" : value ? "Firma guardada" : "Pendiente"}
         </button>
@@ -390,7 +390,7 @@ function AutoSignature() {
   return (
     <div className="flex h-20 items-center justify-center rounded-[8px] border border-[#ded6c8] bg-[#eee8dc]">
       <div className="text-center">
-        <p className="font-serif text-2xl text-violet-700">~Inge. Javier~</p>
+        <p className="font-serif text-2xl text-[#0F83F0]">~Inge. Javier~</p>
         <p className="mt-1 text-[10px] font-semibold text-[#b1a58f]">Firma cargada automaticamente.</p>
         <p className="text-[10px] font-semibold text-[#b1a58f]">Se aplica a cada documento.</p>
       </div>
@@ -412,7 +412,13 @@ function SignatureImage({ value }) {
     return <p className="min-h-12 text-[#b7ab9b]">Pendiente</p>;
   }
 
-  return <img src={value} alt="Firma del colaborador" className="mx-auto h-12 w-full object-contain" />;
+  return (
+    <img
+      src={value}
+      alt="Firma del colaborador"
+      className="mx-auto h-12 w-full object-contain dark:brightness-0 dark:invert"
+    />
+  );
 }
 
 function PreviewAssetsList({ items }) {
@@ -441,14 +447,14 @@ function DocumentPreview({ data, items, signature }) {
   return (
     <div className="min-w-0 rounded-2xl border border-[#eee8f6] bg-white px-4 py-6 shadow-sm sm:px-7">
       <div className="text-center">
-        <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-[#b7ab9b]">Breathless Resorts - Depto. de Sistemas</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-[#b7ab9b]">Puente Calinda - Gerencia de Sistemas</p>
         <h2 className="mt-1 text-sm font-black text-[#21192c]">Devolucion de {selectionTitle(items)}</h2>
         <p className="mt-1 text-[10px] font-semibold text-[#b7ab9b]">
           Folio: {data.folio} - Fecha: {formatDate(data.fecha)}
         </p>
       </div>
 
-      <div className="mt-5 border-t-2 border-violet-100 pt-3">
+      <div className="mt-5 border-t-2 border-blue-100 pt-3">
         <PreviewRow label="Colaborador" value={data.colaborador.nombre} />
         <PreviewRow label="Num. colaborador" value={data.colaborador.numero} />
         <PreviewRow label="Area / Depto." value={`${data.colaborador.area} - ${data.colaborador.departamento || "-"}`} />
@@ -485,7 +491,7 @@ function GeneratedDevolucionModal({ data, items, signature, onClose }) {
         <section className="w-full overflow-hidden rounded-2xl bg-[#f4f1ec] shadow-2xl">
           <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-[#e6deef] bg-white/95 px-4 py-3 backdrop-blur sm:px-5">
             <div className="min-w-0">
-              <p className="text-[11px] font-black uppercase tracking-[0.24em] text-violet-300">Devolucion generada</p>
+              <p className="text-[11px] font-black uppercase tracking-[0.24em] text-blue-300">Devolucion generada</p>
               <h2 className="truncate text-sm font-black text-[#21192c]">Devolucion de {selectionTitle(items)}</h2>
             </div>
             <button
@@ -501,7 +507,7 @@ function GeneratedDevolucionModal({ data, items, signature, onClose }) {
           <div className="p-4 sm:p-5">
             <DocumentPreview data={data} items={items} signature={signature} />
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              <button type="button" className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#91C6F8] text-xs font-black text-[#0F5FAF] transition hover:bg-[#79B8F4]">
+              <button type="button" className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#3A9AF2] text-xs font-black text-[#FFFFFF] transition hover:bg-[#238BEA]">
                 <Mail size={14} />
                 Enviar por Gmail
               </button>
@@ -549,7 +555,7 @@ export default function DevolucionFirma({ devolucion, initialSelectedItemKeys, o
   return (
     <div className="min-w-0 space-y-4 overflow-hidden">
       <div>
-        <h1 className="mt-1 text-sm font-bold text-violet-300">Resguardo - Firma Digital</h1>
+        <h1 className="mt-1 text-sm font-bold text-blue-300">Resguardo - Firma Digital</h1>
       </div>
 
       <div className="grid min-w-0 gap-4">
@@ -557,7 +563,7 @@ export default function DevolucionFirma({ devolucion, initialSelectedItemKeys, o
           <Tabs onGoResguardo={onGoResguardo} />
 
           <div className="mt-5">
-            <p className="mb-4 border-b border-[#eee8f6] pb-3 text-[11px] font-black uppercase tracking-[0.26em] text-violet-200">
+            <p className="mb-4 border-b border-[#eee8f6] pb-3 text-[11px] font-black uppercase tracking-[0.26em] text-blue-200">
               Datos de la devolucion
             </p>
             <div className="grid min-w-0 gap-4 md:grid-cols-2">
@@ -588,13 +594,13 @@ export default function DevolucionFirma({ devolucion, initialSelectedItemKeys, o
                 value={observaciones}
                 onChange={(event) => setObservaciones(event.target.value)}
                 placeholder={returnObservationsPlaceholder(activeItems)}
-                className="mt-1 h-24 w-full min-w-0 resize-none rounded-[8px] border border-[#ded6c8] bg-[#eee8dc] px-4 py-3 text-sm text-[#3c3445] outline-none transition placeholder:text-[#9b927f] focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                className="mt-1 h-24 w-full min-w-0 resize-none rounded-[8px] border border-[#ded6c8] bg-[#eee8dc] px-4 py-3 text-sm text-[#3c3445] outline-none transition placeholder:text-[#9b927f] focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
               />
             </Field>
           </div>
 
           <div className="mt-5 rounded-2xl bg-white">
-            <p className="mb-4 border-b border-[#eee8f6] pb-3 text-[11px] font-black uppercase tracking-[0.26em] text-violet-200">
+            <p className="mb-4 border-b border-[#eee8f6] pb-3 text-[11px] font-black uppercase tracking-[0.26em] text-blue-200">
               Firmas de la devolucion
             </p>
             <div className="grid min-w-0 gap-3 md:grid-cols-2">
@@ -617,7 +623,7 @@ export default function DevolucionFirma({ devolucion, initialSelectedItemKeys, o
             <button
               type="button"
               onClick={() => setGeneratedOpen(true)}
-              className="h-10 rounded-[8px] bg-[#91C6F8] px-5 text-xs font-black text-[#0F5FAF] transition hover:bg-[#79B8F4]"
+              className="h-10 rounded-[8px] bg-[#3A9AF2] px-5 text-xs font-black text-[#FFFFFF] transition hover:bg-[#238BEA]"
             >
               Confirmar y guardar pdf
             </button>

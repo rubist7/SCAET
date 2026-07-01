@@ -28,7 +28,7 @@ function createCenteredQrSvg(qrSvg) {
 function InfoRow({ label, value, children }) {
   return (
     <div className="grid min-h-12 gap-1 border-b border-[#f1edf5] px-4 py-3 last:border-b-0 sm:grid-cols-[160px_1fr] sm:items-center">
-      <p className="text-xs font-extrabold text-violet-300">{label}</p>
+      <p className="text-xs font-extrabold text-blue-300">{label}</p>
       <div className="break-words text-sm font-extrabold text-[#201d31] sm:text-right">
         {children ?? value}
       </div>
@@ -73,7 +73,7 @@ function EquipoFichaTecnica() {
             <p className="mt-2 text-sm font-bold text-[#8d88a2]">Ese equipo no existe en los registros.</p>
             <Link
               to="/equipos"
-              className="mt-5 inline-flex h-11 items-center justify-center rounded-xl bg-[#91C6F8] px-6 text-sm font-extrabold text-[#0F5FAF] transition hover:bg-[#79B8F4]"
+              className="mt-5 inline-flex h-11 items-center justify-center rounded-xl bg-[#3A9AF2] px-6 text-sm font-extrabold text-[#FFFFFF] transition hover:bg-[#238BEA]"
             >
               Volver al listado
             </Link>
@@ -88,7 +88,7 @@ function EquipoFichaTecnica() {
       <div className="space-y-6 px-4 py-7 sm:px-6 lg:px-8">
         <section className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.3em] text-violet-300">
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.3em] text-blue-300">
               Equipos - Seleccionar equipo - {equipment.title}
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -144,13 +144,13 @@ function EquipoFichaTecnica() {
           <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
             <InfoRow label="Asignado a" value={equipment.assignmentName} />
             <InfoRow label="Tipo">
-              <span className="inline-flex rounded-full bg-violet-50 px-3 py-1 text-xs font-extrabold text-violet-500">
+              <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-extrabold text-blue-500">
                 {equipment.assignmentType}
               </span>
             </InfoRow>
             <InfoRow label="Fecha asignacion" value={formatDate(equipment.assignmentDate)} />
             <InfoRow label="Resguardo">
-              <button type="button" className="text-sm font-extrabold text-violet-500">
+              <button type="button" className="text-sm font-extrabold text-blue-500">
                 Ver PDF &gt;
               </button>
             </InfoRow>

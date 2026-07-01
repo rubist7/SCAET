@@ -36,7 +36,7 @@ function StepIndicator({ current }) {
                 className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold transition ${done
                   ? "bg-emerald-500 text-white"
                   : active
-                    ? "bg-violet-600 text-white"
+                    ? "bg-blue-600 text-white"
                     : "bg-gray-200 text-gray-400 dark:bg-gray-700"
                   }`}
               >
@@ -44,7 +44,7 @@ function StepIndicator({ current }) {
               </div>
               <span
                 className={`whitespace-nowrap text-xs font-semibold ${active
-                  ? "text-violet-600 dark:text-violet-300"
+                  ? "text-blue-600 dark:text-blue-300"
                   : done
                     ? "text-emerald-500"
                     : "text-gray-400"
@@ -72,7 +72,7 @@ function SearchInput({ placeholder, value, onChange }) {
         placeholder={placeholder}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 pl-9 pr-3 text-sm text-gray-700 transition placeholder:text-gray-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-200 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-200"
+        className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 pl-9 pr-3 text-sm text-gray-700 transition placeholder:text-gray-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-200"
       />
     </div>
   );
@@ -84,8 +84,8 @@ function SelectableRow({ item, selected, onSelect, title, subtitle }) {
       type="button"
       onClick={() => onSelect(item)}
       className={`mb-1.5 w-full rounded-lg border px-3 py-2.5 text-left text-sm transition ${selected?.id === item.id
-        ? "border-violet-400 bg-violet-50 dark:border-violet-600 dark:bg-violet-900/20"
-        : "border-gray-200 bg-white hover:border-violet-300 hover:bg-violet-50/60 dark:border-gray-700 dark:bg-gray-800/40"
+        ? "border-blue-400 bg-blue-50 dark:border-blue-600 dark:bg-blue-900/20"
+        : "border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/60 dark:border-gray-700 dark:bg-gray-800/40"
         }`}
     >
       <div className="flex items-center justify-between gap-3">
@@ -93,7 +93,7 @@ function SelectableRow({ item, selected, onSelect, title, subtitle }) {
           <p className="font-semibold text-gray-800 dark:text-gray-100">{title}</p>
           <p className="text-xs text-gray-400 dark:text-gray-500">{subtitle}</p>
         </div>
-        {selected?.id === item.id && <Check size={14} className="shrink-0 text-violet-600 dark:text-violet-300" />}
+        {selected?.id === item.id && <Check size={14} className="shrink-0 text-blue-600 dark:text-blue-300" />}
       </div>
     </button>
   );
@@ -139,7 +139,7 @@ function Step1({ selected, onSelect }) {
           Colaborador seleccionado
         </p>
         {selected ? (
-          <div className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 dark:border-violet-700 dark:bg-violet-900/20">
+          <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-700 dark:bg-blue-900/20">
             <p className="text-sm font-bold text-gray-800 dark:text-gray-100">{selected.nombre}</p>
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
               {selected.numero} - {selected.puesto} - {selected.area}
@@ -180,8 +180,8 @@ function Step2({ tipoActivo, setTipoActivo, selected, onSelect }) {
                   setSearch("");
                 }}
                 className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-lg border px-2 text-xs font-semibold transition ${active
-                    ? "border-[#91C6F8] bg-[#91C6F8] text-[#0F5FAF] shadow-sm"
-                    : "border-gray-200 bg-white text-gray-500 hover:border-violet-300 hover:bg-violet-50 dark:border-gray-700 dark:bg-gray-800/40 dark:text-gray-300"
+                    ? "border-[#3A9AF2] bg-[#3A9AF2] text-[#FFFFFF] shadow-sm"
+                    : "border-gray-200 bg-white text-gray-500 hover:border-blue-300 hover:bg-blue-50 dark:border-gray-700 dark:bg-gray-800/40 dark:text-gray-300"
                   }`}
               >
                 <Icon size={17} />
@@ -217,7 +217,7 @@ function Step2({ tipoActivo, setTipoActivo, selected, onSelect }) {
           {selectedType?.shortLabel} seleccionado
         </p>
         {selected ? (
-          <div className="space-y-1.5 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 dark:border-violet-700 dark:bg-violet-900/20">
+          <div className="space-y-1.5 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-700 dark:bg-blue-900/20">
             <p className="text-sm font-bold text-gray-800 dark:text-gray-100">
               {selected.nombre} #{selected.codigo}
             </p>
@@ -249,8 +249,8 @@ function Step3({ tipo, setTipo, fechaDev, setFechaDev }) {
               type="button"
               onClick={() => setTipo(option)}
               className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition ${tipo === option
-                ? "border-[#91C6F8] bg-[#91C6F8] text-[#0F5FAF] shadow-sm"
-                : "border-gray-200 bg-white text-gray-600 hover:border-violet-300 dark:border-gray-700 dark:bg-gray-800/40 dark:text-gray-300"
+                ? "border-[#3A9AF2] bg-[#3A9AF2] text-[#FFFFFF] shadow-sm"
+                : "border-gray-200 bg-white text-gray-600 hover:border-blue-300 dark:border-gray-700 dark:bg-gray-800/40 dark:text-gray-300"
                 }`}
             >
               <span className={`h-3 w-3 rounded-full border-2 ${tipo === option ? "border-white bg-white" : "border-gray-400"}`} />
@@ -267,7 +267,7 @@ function Step3({ tipo, setTipo, fechaDev, setFechaDev }) {
           value={fechaDev}
           onChange={setFechaDev}
           disabled={tipo === "Permanente"}
-          className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 pr-10 text-sm text-gray-700 transition focus:outline-none focus:ring-2 focus:ring-violet-200 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-200"
+          className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 pr-10 text-sm text-gray-700 transition focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-200"
         />
         {tipo === "Permanente" && <p className="mt-1.5 text-xs text-gray-400">No aplica para asignaciones permanentes.</p>}
       </div>
@@ -288,7 +288,7 @@ function Step4({ colaborador, tipoActivo, activo, tipo, fechaDev }) {
 
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
-      <div className="bg-violet-600 px-4 py-2.5">
+      <div className="bg-blue-600 px-4 py-2.5">
         <p className="text-sm font-bold text-white">Resumen de asignacion</p>
       </div>
       <div className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -344,7 +344,7 @@ function ActiveAssignments({ rows, onOpenResguardo, onOpenDevolucion }) {
           value={search}
           onChange={setSearch}
         />
-        <span className="text-xs font-semibold text-violet-500 lg:pt-3">{totalAssets} activos</span>
+        <span className="text-xs font-semibold text-blue-500 lg:pt-3">{totalAssets} activos</span>
       </div>
 
       {filteredRows.length === 0 ? (
@@ -403,7 +403,7 @@ function ActiveAssignments({ rows, onOpenResguardo, onOpenDevolucion }) {
                           <button
                             type="button"
                             onClick={() => onOpenResguardo?.(resguardo)}
-                            className="inline-flex h-8 items-center gap-1 rounded-[8px] bg-violet-50 px-3 text-xs font-black text-violet-600 transition hover:bg-violet-100"
+                            className="inline-flex h-8 items-center gap-1 rounded-[8px] bg-blue-50 px-3 text-xs font-black text-blue-600 transition hover:bg-blue-100"
                           >
                             <FileText size={13} />
                             Resguardo
@@ -554,7 +554,7 @@ export default function NuevaAsignacion({ initialColaborador, initialStep = 0, a
               type="button"
               onClick={() => setStep((value) => value + 1)}
               disabled={!canNext[step]}
-              className="rounded-lg bg-[#91C6F8] px-5 py-2 text-sm font-semibold text-[#0F5FAF] shadow-sm transition hover:bg-[#79B8F4] disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-lg bg-[#3A9AF2] px-5 py-2 text-sm font-semibold text-[#FFFFFF] shadow-sm transition hover:bg-[#238BEA] disabled:cursor-not-allowed disabled:opacity-40"
             >
               Continuar
             </button>
@@ -562,7 +562,7 @@ export default function NuevaAsignacion({ initialColaborador, initialStep = 0, a
             <button
               type="button"
               onClick={handleConfirm}
-              className="rounded-lg bg-[#91C6F8] px-5 py-2 text-sm font-semibold text-[#0F5FAF] shadow-sm transition hover:bg-[#79B8F4]">
+              className="rounded-lg bg-[#3A9AF2] px-5 py-2 text-sm font-semibold text-[#FFFFFF] shadow-sm transition hover:bg-[#238BEA]">
               Confirmar y generar resguardo
             </button>
           )}

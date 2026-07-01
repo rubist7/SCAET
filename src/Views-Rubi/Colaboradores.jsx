@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useRef, useState } from 'react'
-import AppSidebar, { AppIcon } from '../components/Sidebar'
+import { AppIcon } from '../components/Sidebar'
 
 const emptyCollaboratorForm = {
   employeeNumber: '',
@@ -45,7 +45,7 @@ function Avatar({ collaborator, size = 'md' }) {
   const sizeClass = size === 'lg' ? 'h-20 w-20 text-xl' : 'h-10 w-10 text-xs'
 
   return (
-    <div className={`flex shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-violet-300 bg-violet-50 font-extrabold text-violet-500 ${sizeClass}`}>
+    <div className={`flex shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-blue-300 bg-blue-50 font-extrabold text-blue-500 ${sizeClass}`}>
       {collaborator.photoUrl ? (
         <img src={collaborator.photoUrl} alt="" className="h-full w-full object-cover" />
       ) : (
@@ -58,7 +58,7 @@ function Avatar({ collaborator, size = 'md' }) {
 function DetailItem({ label, value, className = '' }) {
   return (
     <div className={className}>
-      <p className="text-[10px] font-extrabold uppercase tracking-[0.24em] text-violet-300">{label}</p>
+      <p className="text-[10px] font-extrabold uppercase tracking-[0.24em] text-blue-300">{label}</p>
       <p className="mt-1 break-words text-sm font-bold text-[#5d5870]">{collaboratorValue(value)}</p>
     </div>
   )
@@ -66,7 +66,7 @@ function DetailItem({ label, value, className = '' }) {
 
 function CollaboratorDetails({ collaborator }) {
   return (
-    <div className="rounded-xl border border-violet-100 bg-violet-50/40 p-4">
+    <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-4">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
         <Avatar collaborator={collaborator} size="lg" />
         <div className="grid flex-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -100,7 +100,7 @@ function Field({ label, name, value, onChange, placeholder, type = 'text', requi
         onChange={onChange}
         placeholder={placeholder}
         required={required}
-        className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:border-violet-300 focus:bg-white focus:ring-4 focus:ring-violet-100"
+        className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
       />
     </label>
   )
@@ -121,7 +121,6 @@ function EmptyState({ hasCollaborators, showHidden = false }) {
 }
 
 function Colaboradores() {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [collaborators, setCollaborators] = useState([])
   const [form, setForm] = useState(emptyCollaboratorForm)
   const [search, setSearch] = useState('')
@@ -202,7 +201,8 @@ function Colaboradores() {
 
   const handleInputChange = (event) => {
     const { name, value } = event.target
-    setForm((currentForm) => ({ ...currentForm, [name]: value }))
+    const fieldName = name === 'area' || name.toLowerCase().includes('rea') ? 'area' : name
+    setForm((currentForm) => ({ ...currentForm, [fieldName]: value }))
   }
 
   const handlePhotoChange = (event) => {
@@ -305,46 +305,7 @@ function Colaboradores() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f6f2ec] font-sans text-[#2a263a]">
-      <div className="mx-auto flex min-h-screen max-w-[1920px] bg-[#f6f2ec]">
-        <AppSidebar isOpen={sidebarOpen} activePage="Colaboradores" />
-
-        {sidebarOpen && (
-          <button
-            type="button"
-            aria-label="Cerrar menu"
-            onClick={() => setSidebarOpen(false)}
-            className="fixed inset-0 z-20 bg-[#201d31]/30 lg:hidden"
-          />
-        )}
-
-        <main className="min-w-0 flex-1">
-          <header className="sticky top-0 z-10 flex h-20 items-center justify-between border-b border-[#ece7df] bg-white/95 px-4 backdrop-blur sm:px-6 lg:px-8">
-            <div className="flex min-w-0 items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setSidebarOpen(true)}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-violet-100 bg-white text-[#6f6a85] shadow-sm lg:hidden"
-                aria-label="Abrir menu"
-              >
-                <AppIcon name="menu" />
-              </button>
-              <p className="truncate text-[11px] font-extrabold uppercase tracking-[0.32em] text-[#8d88a2] sm:text-sm">
-                Inventario de colaboradores
-              </p>
-            </div>
-
-            <div className="flex shrink-0 items-center gap-2">
-              <span className="hidden rounded-full bg-violet-50 px-5 py-2 text-sm font-extrabold text-violet-500 sm:inline-flex">
-                Administrador
-              </span>
-              <span className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-violet-300 bg-violet-50 text-xs font-extrabold text-violet-500">
-                JE
-              </span>
-            </div>
-          </header>
-
-          <div className="space-y-6 px-4 py-7 sm:px-6 lg:px-8">
+    <div className="space-y-6">
             <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between" ref={listRef}>
               <div>
                 <h1 className="text-2xl font-extrabold text-[#201d31] sm:text-3xl">Colaboradores</h1>
@@ -369,7 +330,7 @@ function Colaboradores() {
                 <button
                   type="button"
                   onClick={handleNewCollaborator}
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#91C6F8] px-5 text-sm font-extrabold text-[#0F5FAF] shadow-sm transition hover:bg-[#79B8F4] focus:outline-none focus:ring-4 focus:ring-blue-100"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#3A9AF2] px-5 text-sm font-extrabold text-[#FFFFFF] shadow-sm transition hover:bg-[#238BEA] focus:outline-none focus:ring-4 focus:ring-blue-100"
                 >
                   <AppIcon name="plus" />
                   Nuevo colaborador
@@ -388,14 +349,14 @@ function Colaboradores() {
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     placeholder="Buscar por nombre o numero..."
-                    className="h-12 w-full rounded-2xl border border-[#e8dfd0] bg-[#f2ece0] pl-11 pr-4 text-sm font-bold text-[#2a263a] outline-none transition placeholder:text-[#9b95ac] focus:border-violet-300 focus:bg-white focus:ring-4 focus:ring-violet-100"
+                    className="h-12 w-full rounded-2xl border border-[#e8dfd0] bg-[#f2ece0] pl-11 pr-4 text-sm font-bold text-[#2a263a] outline-none transition placeholder:text-[#9b95ac] focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
                   />
                 </label>
 
                 <select
                   value={areaFilter}
                   onChange={(event) => setAreaFilter(event.target.value)}
-                  className="h-12 w-full rounded-2xl border border-[#e8dfd0] bg-[#f2ece0] px-4 text-sm font-extrabold text-[#2a263a] outline-none transition focus:border-violet-300 focus:bg-white focus:ring-4 focus:ring-violet-100"
+                  className="h-12 w-full rounded-2xl border border-[#e8dfd0] bg-[#f2ece0] px-4 text-sm font-extrabold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
                 >
                   <option value="all">Todas las areas</option>
                   {areaOptions.map((area) => (
@@ -406,7 +367,7 @@ function Colaboradores() {
 
               <div className="hidden min-h-[360px] overflow-hidden rounded-2xl bg-white shadow-sm lg:block">
                 <table className="w-full table-fixed text-left">
-                  <thead className="bg-[#eee7d9] text-[10px] font-extrabold uppercase tracking-[0.28em] text-violet-300">
+                  <thead className="bg-[#eee7d9] text-[10px] font-extrabold uppercase tracking-[0.28em] text-blue-300">
                     <tr>
                       <th className="w-20 px-5 py-3">Foto</th>
                       <th className="w-28 px-5 py-3">Num.</th>
@@ -425,7 +386,7 @@ function Colaboradores() {
 
                         return (
                           <Fragment key={collaborator.id}>
-                            <tr className={`transition hover:bg-violet-50/40 ${isExpanded ? 'bg-violet-50/30' : ''}`}>
+                            <tr className={`transition hover:bg-blue-50/40 ${isExpanded ? 'bg-blue-50/30' : ''}`}>
                               <td className="px-5 py-4">
                                 <Avatar collaborator={collaborator} />
                               </td>
@@ -435,7 +396,7 @@ function Colaboradores() {
                               <td className="px-5 py-4 font-bold text-[#5d5870]">{collaborator.department}</td>
                               <td className="px-5 py-4 font-bold text-[#5d5870]">{collaborator.position}</td>
                               <td className="px-5 py-4 text-center">
-                                <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-full bg-violet-50 px-3 text-xs font-extrabold text-violet-500">
+                                <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-full bg-blue-50 px-3 text-xs font-extrabold text-blue-500">
                                   {collaborator.equipmentCount || '0'}
                                 </span>
                               </td>
@@ -446,8 +407,8 @@ function Colaboradores() {
                                     onClick={() => handleToggleDetails(collaborator.id)}
                                     className={`flex h-9 w-9 items-center justify-center rounded-xl transition ${
                                       isExpanded
-                                        ? 'bg-[#91C6F8] text-[#0F5FAF]'
-                                        : 'bg-violet-50 text-violet-500 hover:bg-violet-100'
+                                        ? 'bg-[#3A9AF2] text-[#FFFFFF]'
+                                        : 'bg-blue-50 text-blue-500 hover:bg-blue-100'
                                     }`}
                                     aria-label={`${isExpanded ? 'Ocultar' : 'Ver'} informacion de ${collaborator.fullName}`}
                                     title="Informacion"
@@ -458,7 +419,7 @@ function Colaboradores() {
                                   <button
                                     type="button"
                                     onClick={() => handleEdit(collaborator)}
-                                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-50 text-violet-500 transition hover:bg-violet-100"
+                                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-500 transition hover:bg-blue-100"
                                     aria-label={`Editar ${collaborator.fullName}`}
                                     title="Editar"
                                   >
@@ -508,7 +469,7 @@ function Colaboradores() {
                           key={collaborator.id}
                           className={`rounded-xl border p-4 transition ${
                             isExpanded
-                              ? 'border-violet-200 bg-violet-50/40'
+                              ? 'border-blue-200 bg-blue-50/40'
                               : 'border-[#f1edf5] bg-[#fbfaf8]'
                           }`}
                         >
@@ -520,7 +481,7 @@ function Colaboradores() {
                                   <h2 className="truncate text-base font-extrabold text-[#201d31]">{collaborator.fullName}</h2>
                                   <p className="mt-1 truncate text-xs font-bold text-[#8d88a2]">{collaborator.employeeNumber}</p>
                                 </div>
-                                <span className="inline-flex h-8 min-w-8 shrink-0 items-center justify-center rounded-full bg-violet-50 px-3 text-xs font-extrabold text-violet-500">
+                                <span className="inline-flex h-8 min-w-8 shrink-0 items-center justify-center rounded-full bg-blue-50 px-3 text-xs font-extrabold text-blue-500">
                                   {collaborator.equipmentCount || '0'}
                                 </span>
                               </div>
@@ -545,8 +506,8 @@ function Colaboradores() {
                               onClick={() => handleToggleDetails(collaborator.id)}
                               className={`inline-flex h-10 items-center justify-center gap-2 rounded-xl text-xs font-extrabold transition ${
                                 isExpanded
-                                  ? 'bg-[#91C6F8] text-[#0F5FAF]'
-                                  : 'bg-violet-50 text-violet-500 hover:bg-violet-100'
+                                  ? 'bg-[#3A9AF2] text-[#FFFFFF]'
+                                  : 'bg-blue-50 text-blue-500 hover:bg-blue-100'
                               }`}
                               aria-label={`${isExpanded ? 'Ocultar' : 'Ver'} informacion de ${collaborator.fullName}`}
                               aria-expanded={isExpanded}
@@ -557,7 +518,7 @@ function Colaboradores() {
                             <button
                               type="button"
                               onClick={() => handleEdit(collaborator)}
-                              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-violet-50 text-xs font-extrabold text-violet-500 transition hover:bg-violet-100"
+                              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-50 text-xs font-extrabold text-blue-500 transition hover:bg-blue-100"
                             >
                               <AppIcon name="edit" />
                               Editar
@@ -584,7 +545,7 @@ function Colaboradores() {
             {showForm && (
               <section ref={formRef} className="rounded-2xl bg-white p-4 shadow-sm sm:p-6">
                 <div className="border-b border-[#f0edf6] pb-4">
-                  <p className="text-[10px] font-extrabold uppercase tracking-[0.28em] text-violet-300">
+                  <p className="text-[10px] font-extrabold uppercase tracking-[0.28em] text-blue-300">
                     {isEditing ? 'Formulario - editar colaborador' : 'Formulario - nuevo colaborador'}
                   </p>
                 </div>
@@ -716,7 +677,7 @@ function Colaboradores() {
                           name="status"
                           value={form.status}
                           onChange={handleInputChange}
-                          className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:border-violet-300 focus:bg-white focus:ring-4 focus:ring-violet-100"
+                          className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
                         >
                           {statusOptions.map((option) => (
                             <option key={option} value={option}>{option}</option>
@@ -732,7 +693,7 @@ function Colaboradores() {
                           onChange={handleInputChange}
                           placeholder="Notas adicionales"
                           rows="3"
-                          className="min-h-24 w-full resize-y rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 py-3 text-sm font-bold text-[#2a263a] outline-none transition focus:border-violet-300 focus:bg-white focus:ring-4 focus:ring-violet-100"
+                          className="min-h-24 w-full resize-y rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 py-3 text-sm font-bold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
                         />
                       </label>
                     </div>
@@ -748,7 +709,7 @@ function Colaboradores() {
                     </button>
                     <button
                       type="submit"
-                      className="h-11 rounded-xl bg-[#91C6F8] px-8 text-sm font-extrabold text-[#0F5FAF] transition hover:bg-[#79B8F4] focus:outline-none focus:ring-4 focus:ring-blue-100"
+                      className="h-11 rounded-xl bg-[#3A9AF2] px-8 text-sm font-extrabold text-[#FFFFFF] transition hover:bg-[#238BEA] focus:outline-none focus:ring-4 focus:ring-blue-100"
                     >
                       {isEditing ? 'Guardar cambios' : 'Guardar colaborador'}
                     </button>
@@ -757,9 +718,6 @@ function Colaboradores() {
               </section>
             )}
           </div>
-        </main>
-      </div>
-    </div>
   )
 }
 

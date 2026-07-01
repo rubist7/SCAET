@@ -50,18 +50,31 @@ html.dark body {
   background-color: #191521;
 }
 
+.dark .bg-white\/95 {
+  background-color: rgb(25 21 33 / 95%);
+}
+
+.dark .bg-\[\#fbfaf8\] {
+  background-color: #191521;
+}
+
 .dark .bg-\[\#eee8dc\],
 .dark .bg-\[\#e9e0cf\],
 .dark .bg-\[\#e6dfd2\] {
   background-color: #282331;
 }
 
-.dark .bg-violet-50 {
-  background-color: #2b203d;
+.dark .bg-blue-50 {
+  background-color: #162b43;
 }
 
-.dark .bg-violet-100 {
-  background-color: #34244c;
+.dark .bg-blue-50\/40,
+.dark .bg-blue-50\/30 {
+  background-color: #211b2a;
+}
+
+.dark .bg-blue-100 {
+  background-color: #1c3857;
 }
 
 .dark .text-\[\#21192c\],
@@ -125,4 +138,87 @@ input,
 textarea,
 select {
   font: inherit;
+}
+
+.rubi-content header {
+  display: none;
+}
+
+.dark .rubi-content {
+  color: #f4f0fa;
+}
+
+.dark .rubi-content .bg-white,
+.dark .rubi-content .bg-\[\#fbfaf8\] {
+  background-color: #191521;
+}
+
+.dark .rubi-content .bg-white\/70 {
+  background-color: rgb(25 21 33 / 70%);
+}
+
+.dark .rubi-content .bg-\[\#f6f2ec\],
+.dark .rubi-content .bg-\[\#f2ece0\],
+.dark .rubi-content .bg-\[\#e9dfd0\],
+.dark .rubi-content .bg-\[\#e7dcc9\] {
+  background-color: #211b2a;
+}
+
+.dark .rubi-content .bg-\[\#eee7d9\] {
+  background-color: #282331;
+}
+
+.dark .rubi-content .hover\:bg-\[\#e9dfd0\]:hover {
+  background-color: #2b2435;
+}
+
+.dark .rubi-content .text-\[\#201d31\],
+.dark .rubi-content .text-\[\#21192c\],
+.dark .rubi-content .text-\[\#2a263a\],
+.dark .rubi-content .text-\[\#3c3445\] {
+  color: #f4f0fa;
+}
+
+.dark .rubi-content .text-\[\#5d5870\],
+.dark .rubi-content .text-\[\#6f6a85\],
+.dark .rubi-content .text-\[\#8d88a2\],
+.dark .rubi-content .text-\[\#9b95ac\],
+.dark .rubi-content .text-\[\#b3adbf\] {
+  color: #b8aec7;
+}
+
+.dark .rubi-content .placeholder\:text-\[\#9b95ac\]::placeholder {
+  color: #8f849d;
+}
+
+.dark .rubi-content .border-\[\#e2d9c9\],
+.dark .rubi-content .border-\[\#e8dfd0\],
+.dark .rubi-content .border-\[\#e6ddcf\],
+.dark .rubi-content .border-\[\#d9cfbf\],
+.dark .rubi-content .border-\[\#f1edf5\],
+.dark .rubi-content .border-\[\#f0edf6\] {
+  border-color: #393141;
+}
+
+.dark .rubi-content .divide-\[\#f1edf5\] > :not([hidden]) ~ :not([hidden]) {
+  border-color: #393141;
+}
+
+.dark .rubi-content input,
+.dark .rubi-content textarea,
+.dark .rubi-content select {
+  border-color: #393141;
+  background-color: #211b2a;
+  color: #f4f0fa;
+}
+
+.dark .rubi-content input:focus,
+.dark .rubi-content textarea:focus,
+.dark .rubi-content select:focus {
+  border-color: #3a9af2;
+  background-color: #191521;
+}
+
+.dark .rubi-content table tbody tr:hover {
+  background-color: #211b2a;
 }

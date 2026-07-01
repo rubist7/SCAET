@@ -7,9 +7,12 @@ export const defaultUserProfile = {
 }
 
 export function getUserInitials(name) {
-  return name
+  const nameParts = name
     .split(' ')
     .filter(Boolean)
+    .filter((part) => !['ing', 'ing.', 'inge', 'inge.'].includes(part.toLowerCase()))
+
+  return nameParts
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
     .join('') || 'US'

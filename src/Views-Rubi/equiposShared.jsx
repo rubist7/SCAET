@@ -1,56 +1,9 @@
-import { useState } from 'react'
 import QRCode from 'react-qr-code'
-import AppSidebar, { AppIcon } from '../components/Sidebar'
+import { AppIcon } from '../components/Sidebar'
 import { formatShortDate, getEquipmentQrValue, statusClass, warrantyClass } from './equiposData'
 
 export function EquipmentShell({ children }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-
-  return (
-    <div className="min-h-screen bg-[#f6f2ec] font-sans text-[#2a263a]">
-      <div className="mx-auto flex min-h-screen max-w-[1920px] bg-[#f6f2ec]">
-        <AppSidebar isOpen={sidebarOpen} activePage="Equipos" />
-
-        {sidebarOpen && (
-          <button
-            type="button"
-            aria-label="Cerrar menu"
-            onClick={() => setSidebarOpen(false)}
-            className="fixed inset-0 z-20 bg-[#201d31]/30 lg:hidden"
-          />
-        )}
-
-        <main className="min-w-0 flex-1">
-          <header className="sticky top-0 z-10 flex h-20 items-center justify-between border-b border-[#ece7df] bg-white/95 px-4 backdrop-blur sm:px-6 lg:px-8">
-            <div className="flex min-w-0 items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setSidebarOpen(true)}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-violet-100 bg-white text-[#6f6a85] shadow-sm lg:hidden"
-                aria-label="Abrir menu"
-              >
-                <AppIcon name="menu" />
-              </button>
-              <p className="truncate text-[11px] font-extrabold uppercase tracking-[0.32em] text-[#8d88a2] sm:text-sm">
-                Inventario de Equipos
-              </p>
-            </div>
-
-            <div className="flex shrink-0 items-center gap-2">
-              <span className="hidden rounded-full bg-violet-50 px-5 py-2 text-sm font-extrabold text-violet-500 sm:inline-flex">
-                Administrador
-              </span>
-              <span className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-violet-300 bg-violet-50 text-xs font-extrabold text-violet-500">
-                JE
-              </span>
-            </div>
-          </header>
-
-          {children}
-        </main>
-      </div>
-    </div>
-  )
+  return <div className="space-y-6">{children}</div>
 }
 
 export function StatusBadge({ status }) {
@@ -131,7 +84,7 @@ export function Field({ label, name, value, onChange, placeholder, type = 'text'
         placeholder={placeholder}
         required={required}
         readOnly={readOnly}
-        className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:border-violet-300 focus:bg-white focus:ring-4 focus:ring-violet-100 read-only:text-[#8d88a2]"
+        className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100 read-only:text-[#8d88a2]"
       />
     </label>
   )

@@ -194,7 +194,7 @@ function EquipmentTable({ equipments, showHidden, onToggleHidden }) {
   return (
     <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
       <table className="w-full table-fixed text-left">
-        <thead className="bg-[#eee7d9] text-[10px] font-extrabold uppercase tracking-[0.28em] text-violet-300">
+        <thead className="bg-[#eee7d9] text-[10px] font-extrabold uppercase tracking-[0.28em] text-blue-300">
           <tr>
             <th className="w-24 px-5 py-3">ID</th>
             <th className="px-5 py-3">Tipo</th>
@@ -210,7 +210,7 @@ function EquipmentTable({ equipments, showHidden, onToggleHidden }) {
         </thead>
         <tbody className="divide-y divide-[#f1edf5] text-sm">
           {equipments.map((equipment) => (
-            <tr key={equipment.id} className="transition hover:bg-violet-50/40">
+            <tr key={equipment.id} className="transition hover:bg-blue-50/40">
               <td className="px-5 py-4 font-bold text-[#8d88a2]">{equipment.publicId}</td>
               <td className="px-5 py-4 font-bold text-[#5d5870]">{equipment.type}</td>
               <td className="px-5 py-4">
@@ -433,10 +433,10 @@ function ListadoEquipos() {
       <div className="space-y-6 px-4 py-7 sm:px-6 lg:px-8">
         <section className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.3em] text-violet-300">Equipos - listado completo</p>
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.3em] text-blue-300">Equipos - listado completo</p>
             <h1 className="mt-3 text-2xl font-extrabold text-[#201d31] sm:text-3xl">Selecciona un equipo</h1>
             <p className="mt-2 text-sm font-bold text-[#8d88a2]">
-              Haz clic en <span className="text-violet-500">Ver ficha</span> para acceder al detalle completo
+              Haz clic en <span className="text-blue-500">Ver ficha</span> para acceder al detalle completo
             </p>
           </div>
 
@@ -465,7 +465,7 @@ function ListadoEquipos() {
             </button>
             <Link
               to="/equipos/alta"
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#91C6F8] px-5 text-sm font-extrabold text-[#0F5FAF] shadow-sm transition hover:bg-[#79B8F4]"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#3A9AF2] px-5 text-sm font-extrabold text-[#FFFFFF] shadow-sm transition hover:bg-[#238BEA]"
             >
               <AppIcon name="plus" />
               Dar de alta
@@ -484,14 +484,14 @@ function ListadoEquipos() {
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Buscar por nombre, serie, marca..."
-                className="h-12 w-full rounded-2xl border border-[#e8dfd0] bg-[#f2ece0] pl-11 pr-4 text-sm font-bold text-[#2a263a] outline-none transition placeholder:text-[#9b95ac] focus:border-violet-300 focus:bg-white focus:ring-4 focus:ring-violet-100"
+                className="h-12 w-full rounded-2xl border border-[#e8dfd0] bg-[#f2ece0] pl-11 pr-4 text-sm font-bold text-[#2a263a] outline-none transition placeholder:text-[#9b95ac] focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
               />
             </label>
 
             <select
               value={typeFilter}
               onChange={(event) => setTypeFilter(event.target.value)}
-              className="h-12 rounded-2xl border border-[#e8dfd0] bg-[#f2ece0] px-4 text-sm font-extrabold text-[#2a263a] outline-none transition focus:border-violet-300 focus:bg-white focus:ring-4 focus:ring-violet-100"
+              className="h-12 rounded-2xl border border-[#e8dfd0] bg-[#f2ece0] px-4 text-sm font-extrabold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
             >
               <option value="all">Todos los tipos</option>
               {typeOptions.map((type) => (
@@ -502,7 +502,7 @@ function ListadoEquipos() {
             <select
               value={brandFilter}
               onChange={(event) => setBrandFilter(event.target.value)}
-              className="h-12 rounded-2xl border border-[#e8dfd0] bg-[#f2ece0] px-4 text-sm font-extrabold text-[#2a263a] outline-none transition focus:border-violet-300 focus:bg-white focus:ring-4 focus:ring-violet-100"
+              className="h-12 rounded-2xl border border-[#e8dfd0] bg-[#f2ece0] px-4 text-sm font-extrabold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
             >
               <option value="all">Todas las marcas</option>
               {brandOptions.map((brand) => (
@@ -513,7 +513,7 @@ function ListadoEquipos() {
             <select
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value)}
-              className="h-12 rounded-2xl border border-[#e8dfd0] bg-[#f2ece0] px-4 text-sm font-extrabold text-[#2a263a] outline-none transition focus:border-violet-300 focus:bg-white focus:ring-4 focus:ring-violet-100"
+              className="h-12 rounded-2xl border border-[#e8dfd0] bg-[#f2ece0] px-4 text-sm font-extrabold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
             >
               <option value="all">Todos los estados</option>
               {statusOptions.map((status) => (
@@ -525,21 +525,21 @@ function ListadoEquipos() {
               <button
                 type="button"
                 onClick={() => setViewMode('cards')}
-                className={`rounded-xl px-4 text-xs font-extrabold transition ${viewMode === 'cards' ? 'bg-[#91C6F8] text-[#0F5FAF]' : 'text-[#6f6a85]'}`}
+                className={`rounded-xl px-4 text-xs font-extrabold transition ${viewMode === 'cards' ? 'bg-[#3A9AF2] text-[#FFFFFF]' : 'text-[#6f6a85]'}`}
               >
                 Cards
               </button>
               <button
                 type="button"
                 onClick={() => setViewMode('table')}
-                className={`rounded-xl px-4 text-xs font-extrabold transition ${viewMode === 'table' ? 'bg-[#91C6F8] text-[#0F5FAF]' : 'text-[#6f6a85]'}`}
+                className={`rounded-xl px-4 text-xs font-extrabold transition ${viewMode === 'table' ? 'bg-[#3A9AF2] text-[#FFFFFF]' : 'text-[#6f6a85]'}`}
               >
                 Tabla
               </button>
             </div>
           </div>
 
-          <p className="text-[11px] font-bold text-violet-300">
+          <p className="text-[11px] font-bold text-blue-300">
             {filteredEquipments.length} equipos {showHidden ? 'ocultos' : 'visibles'}
           </p>
 
@@ -583,7 +583,7 @@ function ListadoEquipos() {
           )}
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-[11px] font-bold text-violet-300">
+            <p className="text-[11px] font-bold text-blue-300">
               Mostrando {filteredEquipments.length} de {visibleEquipments.length}
             </p>
           </div>
@@ -641,14 +641,14 @@ function ListadoEquipos() {
                   <button
                     type="button"
                     onClick={() => handleCameraModeChange('back')}
-                    className={`rounded-lg text-xs font-extrabold transition ${cameraMode === 'back' ? 'bg-[#91C6F8] text-[#0F5FAF] shadow-sm' : 'text-[#6f6a85]'}`}
+                    className={`rounded-lg text-xs font-extrabold transition ${cameraMode === 'back' ? 'bg-[#3A9AF2] text-[#FFFFFF] shadow-sm' : 'text-[#6f6a85]'}`}
                   >
                     Trasera
                   </button>
                   <button
                     type="button"
                     onClick={() => handleCameraModeChange('front')}
-                    className={`rounded-lg text-xs font-extrabold transition ${cameraMode === 'front' ? 'bg-[#91C6F8] text-[#0F5FAF] shadow-sm' : 'text-[#6f6a85]'}`}
+                    className={`rounded-lg text-xs font-extrabold transition ${cameraMode === 'front' ? 'bg-[#3A9AF2] text-[#FFFFFF] shadow-sm' : 'text-[#6f6a85]'}`}
                   >
                     Frontal
                   </button>
@@ -667,7 +667,7 @@ function ListadoEquipos() {
                     step={zoomControl.step}
                     value={zoomControl.value}
                     onChange={handleZoomChange}
-                    className="h-10 w-full accent-violet-500"
+                    className="h-10 w-full accent-blue-500"
                   />
                 </label>
               )}
@@ -684,11 +684,11 @@ function ListadoEquipos() {
                 value={manualQrValue}
                 onChange={(event) => setManualQrValue(event.target.value)}
                 placeholder="Pega aqui el codigo o URL del QR"
-                className="h-11 min-w-0 flex-1 rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none focus:border-violet-300 focus:bg-white"
+                className="h-11 min-w-0 flex-1 rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none focus:border-blue-300 focus:bg-white"
               />
               <button
                 type="submit"
-                className="h-11 rounded-xl bg-[#91C6F8] px-5 text-sm font-extrabold text-[#0F5FAF] transition hover:bg-[#79B8F4]"
+                className="h-11 rounded-xl bg-[#3A9AF2] px-5 text-sm font-extrabold text-[#FFFFFF] transition hover:bg-[#238BEA]"
               >
                 Abrir ficha
               </button>

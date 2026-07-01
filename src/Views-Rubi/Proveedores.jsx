@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useRef, useState } from 'react'
-import AppSidebar, { AppIcon } from '../components/Sidebar'
+import { AppIcon } from '../components/Sidebar'
 
 const emptyProviderForm = {
   providerName: '',
@@ -56,7 +56,7 @@ function Field({ label, name, value, onChange, placeholder, type = 'text', requi
         onChange={onChange}
         placeholder={placeholder}
         required={required}
-        className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:border-violet-300 focus:bg-white focus:ring-4 focus:ring-violet-100"
+        className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
       />
     </label>
   )
@@ -81,7 +81,7 @@ function providerValue(value, fallback = 'Pendiente') {
 function DetailItem({ label, value, className = '' }) {
   return (
     <div className={className}>
-      <p className="text-[10px] font-extrabold uppercase tracking-[0.24em] text-violet-300">{label}</p>
+      <p className="text-[10px] font-extrabold uppercase tracking-[0.24em] text-blue-300">{label}</p>
       <p className="mt-1 break-words text-sm font-bold text-[#5d5870]">{providerValue(value)}</p>
     </div>
   )
@@ -89,7 +89,7 @@ function DetailItem({ label, value, className = '' }) {
 
 function ProviderDetails({ provider }) {
   return (
-    <div className="rounded-xl border border-violet-100 bg-violet-50/40 p-4">
+    <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-4 dark:border-[#393141] dark:bg-[#211b2a]">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <DetailItem label="RFC" value={provider.rfc} />
         <DetailItem label="Telefono" value={provider.phone} />
@@ -106,7 +106,6 @@ function ProviderDetails({ provider }) {
 }
 
 function Proveedores() {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [providers, setProviders] = useState([])
   const [form, setForm] = useState(emptyProviderForm)
   const [search, setSearch] = useState('')
@@ -231,46 +230,7 @@ function Proveedores() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f6f2ec] font-sans text-[#2a263a]">
-      <div className="mx-auto flex min-h-screen max-w-[1920px] bg-[#f6f2ec]">
-        <AppSidebar isOpen={sidebarOpen} activePage="Proveedores" />
-
-        {sidebarOpen && (
-          <button
-            type="button"
-            aria-label="Cerrar menu"
-            onClick={() => setSidebarOpen(false)}
-            className="fixed inset-0 z-20 bg-[#201d31]/30 lg:hidden"
-          />
-        )}
-
-        <main className="min-w-0 flex-1">
-          <header className="sticky top-0 z-10 flex h-20 items-center justify-between border-b border-[#ece7df] bg-white/95 px-4 backdrop-blur sm:px-6 lg:px-8">
-            <div className="flex min-w-0 items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setSidebarOpen(true)}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-violet-100 bg-white text-[#6f6a85] shadow-sm lg:hidden"
-                aria-label="Abrir menu"
-              >
-                <AppIcon name="menu" />
-              </button>
-              <p className="truncate text-[11px] font-extrabold uppercase tracking-[0.32em] text-[#8d88a2] sm:text-sm">
-                Inventario de proveedores
-              </p>
-            </div>
-
-            <div className="flex shrink-0 items-center gap-2">
-              <span className="hidden rounded-full bg-violet-50 px-5 py-2 text-sm font-extrabold text-violet-500 sm:inline-flex">
-                Administrador
-              </span>
-              <span className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-violet-300 bg-violet-50 text-xs font-extrabold text-violet-500">
-                JE
-              </span>
-            </div>
-          </header>
-
-          <div className="space-y-6 px-4 py-7 sm:px-6 lg:px-8">
+    <div className="space-y-6">
             <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between" ref={listRef}>
               <div>
                 <h1 className="text-2xl font-extrabold text-[#201d31] sm:text-3xl">Proveedores</h1>
@@ -282,7 +242,7 @@ function Proveedores() {
               <button
                 type="button"
                 onClick={handleNewProvider}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#91C6F8] px-5 text-sm font-extrabold text-[#0F5FAF] shadow-sm transition hover:bg-[#79B8F4] focus:outline-none focus:ring-4 focus:ring-blue-100"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#3A9AF2] px-5 text-sm font-extrabold text-[#FFFFFF] shadow-sm transition hover:bg-[#238BEA] focus:outline-none focus:ring-4 focus:ring-blue-100"
               >
                 <AppIcon name="plus" />
                 Nuevo proveedor
@@ -299,13 +259,13 @@ function Proveedores() {
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Buscar proveedor..."
-                  className="h-12 w-full rounded-2xl border border-[#e8dfd0] bg-[#f2ece0] pl-11 pr-4 text-sm font-bold text-[#2a263a] outline-none transition placeholder:text-[#9b95ac] focus:border-violet-300 focus:bg-white focus:ring-4 focus:ring-violet-100"
+                  className="h-12 w-full rounded-2xl border border-[#e8dfd0] bg-[#f2ece0] pl-11 pr-4 text-sm font-bold text-[#2a263a] outline-none transition placeholder:text-[#9b95ac] focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
                 />
               </label>
 
               <div className="hidden min-h-[360px] overflow-hidden rounded-2xl bg-white shadow-sm lg:block">
                 <table className="w-full table-fixed text-left">
-                  <thead className="bg-[#eee7d9] text-[10px] font-extrabold uppercase tracking-[0.28em] text-violet-300">
+                  <thead className="bg-[#eee7d9] text-[10px] font-extrabold uppercase tracking-[0.28em] text-blue-300">
                     <tr>
                       <th className="px-5 py-3">Nombre</th>
                       <th className="px-5 py-3">Empresa</th>
@@ -323,7 +283,7 @@ function Proveedores() {
 
                         return (
                           <Fragment key={provider.id}>
-                            <tr className={`transition hover:bg-violet-50/40 ${isExpanded ? 'bg-violet-50/30' : ''}`}>
+                            <tr className={`transition hover:bg-blue-50/40 dark:hover:bg-[#211b2a] ${isExpanded ? 'bg-blue-50/30 dark:bg-[#1e1827]' : ''}`}>
                               <td className="px-5 py-4 font-extrabold text-[#201d31]">{provider.providerName}</td>
                               <td className="px-5 py-4 font-bold text-[#5d5870]">{provider.companyName}</td>
                               <td className="px-5 py-4 font-bold text-[#5d5870]">{provider.sellerName || 'Sin vendedor'}</td>
@@ -339,8 +299,8 @@ function Proveedores() {
                                     onClick={() => handleToggleDetails(provider.id)}
                                     className={`flex h-9 w-9 items-center justify-center rounded-xl transition ${
                                       isExpanded
-                                        ? 'bg-[#91C6F8] text-[#0F5FAF]'
-                                        : 'bg-violet-50 text-violet-500 hover:bg-violet-100'
+                                        ? 'bg-[#3A9AF2] text-[#FFFFFF]'
+                                        : 'bg-blue-50 text-blue-500 hover:bg-blue-100'
                                     }`}
                                     aria-label={`${isExpanded ? 'Ocultar' : 'Ver'} informacion de ${provider.providerName}`}
                                     title="Informacion"
@@ -351,7 +311,7 @@ function Proveedores() {
                                   <button
                                     type="button"
                                     onClick={() => handleEdit(provider)}
-                                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-50 text-violet-500 transition hover:bg-violet-100"
+                                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-500 transition hover:bg-blue-100"
                                     aria-label={`Editar ${provider.providerName}`}
                                     title="Editar"
                                   >
@@ -371,7 +331,7 @@ function Proveedores() {
                             </tr>
                             {isExpanded && (
                               <tr>
-                                <td colSpan="7" className="bg-[#fbfaf8] px-5 pb-5">
+                                <td colSpan="7" className="bg-[#fbfaf8] px-5 pb-5 dark:bg-[#191521]">
                                   <ProviderDetails provider={provider} />
                                 </td>
                               </tr>
@@ -401,7 +361,7 @@ function Proveedores() {
                           key={provider.id}
                           className={`rounded-xl border p-4 transition ${
                             isExpanded
-                              ? 'border-violet-200 bg-violet-50/40'
+                              ? 'border-blue-200 bg-blue-50/40 dark:border-[#393141] dark:bg-[#211b2a]'
                               : 'border-[#f1edf5] bg-[#fbfaf8]'
                           }`}
                         >
@@ -433,8 +393,8 @@ function Proveedores() {
                               onClick={() => handleToggleDetails(provider.id)}
                               className={`inline-flex h-10 items-center justify-center gap-2 rounded-xl text-xs font-extrabold transition ${
                                 isExpanded
-                                  ? 'bg-[#91C6F8] text-[#0F5FAF]'
-                                  : 'bg-violet-50 text-violet-500 hover:bg-violet-100'
+                                  ? 'bg-[#3A9AF2] text-[#FFFFFF]'
+                                  : 'bg-blue-50 text-blue-500 hover:bg-blue-100'
                               }`}
                               aria-label={`${isExpanded ? 'Ocultar' : 'Ver'} informacion de ${provider.providerName}`}
                               aria-expanded={isExpanded}
@@ -445,7 +405,7 @@ function Proveedores() {
                             <button
                               type="button"
                               onClick={() => handleEdit(provider)}
-                              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-violet-50 text-xs font-extrabold text-violet-500 transition hover:bg-violet-100"
+                              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-50 text-xs font-extrabold text-blue-500 transition hover:bg-blue-100"
                             >
                               <AppIcon name="edit" />
                               Editar
@@ -472,7 +432,7 @@ function Proveedores() {
             {showForm && (
               <section ref={formRef} className="rounded-2xl bg-white p-4 shadow-sm sm:p-6">
                 <div className="border-b border-[#f0edf6] pb-4">
-                  <p className="text-[10px] font-extrabold uppercase tracking-[0.28em] text-violet-300">
+                  <p className="text-[10px] font-extrabold uppercase tracking-[0.28em] text-blue-300">
                     {isEditing ? 'Formulario - editar proveedor' : 'Formulario - nuevo proveedor'}
                   </p>
                 </div>
@@ -542,7 +502,7 @@ function Proveedores() {
                         name="rating"
                         value={form.rating}
                         onChange={handleInputChange}
-                        className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:border-violet-300 focus:bg-white focus:ring-4 focus:ring-violet-100"
+                        className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
                       >
                         {ratingOptions.map((option) => (
                           <option key={option.value} value={option.value}>
@@ -560,7 +520,7 @@ function Proveedores() {
                         onChange={handleInputChange}
                         placeholder="Notas adicionales"
                         rows="3"
-                        className="min-h-24 w-full resize-y rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 py-3 text-sm font-bold text-[#2a263a] outline-none transition focus:border-violet-300 focus:bg-white focus:ring-4 focus:ring-violet-100"
+                        className="min-h-24 w-full resize-y rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 py-3 text-sm font-bold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
                       />
                     </label>
                   </div>
@@ -575,7 +535,7 @@ function Proveedores() {
                     </button>
                     <button
                       type="submit"
-                      className="h-11 rounded-xl bg-[#91C6F8] px-8 text-sm font-extrabold text-[#0F5FAF] transition hover:bg-[#79B8F4] focus:outline-none focus:ring-4 focus:ring-blue-100"
+                      className="h-11 rounded-xl bg-[#3A9AF2] px-8 text-sm font-extrabold text-[#FFFFFF] transition hover:bg-[#238BEA] focus:outline-none focus:ring-4 focus:ring-blue-100"
                     >
                       {isEditing ? 'Guardar cambios' : 'Guardar proveedor'}
                     </button>
@@ -584,9 +544,6 @@ function Proveedores() {
               </section>
             )}
           </div>
-        </main>
-      </div>
-    </div>
   )
 }
 

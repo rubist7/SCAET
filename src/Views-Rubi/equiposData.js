@@ -128,7 +128,7 @@ export function statusClass(status) {
     Baja: 'bg-rose-50 text-rose-500',
   }
 
-  return classes[status] ?? 'bg-violet-50 text-violet-500'
+  return classes[status] ?? 'bg-blue-50 text-blue-500'
 }
 
 export function warrantyClass(warrantyEnd) {

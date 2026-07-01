@@ -3,7 +3,7 @@ import { CalendarDays } from "lucide-react";
 import { formatDate, parseDateInput } from "./dateUtils";
 
 const defaultInputClassName =
-  "h-10 w-full min-w-0 rounded-[8px] border border-[#ded6c8] bg-[#eee8dc] px-4 pr-10 text-sm font-semibold text-[#3c3445] outline-none transition placeholder:text-[#9b927f] focus:border-violet-400 focus:ring-2 focus:ring-violet-100";
+  "h-10 w-full min-w-0 rounded-[8px] border border-[#ded6c8] bg-[#eee8dc] px-4 pr-10 text-sm font-semibold text-[#3c3445] outline-none transition placeholder:text-[#9b927f] focus:border-blue-400 focus:ring-2 focus:ring-blue-100";
 
 function formatDraft(value) {
   const digits = value.replace(/\D/g, "").slice(0, 8);

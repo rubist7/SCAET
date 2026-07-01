@@ -10,11 +10,14 @@ import {
   Menu,
   Moon,
   PenTool,
+  Settings,
   Sun,
   Users,
   Wrench,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import scaetLogo from "./assets/logo_final.png";
+import { getUserInitials, loadUserProfile } from "./utils/userProfile";
 
 const navItems = [
   { label: "Dashboard", icon: Gauge },
@@ -30,6 +33,32 @@ const systemItems = [
   { label: "Logs", icon: Boxes },
   { label: "Auditoria", icon: Activity },
 ];
+
+const routesByLabel = {
+  Dashboard: "/dashboard",
+  Proveedores: "/proveedores",
+  Colaboradores: "/colaboradores",
+  Equipos: "/equipos",
+  Asignacion: "/asignacion",
+  Mantenimiento: "/asignacion/mantenimiento",
+  Reportes: "/asignacion/reportes",
+  Logs: "/asignacion/logs",
+  Auditoria: "/asignacion/auditoria",
+  Configuracion: "/configuracion",
+};
+
+const headerTitles = {
+  Dashboard: "Inventario de equipos",
+  Proveedores: "Inventario de proveedores",
+  Colaboradores: "Inventario de colaboradores",
+  Equipos: "Inventario de equipos",
+  Asignacion: "Inventario de equipos",
+  Mantenimiento: "Mantenimiento de equipos",
+  Reportes: "Reportes",
+  Logs: "Logs de actividad",
+  Auditoria: "Auditoria",
+  Configuracion: "Configuracion de cuenta",
+};
 
 function Logo({ compact = false }) {
   return (
@@ -50,7 +79,7 @@ function Logo({ compact = false }) {
             compact
               ? "text-[18px] sm:text-xl md:text-lg lg:text-xl tracking-[0.02em]"
               : "text-xs md:text-sm tracking-[0.12em]"
-          } whitespace-nowrap font-logo font-black text-violet-700`}
+          } whitespace-nowrap font-logo font-black text-[#0F83F0]`}
         >
           SCAET
         </p>
@@ -78,7 +107,7 @@ function NavList({ title, items, activeNav, onNavigate }) {
               key={label}
               type="button"
               onClick={() => onNavigate?.(label)}
-              className={`flex h-11 w-full items-center gap-3 rounded-[12px] px-3 text-left text-base font-bold transition lg:h-10 lg:rounded-[8px] lg:text-sm ${active ? "bg-violet-50 text-violet-700" : "text-[#554c62] hover:bg-violet-50/70 hover:text-violet-600"
+              className={`flex h-11 w-full items-center gap-3 rounded-[12px] px-3 text-left text-base font-bold transition lg:h-10 lg:rounded-[8px] lg:text-sm ${active ? "bg-blue-50 text-[#0F83F0]" : "text-[#554c62] hover:bg-blue-50/70 hover:text-blue-600"
                 }`}
             >
               <Icon size={17} />
@@ -91,21 +120,50 @@ function NavList({ title, items, activeNav, onNavigate }) {
   );
 }
 
-function UserBlock() {
+function UserBlock({ activeNav, onNavigate }) {
+  const [profile, setProfile] = useState(() => loadUserProfile());
+
+  useEffect(() => {
+    const handleProfileUpdate = (event) => {
+      setProfile(event.detail ?? loadUserProfile());
+    };
+
+    window.addEventListener("scaet-user-profile-updated", handleProfileUpdate);
+    window.addEventListener("storage", handleProfileUpdate);
+
+    return () => {
+      window.removeEventListener("scaet-user-profile-updated", handleProfileUpdate);
+      window.removeEventListener("storage", handleProfileUpdate);
+    };
+  }, []);
+
   return (
     <div className="border-t border-[#f0ebe3] p-4">
+      <button
+        type="button"
+        onClick={() => onNavigate?.("Configuracion")}
+        className={`mb-4 flex h-10 w-full items-center gap-3 rounded-[8px] px-3 text-left text-sm font-bold transition ${
+          activeNav === "Configuracion"
+            ? "bg-blue-50 text-[#0F83F0]"
+            : "text-[#554c62] hover:bg-blue-50/70 hover:text-blue-600"
+        }`}
+      >
+        <Settings size={17} />
+        Configuracion
+      </button>
       <div className="mb-4 flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-full border border-violet-300 bg-violet-50 text-xs font-black text-violet-600 dark:text-violet-300">
-          JE
+        <div className="flex h-9 w-9 items-center justify-center rounded-full border border-blue-300 bg-blue-50 text-xs font-black text-blue-600 dark:text-blue-300">
+          {getUserInitials(profile.name)}
         </div>
         <div>
-          <p className="text-sm font-black">Ing. Javier E.</p>
-          <p className="text-xs font-semibold text-[#9e95aa]">Administrador</p>
+          <p className="text-sm font-black">{profile.name}</p>
+          <p className="text-xs font-semibold text-[#9e95aa]">{profile.role}</p>
         </div>
       </div>
       <button
         type="button"
-        className="flex h-10 w-full items-center justify-center gap-2 rounded-[8px] bg-violet-50 text-xs font-bold text-violet-600"
+        onClick={() => onNavigate?.("Cerrar Sesion")}
+        className="flex h-10 w-full items-center justify-center gap-2 rounded-[8px] bg-blue-50 text-xs font-bold text-blue-600 transition hover:bg-blue-100"
       >
         <LogOut size={14} />
         Cerrar Sesion
@@ -115,18 +173,46 @@ function UserBlock() {
 }
 
 export default function Layout({ children, activeNav, onNavigate }) {
+  const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem("scaet-theme") === "dark");
+  const [profile, setProfile] = useState(() => loadUserProfile());
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
     localStorage.setItem("scaet-theme", darkMode ? "dark" : "light");
   }, [darkMode]);
 
+  useEffect(() => {
+    const handleProfileUpdate = (event) => {
+      setProfile(event.detail ?? loadUserProfile());
+    };
+
+    window.addEventListener("scaet-user-profile-updated", handleProfileUpdate);
+    window.addEventListener("storage", handleProfileUpdate);
+
+    return () => {
+      window.removeEventListener("scaet-user-profile-updated", handleProfileUpdate);
+      window.removeEventListener("storage", handleProfileUpdate);
+    };
+  }, []);
+
   const handleNavigate = (label) => {
-    onNavigate?.(label);
+    if (label === "Cerrar Sesion") {
+      navigate("/login");
+      setMenuOpen(false);
+      return;
+    }
+
+    if (onNavigate) {
+      onNavigate(label);
+    } else if (routesByLabel[label]) {
+      navigate(routesByLabel[label]);
+    }
+
     setMenuOpen(false);
   };
+  const headerTitle = headerTitles[activeNav] ?? "Inventario de equipos";
 
   return (
     <div className="min-h-screen bg-[#f4f1ec] text-[#241d2f]">
@@ -138,7 +224,7 @@ export default function Layout({ children, activeNav, onNavigate }) {
             <NavList title="Sistema" items={systemItems} activeNav={activeNav} onNavigate={handleNavigate} />
           </div>
           <div className="mt-auto">
-            <UserBlock />
+            <UserBlock activeNav={activeNav} onNavigate={handleNavigate} />
           </div>
         </aside>
 
@@ -156,24 +242,24 @@ export default function Layout({ children, activeNav, onNavigate }) {
                 <Logo compact />
               </div>
               <p className="hidden truncate text-[11px] font-black uppercase tracking-[0.24em] text-[#887e96] lg:block">
-                Inventario de equipos
+                {headerTitle}
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-2 sm:gap-3">
               <button
                 type="button"
                 onClick={() => setDarkMode((current) => !current)}
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-violet-200 bg-violet-50 text-violet-600 dark:text-violet-300 transition hover:bg-violet-100"
-                aria-label={darkMode ? "Activar modo claro" : "Activar modo oscuro"}
-                title={darkMode ? "Modo claro" : "Modo oscuro"} >
-                {darkMode ? <Sun size={15} /> : <Moon size={15} />}
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-blue-200 bg-blue-50 text-blue-600 dark:text-blue-300 transition hover:bg-blue-100"
+                aria-label={darkMode ? "Modo oscuro" : "Modo claro"}
+                title={darkMode ? "Modo oscuro" : "Modo claro"} >
+                {darkMode ? <Moon size={15} /> : <Sun size={15} />}
               </button>
-              <button type="button" className="rounded-full border border-violet-200 bg-violet-50 px-4 py-2 text-xs font-black text-violet-600 dark:text-violet-300 sm:block">
-                <span className="hidden sm:inline">Administrador</span>
+              <button type="button" className="rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-xs font-black text-blue-600 dark:text-blue-300 sm:block">
+                <span className="hidden sm:inline">{profile.role}</span>
                 <span className="sm:hidden">Admin</span>
               </button>
-              <div className="flex h-9 w-9 items-center justify-center rounded-full border border-violet-300 bg-violet-50 text-xs font-black text-violet-600 dark:text-violet-300">
-                JE
+              <div className="flex h-9 w-9 items-center justify-center rounded-full border border-blue-300 bg-blue-50 text-xs font-black text-blue-600 dark:text-blue-300">
+                {getUserInitials(profile.name)}
               </div>
             </div>
           </header>
@@ -212,7 +298,7 @@ export default function Layout({ children, activeNav, onNavigate }) {
             </div>
           </div>
 
-          <UserBlock />
+          <UserBlock activeNav={activeNav} onNavigate={handleNavigate} />
         </aside>
       </div>
     </div>
