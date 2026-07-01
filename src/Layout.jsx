@@ -60,9 +60,15 @@ const headerTitles = {
   Configuracion: "Configuracion de cuenta",
 };
 
-function Logo({ compact = false }) {
+function Logo({ compact = false, onClick }) {
   return (
-    <div className={`flex items-center gap-0 ${compact ? "shrink-0" : "px-4 py-4"}`}>
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center gap-0 text-left transition hover:opacity-80 ${compact ? "shrink-0" : "px-4 py-4"}`}
+      aria-label="Ir al dashboard"
+      title="Ir al dashboard"
+    >
       <div
         className={`${
           compact
@@ -90,7 +96,7 @@ function Logo({ compact = false }) {
           </p>
         )}
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -212,13 +218,19 @@ export default function Layout({ children, activeNav, onNavigate }) {
 
     setMenuOpen(false);
   };
+
+  const handleLogoClick = () => {
+    navigate("/dashboard");
+    setMenuOpen(false);
+  };
+
   const headerTitle = headerTitles[activeNav] ?? "Inventario de equipos";
 
   return (
     <div className="min-h-screen bg-[#f4f1ec] text-[#241d2f]">
       <div className="flex min-h-screen">
         <aside className="hidden w-64 shrink-0 border-r border-[#ebe5db] bg-white shadow-sm lg:flex lg:flex-col">
-          <Logo />
+          <Logo onClick={handleLogoClick} />
           <NavList title="Principal" items={navItems} activeNav={activeNav} onNavigate={handleNavigate} />
           <div className="mt-6">
             <NavList title="Sistema" items={systemItems} activeNav={activeNav} onNavigate={handleNavigate} />
@@ -239,7 +251,7 @@ export default function Layout({ children, activeNav, onNavigate }) {
                 <Menu size={22} />
               </button>
               <div className="lg:hidden">
-                <Logo compact />
+                <Logo compact onClick={handleLogoClick} />
               </div>
               <p className="hidden truncate text-[11px] font-black uppercase tracking-[0.24em] text-[#887e96] lg:block">
                 {headerTitle}
@@ -288,7 +300,7 @@ export default function Layout({ children, activeNav, onNavigate }) {
             >
               <Menu size={22} />
             </button>
-            <Logo compact />
+            <Logo compact onClick={handleLogoClick} />
           </div>
 
           <div className="flex-1 overflow-y-auto py-5">
