@@ -30,6 +30,35 @@ const emptyForm = {
   photoName: '',
 }
 
+function compressImageFile(file) {
+  return new Promise((resolve, reject) => {
+    const imageUrl = URL.createObjectURL(file)
+    const image = new Image()
+
+    image.onload = () => {
+      const maxSide = 900
+      const ratio = Math.min(1, maxSide / Math.max(image.width, image.height))
+      const width = Math.max(1, Math.round(image.width * ratio))
+      const height = Math.max(1, Math.round(image.height * ratio))
+      const canvas = document.createElement('canvas')
+      const context = canvas.getContext('2d')
+
+      canvas.width = width
+      canvas.height = height
+      context.drawImage(image, 0, 0, width, height)
+      URL.revokeObjectURL(imageUrl)
+      resolve(canvas.toDataURL('image/jpeg', 0.72))
+    }
+
+    image.onerror = () => {
+      URL.revokeObjectURL(imageUrl)
+      reject(new Error('No se pudo procesar la imagen.'))
+    }
+
+    image.src = imageUrl
+  })
+}
+
 function getDraftFormFromReport(row) {
   if (!row) {
     return null
@@ -86,6 +115,7 @@ function EquipoAlta() {
         }
       : getDraftFormFromReport(reportDraft) || emptyForm
   ))
+  const [photoProcessing, setPhotoProcessing] = useState(false)
   const cameraInputRef = useRef(null)
   const uploadInputRef = useRef(null)
 
@@ -114,22 +144,29 @@ function EquipoAlta() {
     setForm(nextForm)
   }
 
-  const handlePhotoChange = (event) => {
+  const handlePhotoChange = async (event) => {
     const file = event.target.files?.[0]
 
     if (!file) {
       return
     }
 
-    const reader = new FileReader()
-    reader.onload = () => {
+    setPhotoProcessing(true)
+
+    try {
+      const photoUrl = await compressImageFile(file)
+
       setForm((currentForm) => ({
         ...currentForm,
-        photoUrl: reader.result,
+        photoUrl,
         photoName: file.name,
       }))
+    } catch {
+      alert('No pude procesar la foto. Intenta tomarla otra vez o selecciona otra imagen.')
+    } finally {
+      setPhotoProcessing(false)
+      event.target.value = ''
     }
-    reader.readAsDataURL(file)
   }
 
   const handleSubmit = (event) => {
@@ -169,24 +206,27 @@ function EquipoAlta() {
       ? equipments.map((equipment) => (equipment.id === editingEquipment.id ? nextEquipment : equipment))
       : [nextEquipment, ...equipments]
 
-    saveEquipments(nextEquipments)
-    navigate(returnTo)
+    try {
+      saveEquipments(nextEquipments)
+      navigate(returnTo)
+    } catch {
+      alert('No pude guardar el equipo porque el almacenamiento local esta lleno. Intenta tomar una foto nueva o guardar sin foto.')
+    }
   }
 
   return (
     <EquipmentShell>
       <div className="space-y-6 px-4 py-7 sm:px-6 lg:px-8">
         <section>
-          <p className="text-[10px] font-extrabold uppercase tracking-[0.3em] text-blue-300">Equipos - Dar de alta</p>
           <h1 className="mt-3 text-2xl font-extrabold text-[#201d31] sm:text-3xl">
             {editingEquipment ? 'Editar equipo' : 'Alta de equipo'}
           </h1>
         </section>
 
-        <section className="rounded-2xl bg-white p-4 shadow-sm sm:p-6">
+        <section className="min-w-0 rounded-2xl bg-white p-4 shadow-sm sm:p-6">
           <div className="border-b border-blue-500 pb-5">
             <p className="text-[10px] font-extrabold uppercase tracking-[0.28em] text-blue-300">
-              Información del equipo
+              Formulario - Alta equipo
             </p>
           </div>
 
@@ -234,12 +274,13 @@ function EquipoAlta() {
               <p className="border-b border-[#f0edf6] pb-3 text-[10px] font-extrabold uppercase tracking-[0.28em] text-blue-300">
                 Fotografia del Equipo
               </p>
-              <div className={`grid gap-3 ${canTakePhoto ? 'sm:grid-cols-[160px_1fr]' : ''}`}>
+              <div className={`grid min-w-0 max-w-full gap-3 ${canTakePhoto ? 'sm:grid-cols-[160px_minmax(0,1fr)]' : ''}`}>
                 {canTakePhoto && (
                   <button
                     type="button"
                     onClick={() => cameraInputRef.current?.click()}
-                    className="flex h-24 items-center justify-center rounded-2xl border border-dashed border-[#d9cfbf] bg-[#f2ece0] text-[#201d31] transition hover:bg-[#e9dfd0]"
+                    disabled={photoProcessing}
+                    className="flex h-24 w-full max-w-full items-center justify-center rounded-2xl border border-dashed border-[#d9cfbf] bg-[#f2ece0] text-[#201d31] transition hover:bg-[#e9dfd0] disabled:cursor-wait disabled:opacity-70"
                     aria-label="Tomar foto"
                   >
                     <span className="flex h-14 w-16 items-center justify-center rounded-xl bg-[#e7dcc9]">
@@ -251,14 +292,15 @@ function EquipoAlta() {
                 <button
                   type="button"
                   onClick={() => uploadInputRef.current?.click()}
-                  className="flex min-h-24 items-center justify-center gap-4 rounded-2xl border border-dashed border-[#d9cfbf] bg-[#f2ece0] px-5 text-left transition hover:bg-[#e9dfd0]"
+                  disabled={photoProcessing}
+                  className="flex min-h-24 w-full min-w-0 max-w-full items-center justify-center gap-4 overflow-hidden rounded-2xl border border-dashed border-[#d9cfbf] bg-[#f2ece0] px-4 text-left transition hover:bg-[#e9dfd0] disabled:cursor-wait disabled:opacity-70 sm:px-5"
                 >
                   <span className="flex h-14 w-16 shrink-0 items-center justify-center rounded-xl bg-[#e7dcc9] text-[#201d31]">
                     <AppIcon name="image" />
                   </span>
-                  <span>
-                    <span className="block text-sm font-extrabold text-[#5d5870]">
-                      {form.photoName || 'Haz clic para seleccionar una imagen desde tus archivos'}
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-extrabold text-[#5d5870]" title={form.photoName}>
+                      {photoProcessing ? 'Procesando foto...' : form.photoName || 'Haz clic para seleccionar una imagen desde tus archivos'}
                     </span>
                     <span className="mt-1 block text-[10px] font-extrabold uppercase tracking-[0.24em] text-[#c7c1d6]">
                       JPG o PNG
@@ -311,9 +353,10 @@ function EquipoAlta() {
               </button>
               <button
                 type="submit"
-                className="h-11 rounded-xl bg-[#3A9AF2] px-8 text-sm font-extrabold text-[#FFFFFF] transition hover:bg-[#238BEA] focus:outline-none focus:ring-4 focus:ring-blue-100"
+                disabled={photoProcessing}
+                className="min-h-11 rounded-xl bg-[#3A9AF2] px-4 py-3 text-sm font-extrabold leading-tight text-[#FFFFFF] transition hover:bg-[#238BEA] focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-wait disabled:opacity-70 sm:px-8"
               >
-                Guardar equipo y generar código QR
+                {photoProcessing ? 'Procesando foto...' : 'Guardar equipo y generar codigo QR'}
               </button>
             </div>
           </form>

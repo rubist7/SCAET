@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import Layout from "./Layout";
 import NuevaAsignacion from "./Views-Nat/AsignacionNueva";
@@ -65,10 +65,6 @@ function NataliaFlow({ initialScreen = "asignacion" }) {
   const [devolucionInicial, setDevolucionInicial] = useState(null);
   const [maintenanceEquipo, setMaintenanceEquipo] = useState(null);
   const [maintenanceEntries, setMaintenanceEntries] = useState(bitacoraInicial);
-
-  useEffect(() => {
-    setScreen(initialScreen);
-  }, [initialScreen]);
 
   const handleCreateResguardo = (payload) => {
     const colaboradorId = payload.colaborador?.id || payload.colaborador?.numero || "sin-colaborador";

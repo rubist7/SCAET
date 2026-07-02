@@ -69,10 +69,17 @@ async function startScanner(scanner, onSuccess, cameraMode) {
   const preferredCamera = getCameraForMode(cameras, cameraMode)
 
   if (preferredCamera?.id) {
+    let preferredCameraStarted
+
     try {
       await scanner.start(preferredCamera.id, qrScannerConfig, onSuccess)
-      return
+      preferredCameraStarted = true
     } catch {
+      preferredCameraStarted = false
+    }
+
+    if (preferredCameraStarted) {
+      return
     }
   }
 
@@ -142,6 +149,7 @@ function stopScanner(scanner, shouldClear = true) {
       try {
         scanner.clear()
       } catch {
+        return
       }
     })
 }
@@ -326,7 +334,7 @@ function ListadoEquipos() {
           try {
             scanner.clear()
           } catch {
-            // The reader may already be empty after a failed camera start.
+            void scanner
           }
 
           setScannerError(getScannerErrorMessage())
@@ -433,7 +441,6 @@ function ListadoEquipos() {
       <div className="space-y-6 px-4 py-7 sm:px-6 lg:px-8">
         <section className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.3em] text-blue-300">Equipos - listado completo</p>
             <h1 className="mt-3 text-2xl font-extrabold text-[#201d31] sm:text-3xl">Selecciona un equipo</h1>
             <p className="mt-2 text-sm font-bold text-[#8d88a2]">
               Haz clic en <span className="text-blue-500">Ver ficha</span> para acceder al detalle completo

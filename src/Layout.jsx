@@ -113,7 +113,7 @@ function NavList({ title, items, activeNav, onNavigate }) {
               key={label}
               type="button"
               onClick={() => onNavigate?.(label)}
-              className={`flex h-11 w-full items-center gap-3 rounded-[12px] px-3 text-left text-base font-bold transition lg:h-10 lg:rounded-[8px] lg:text-sm ${active ? "bg-blue-50 text-[#0F83F0]" : "text-[#554c62] hover:bg-blue-50/70 hover:text-blue-600"
+              className={`flex h-11 w-full items-center gap-3 rounded-[12px] px-3 text-left text-base font-black tracking-[0.01em] transition lg:h-10 lg:rounded-[8px] lg:text-[15px] ${active ? "bg-blue-50 text-[#0F83F0] dark:bg-blue-900/35 dark:text-[#0F83F0]" : "text-[#3f334c] hover:bg-blue-50/70 hover:text-blue-600 dark:text-white dark:hover:bg-blue-900/25 dark:hover:text-blue-200"
                 }`}
             >
               <Icon size={17} />
@@ -148,10 +148,10 @@ function UserBlock({ activeNav, onNavigate }) {
       <button
         type="button"
         onClick={() => onNavigate?.("Configuracion")}
-        className={`mb-4 flex h-10 w-full items-center gap-3 rounded-[8px] px-3 text-left text-sm font-bold transition ${
+        className={`mb-4 flex h-10 w-full items-center gap-3 rounded-[8px] px-3 text-left text-[15px] font-black tracking-[0.01em] transition ${
           activeNav === "Configuracion"
-            ? "bg-blue-50 text-[#0F83F0]"
-            : "text-[#554c62] hover:bg-blue-50/70 hover:text-blue-600"
+            ? "bg-blue-50 text-[#0F83F0] dark:bg-blue-900/35 dark:text-[#0F83F0]"
+            : "text-[#3f334c] hover:bg-blue-50/70 hover:text-blue-600 dark:text-white dark:hover:bg-blue-900/25 dark:hover:text-blue-200"
         }`}
       >
         <Settings size={17} />
@@ -169,7 +169,7 @@ function UserBlock({ activeNav, onNavigate }) {
       <button
         type="button"
         onClick={() => onNavigate?.("Cerrar Sesion")}
-        className="flex h-10 w-full items-center justify-center gap-2 rounded-[8px] bg-blue-50 text-xs font-bold text-blue-600 transition hover:bg-blue-100"
+        className="flex h-10 w-full items-center justify-center gap-2 rounded-[8px] bg-blue-50 text-sm font-black text-blue-600 transition hover:bg-blue-100 dark:bg-blue-900/35 dark:text-white dark:hover:bg-blue-900/50"
       >
         <LogOut size={14} />
         Cerrar Sesion

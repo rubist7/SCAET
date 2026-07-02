@@ -1,5 +1,6 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { X } from 'lucide-react'
 import {
   EquipmentPhoto,
   EquipmentShell,
@@ -40,6 +41,7 @@ function EquipoFichaTecnica() {
   const { equipmentId } = useParams()
   const equipment = getEquipmentById(equipmentId)
   const qrRef = useRef(null)
+  const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false)
 
   const handleDownloadQr = () => {
     if (!equipment) {
@@ -116,7 +118,18 @@ function EquipoFichaTecnica() {
 
         <section className="grid gap-5 xl:grid-cols-[190px_1fr]">
           <div className="space-y-4">
-            <EquipmentPhoto equipment={equipment} size="lg" />
+            {equipment.photoUrl ? (
+              <button
+                type="button"
+                onClick={() => setPhotoPreviewOpen(true)}
+                className="block w-full cursor-zoom-in rounded-2xl text-left outline-none transition focus:ring-4 focus:ring-blue-100"
+                aria-label="Abrir foto completa del equipo"
+              >
+                <EquipmentPhoto equipment={equipment} size="lg" />
+              </button>
+            ) : (
+              <EquipmentPhoto equipment={equipment} size="lg" />
+            )}
             <div ref={qrRef} className="flex justify-center rounded-2xl bg-[#f2ece0] p-5">
               <QrCode equipment={equipment} size="lg" />
             </div>
@@ -157,6 +170,28 @@ function EquipoFichaTecnica() {
           </div>
         </section>
       </div>
+
+      {photoPreviewOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
+          onClick={() => setPhotoPreviewOpen(false)}
+        >
+          <button
+            type="button"
+            onClick={() => setPhotoPreviewOpen(false)}
+            className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur transition hover:bg-white/20"
+            aria-label="Cerrar foto completa"
+          >
+            <X size={22} />
+          </button>
+          <img
+            src={equipment.photoUrl}
+            alt={`Foto completa de ${equipment.title}`}
+            className="max-h-[86dvh] max-w-full rounded-2xl object-contain shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          />
+        </div>
+      )}
     </EquipmentShell>
   )
 }

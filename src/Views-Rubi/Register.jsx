@@ -54,8 +54,6 @@ function Register() {
 
     setLoading(true)
 
-    // Registro temporal: se salta Firebase mientras aun no hay usuarios en la BD.
-    // Cuando conectes usuarios reales, aqui vuelve a crear el usuario y guardar su doc.
     navigate('/dashboard')
     setLoading(false)
   }

@@ -40,8 +40,6 @@ function Login() {
 
     setLoading(true)
 
-    // Acceso temporal: se salta Firebase mientras aun no hay usuarios en la BD.
-    // Cuando conectes usuarios reales, aqui vuelve a llamar signInWithEmailAndPassword.
     navigate('/dashboard')
     setLoading(false)
   }
