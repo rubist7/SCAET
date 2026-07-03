@@ -2,7 +2,7 @@ export const userProfileStorageKey = 'scaet-user-profile'
 
 export const defaultUserProfile = {
   name: 'Ing. Javier E.',
-  email: 'javier.escalante@scaet.com',
+  email: 'javier.echeverria@scaet.com',
   role: 'Administrador',
 }
 
