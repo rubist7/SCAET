@@ -54,8 +54,32 @@ function Register() {
 
     setLoading(true)
 
-    navigate('/dashboard')
-    setLoading(false)
+    try {
+      const response = await fetch('http://localhost:3000/api/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          nombre_completo: nombre,
+          correo: email,
+          contrasena: password,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        setError(data.mensaje)
+        return
+      }
+
+      navigate('/login')
+    } catch {
+      setError('No se pudo conectar con el servidor.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (

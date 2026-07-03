@@ -40,8 +40,33 @@ function Login() {
 
     setLoading(true)
 
-    navigate('/dashboard')
-    setLoading(false)
+    try {
+      const response = await fetch('http://localhost:3000/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          correo: email,
+          contrasena: password,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        setError(data.mensaje)
+        return
+      }
+
+      localStorage.setItem('scaet-token', data.token)
+      localStorage.setItem('scaet-user', JSON.stringify(data.usuario))
+      navigate('/dashboard')
+    } catch {
+      setError('No se pudo conectar con el servidor.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
