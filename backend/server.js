@@ -210,12 +210,12 @@ app.post(
         (usuario) => usuario.correo.toLowerCase() === correoNormalizado
       );
 
-      if (nombreOcupado) {
-        return res.status(409).json({ mensaje: "El nombre de usuario ya está en uso" });
+      if (correoOcupado) {
+        return res.status(409).json({ mensaje: "El correo ya está registrado." });
       }
 
-      if (correoOcupado) {
-        return res.status(409).json({ mensaje: "El correo ya está en uso" });
+      if (nombreOcupado) {
+        return res.status(409).json({ mensaje: "El nombre de usuario ya está registrado." });
       }
 
       const contrasenaHash = await bcrypt.hash(contrasena, 10);
@@ -240,9 +240,11 @@ app.post(
       });
     } catch (error) {
       if (error.code === "ER_DUP_ENTRY") {
-        return res.status(409).json({
-          mensaje: "El correo o nombre de usuario ya está en uso",
-        });
+        const campoDuplicado = error.message.toLowerCase();
+        const mensaje = campoDuplicado.includes("correo")
+          ? "El correo ya está registrado."
+          : "El nombre de usuario ya está registrado.";
+        return res.status(409).json({ mensaje });
       }
 
       console.error("Error al crear usuario:", error);
@@ -267,6 +269,91 @@ app.get(
     } catch (error) {
       console.error("Error al listar usuarios:", error);
       return res.status(500).json({ mensaje: "Error al listar usuarios" });
+    }
+  }
+);
+
+app.put(
+  "/api/usuarios/me/perfil",
+  verificarToken,
+  autorizarRoles("admin"),
+  async (req, res) => {
+    const { nombre_completo, nombre_usuario, correo } = req.body;
+
+    if (
+      typeof nombre_completo !== "string" ||
+      !nombre_completo.trim() ||
+      typeof nombre_usuario !== "string" ||
+      !nombre_usuario.trim() ||
+      typeof correo !== "string" ||
+      !correo.trim()
+    ) {
+      return res.status(400).json({ mensaje: "Todos los campos son obligatorios" });
+    }
+
+    const nombreUsuarioNormalizado = nombre_usuario.trim();
+    const correoNormalizado = correo.trim().toLowerCase();
+
+    try {
+      const [usuariosExistentes] = await pool.query(
+        "SELECT id_usuario, nombre_usuario, correo FROM usuarios " +
+          "WHERE (nombre_usuario = ? OR correo = ?) AND id_usuario <> ?",
+        [nombreUsuarioNormalizado, correoNormalizado, req.usuario.id_usuario]
+      );
+
+      const correoOcupado = usuariosExistentes.some(
+        (usuario) => usuario.correo.toLowerCase() === correoNormalizado
+      );
+      const nombreOcupado = usuariosExistentes.some(
+        (usuario) =>
+          usuario.nombre_usuario?.toLowerCase() === nombreUsuarioNormalizado.toLowerCase()
+      );
+
+      if (correoOcupado) {
+        return res.status(409).json({ mensaje: "El correo ya está registrado." });
+      }
+
+      if (nombreOcupado) {
+        return res.status(409).json({ mensaje: "El nombre de usuario ya está registrado." });
+      }
+
+      const [resultado] = await pool.query(
+        "UPDATE usuarios SET nombre_completo = ?, nombre_usuario = ?, correo = ?, " +
+          "fecha_actualizacion = NOW() WHERE id_usuario = ?",
+        [
+          nombre_completo.trim(),
+          nombreUsuarioNormalizado,
+          correoNormalizado,
+          req.usuario.id_usuario,
+        ]
+      );
+
+      if (resultado.affectedRows === 0) {
+        return res.status(404).json({ mensaje: "Usuario no encontrado" });
+      }
+
+      const [usuariosActualizados] = await pool.query(
+        "SELECT id_usuario, nombre_completo, nombre_usuario, correo, rol, activo, " +
+          "debe_cambiar_contrasena, fecha_creacion, fecha_actualizacion " +
+          "FROM usuarios WHERE id_usuario = ? LIMIT 1",
+        [req.usuario.id_usuario]
+      );
+
+      return res.json({
+        mensaje: "Perfil actualizado correctamente",
+        usuario: usuariosActualizados[0],
+      });
+    } catch (error) {
+      if (error.code === "ER_DUP_ENTRY") {
+        const campoDuplicado = error.message.toLowerCase();
+        const mensaje = campoDuplicado.includes("correo")
+          ? "El correo ya está registrado."
+          : "El nombre de usuario ya está registrado.";
+        return res.status(409).json({ mensaje });
+      }
+
+      console.error("Error al actualizar perfil:", error);
+      return res.status(500).json({ mensaje: "Error al actualizar perfil" });
     }
   }
 );
@@ -365,16 +452,27 @@ app.put(
     }
 
     try {
+      const [usuarios] = await pool.query(
+        "SELECT id_usuario, rol FROM usuarios WHERE id_usuario = ? LIMIT 1",
+        [req.params.id_usuario]
+      );
+
+      if (usuarios.length === 0) {
+        return res.status(404).json({ mensaje: "Usuario no encontrado" });
+      }
+
+      if (req.usuario.rol === "capturista" && usuarios[0].rol === "admin") {
+        return res.status(403).json({
+          mensaje: "No tienes permiso para restablecer la contraseña de un administrador.",
+        });
+      }
+
       const contrasenaHash = await bcrypt.hash(nueva_contrasena, 10);
-      const [resultado] = await pool.query(
+      await pool.query(
         "UPDATE usuarios SET contrasena_hash = ?, debe_cambiar_contrasena = 1, " +
           "fecha_actualizacion = NOW() WHERE id_usuario = ?",
         [contrasenaHash, req.params.id_usuario]
       );
-
-      if (resultado.affectedRows === 0) {
-        return res.status(404).json({ mensaje: "Usuario no encontrado" });
-      }
 
       return res.json({ mensaje: "Contraseña restablecida correctamente" });
     } catch (error) {
@@ -384,7 +482,11 @@ app.put(
   }
 );
 
-app.put("/api/usuarios/correo", verificarToken, async (req, res) => {
+app.put(
+  "/api/usuarios/correo",
+  verificarToken,
+  autorizarRoles("admin"),
+  async (req, res) => {
   const { nuevo_correo } = req.body;
 
   if (typeof nuevo_correo !== "string" || !nuevo_correo.trim()) {
@@ -401,7 +503,7 @@ app.put("/api/usuarios/correo", verificarToken, async (req, res) => {
     );
 
     if (usuariosExistentes.length > 0) {
-      return res.status(409).json({ mensaje: "El correo ya está en uso" });
+      return res.status(409).json({ mensaje: "El correo ya está registrado." });
     }
 
     const [resultado] = await pool.query(
@@ -427,13 +529,100 @@ app.put("/api/usuarios/correo", verificarToken, async (req, res) => {
     });
   } catch (error) {
     if (error.code === "ER_DUP_ENTRY") {
-      return res.status(409).json({ mensaje: "El correo ya está en uso" });
+      return res.status(409).json({ mensaje: "El correo ya está registrado." });
     }
 
     console.error("Error al actualizar correo:", error);
     return res.status(500).json({ mensaje: "Error al actualizar correo" });
   }
-});
+  }
+);
+
+
+app.put(
+  "/api/usuarios/:id_usuario",
+  verificarToken,
+  autorizarRoles("admin"),
+  async (req, res) => {
+    const { nombre_completo, nombre_usuario, correo } = req.body;
+
+    if (
+      typeof nombre_completo !== "string" ||
+      !nombre_completo.trim() ||
+      typeof nombre_usuario !== "string" ||
+      !nombre_usuario.trim() ||
+      typeof correo !== "string" ||
+      !correo.trim()
+    ) {
+      return res.status(400).json({ mensaje: "Todos los campos son obligatorios" });
+    }
+
+    const nombreUsuarioNormalizado = nombre_usuario.trim();
+    const correoNormalizado = correo.trim().toLowerCase();
+
+    try {
+      const [usuariosExistentes] = await pool.query(
+        "SELECT id_usuario, nombre_usuario, correo FROM usuarios " +
+          "WHERE (nombre_usuario = ? OR correo = ?) AND id_usuario <> ?",
+        [nombreUsuarioNormalizado, correoNormalizado, req.params.id_usuario]
+      );
+
+      const correoOcupado = usuariosExistentes.some(
+        (usuario) => usuario.correo.toLowerCase() === correoNormalizado
+      );
+      const nombreOcupado = usuariosExistentes.some(
+        (usuario) =>
+          usuario.nombre_usuario?.toLowerCase() === nombreUsuarioNormalizado.toLowerCase()
+      );
+
+      if (correoOcupado) {
+        return res.status(409).json({ mensaje: "El correo ya está registrado." });
+      }
+
+      if (nombreOcupado) {
+        return res.status(409).json({ mensaje: "El nombre de usuario ya está registrado." });
+      }
+
+      const [resultado] = await pool.query(
+        "UPDATE usuarios SET nombre_completo = ?, nombre_usuario = ?, correo = ?, " +
+          "fecha_actualizacion = NOW() WHERE id_usuario = ?",
+        [
+          nombre_completo.trim(),
+          nombreUsuarioNormalizado,
+          correoNormalizado,
+          req.params.id_usuario,
+        ]
+      );
+
+      if (resultado.affectedRows === 0) {
+        return res.status(404).json({ mensaje: "Usuario no encontrado" });
+      }
+
+      const [usuariosActualizados] = await pool.query(
+        "SELECT id_usuario, nombre_completo, nombre_usuario, correo, rol, activo, " +
+          "debe_cambiar_contrasena, fecha_creacion, fecha_actualizacion " +
+          "FROM usuarios WHERE id_usuario = ? LIMIT 1",
+        [req.params.id_usuario]
+      );
+
+      return res.json({
+        mensaje: "Usuario actualizado correctamente",
+        usuario: usuariosActualizados[0],
+      });
+    } catch (error) {
+      if (error.code === "ER_DUP_ENTRY") {
+        const campoDuplicado = error.message.toLowerCase();
+        const mensaje = campoDuplicado.includes("correo")
+          ? "El correo ya está registrado."
+          : "El nombre de usuario ya está registrado.";
+        return res.status(409).json({ mensaje });
+      }
+
+      console.error("Error al actualizar usuario:", error);
+      return res.status(500).json({ mensaje: "Error al actualizar usuario" });
+    }
+  }
+);
 
 const PORT = process.env.PORT || 3000;
 

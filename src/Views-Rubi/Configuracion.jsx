@@ -23,6 +23,12 @@ const emptyResetForm = {
   password: '',
 }
 
+const emptyManagedUserForm = {
+  fullName: '',
+  username: '',
+  email: '',
+}
+
 async function apiRequest(path, options = {}) {
   const token = localStorage.getItem('scaet-token')
   const response = await fetch(`${apiUrl}${path}`, {
@@ -79,11 +85,22 @@ function StatusMessage({ status }) {
 
 function Configuracion() {
   const [profile, setProfile] = useState(() => loadUserProfile())
+  const [profileForm, setProfileForm] = useState(() => ({
+    fullName: profile.name,
+    username: profile.username,
+    email: profile.email,
+  }))
   const [passwordForm, setPasswordForm] = useState(emptyPasswordForm)
   const [userForm, setUserForm] = useState(emptyUserForm)
   const [resetForm, setResetForm] = useState(emptyResetForm)
   const [users, setUsers] = useState([])
   const [showPasswords, setShowPasswords] = useState(false)
+  const [userSearch, setUserSearch] = useState('')
+  const [selectedUserId, setSelectedUserId] = useState('')
+  const [selectedAction, setSelectedAction] = useState('')
+  const [managedUserForm, setManagedUserForm] = useState(emptyManagedUserForm)
+  const [roleForm, setRoleForm] = useState('usuario')
+  const [profileStatus, setProfileStatus] = useState({ type: '', text: '' })
   const [passwordStatus, setPasswordStatus] = useState({ type: '', text: '' })
   const [managementStatus, setManagementStatus] = useState({ type: '', text: '' })
 
@@ -112,6 +129,37 @@ function Configuracion() {
       ignore = true
     }
   }, [canManageUsers])
+
+  const handleProfileChange = (event) => {
+    const { name, value } = event.target
+    setProfileForm((current) => ({ ...current, [name]: value }))
+    setProfileStatus({ type: '', text: '' })
+  }
+
+  const handleProfileSubmit = async (event) => {
+    event.preventDefault()
+
+    try {
+      const data = await apiRequest('/usuarios/me/perfil', {
+        method: 'PUT',
+        body: JSON.stringify({
+          nombre_completo: profileForm.fullName,
+          nombre_usuario: profileForm.username,
+          correo: profileForm.email,
+        }),
+      })
+      const updatedProfile = updateStoredUser(data.usuario)
+      setProfile(updatedProfile)
+      setProfileForm({
+        fullName: updatedProfile.name,
+        username: updatedProfile.username,
+        email: updatedProfile.email,
+      })
+      setProfileStatus({ type: 'success', text: data.mensaje })
+    } catch (error) {
+      setProfileStatus({ type: 'error', text: error.message })
+    }
+  }
 
   const handlePasswordChange = (event) => {
     const { name, value } = event.target
@@ -188,6 +236,96 @@ function Configuracion() {
     }
   }
 
+  const handleUserSearchChange = (event) => {
+    setUserSearch(event.target.value)
+  }
+
+  const handleSelectedUserAction = (user, action) => {
+    setSelectedUserId(String(user.id_usuario))
+    setSelectedAction(action)
+    setManagementStatus({ type: '', text: '' })
+
+    if (action === 'edit') {
+      setManagedUserForm({
+        fullName: user.nombre_completo || '',
+        username: user.nombre_usuario || '',
+        email: user.correo || '',
+      })
+      return
+    }
+
+    if (action === 'role') {
+      setRoleForm(user.rol)
+      return
+    }
+
+    if (action === 'reset') {
+      setResetForm({
+        userId: String(user.id_usuario),
+        password: '',
+      })
+    }
+  }
+
+  const handleManagedUserChange = (event) => {
+    const { name, value } = event.target
+    setManagedUserForm((current) => ({ ...current, [name]: value }))
+    setManagementStatus({ type: '', text: '' })
+  }
+
+  const handleUpdateUser = async (event) => {
+    event.preventDefault()
+
+    if (!selectedUserId) {
+      setManagementStatus({ type: 'error', text: 'Selecciona un usuario.' })
+      return
+    }
+
+    try {
+      const data = await apiRequest(`/usuarios/${selectedUserId}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          nombre_completo: managedUserForm.fullName,
+          nombre_usuario: managedUserForm.username,
+          correo: managedUserForm.email,
+        }),
+      })
+      setUsers((current) =>
+        current.map((currentUser) =>
+          String(currentUser.id_usuario) === String(selectedUserId) ? data.usuario : currentUser
+        )
+      )
+      setManagedUserForm({
+        fullName: data.usuario.nombre_completo || '',
+        username: data.usuario.nombre_usuario || '',
+        email: data.usuario.correo || '',
+      })
+      if (String(selectedUserId) === String(profile.id)) {
+        const updatedProfile = updateStoredUser(data.usuario)
+        setProfile(updatedProfile)
+        setProfileForm({
+          fullName: updatedProfile.name,
+          username: updatedProfile.username,
+          email: updatedProfile.email,
+        })
+      }
+      setManagementStatus({ type: 'success', text: data.mensaje })
+    } catch (error) {
+      setManagementStatus({ type: 'error', text: error.message })
+    }
+  }
+
+  const handleRoleSubmit = async (event) => {
+    event.preventDefault()
+
+    if (!selectedUserId) {
+      setManagementStatus({ type: 'error', text: 'Selecciona un usuario.' })
+      return
+    }
+
+    await handleRoleChange(selectedUserId, roleForm)
+  }
+
   const handleRoleChange = async (userId, role) => {
     setManagementStatus({ type: '', text: '' })
 
@@ -198,10 +336,10 @@ function Configuracion() {
       })
       setUsers((current) =>
         current.map((user) =>
-          user.id_usuario === userId ? { ...user, rol: role } : user
+          String(user.id_usuario) === String(userId) ? { ...user, rol: role } : user
         )
       )
-      if (userId === profile.id) {
+      if (String(userId) === String(profile.id)) {
         setProfile(updateStoredUser({ rol: role }))
       }
       setManagementStatus({ type: 'success', text: data.mensaje })
@@ -239,6 +377,10 @@ function Configuracion() {
         )
       )
       setResetForm(emptyResetForm)
+      if (selectedAction === 'reset') {
+        setSelectedAction('')
+        setSelectedUserId('')
+      }
       setManagementStatus({ type: 'success', text: data.mensaje })
     } catch (error) {
       setManagementStatus({ type: 'error', text: error.message })
@@ -246,6 +388,26 @@ function Configuracion() {
   }
 
   const passwordInputType = showPasswords ? 'text' : 'password'
+  const resettableUsers = profile.roleKey === 'capturista'
+    ? users.filter(
+      (user) => user.rol !== 'admin' && String(user.id_usuario) !== String(profile.id)
+    )
+    : users
+  const selectedUser = users.find((user) => String(user.id_usuario) === String(selectedUserId))
+  const normalizedUserSearch = userSearch.trim().toLowerCase()
+  const filteredUsers = normalizedUserSearch
+    ? users.filter((user) => {
+      const searchableText = [
+        user.nombre_completo,
+        user.nombre_usuario,
+        user.correo,
+        user.rol,
+        roleLabels[user.rol],
+      ].join(' ').toLowerCase()
+
+      return searchableText.includes(normalizedUserSearch)
+    })
+    : users
 
   return (
     <div className="space-y-6">
@@ -255,7 +417,7 @@ function Configuracion() {
             </section>
 
             <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(340px,0.75fr)]">
-              <section className="space-y-5 rounded-2xl bg-white p-5 shadow-sm">
+              <form onSubmit={handleProfileSubmit} className="space-y-5 rounded-2xl bg-white p-5 shadow-sm">
                 <div className="flex items-center justify-between gap-4 border-b border-[#f1edf5] pb-4">
                   <div>
                     <h2 className="text-base font-extrabold text-[#201d31]">Datos del Perfil</h2>
@@ -269,24 +431,30 @@ function Configuracion() {
                 <div className="grid gap-4 lg:grid-cols-2">
                   <SettingsField
                     label="Nombre completo"
-                    name="name"
-                    value={profile.name}
+                    name="fullName"
+                    value={profileForm.fullName}
+                    onChange={handleProfileChange}
                     autoComplete="name"
-                    readOnly
+                    required={profile.roleKey === 'admin'}
+                    readOnly={profile.roleKey !== 'admin'}
                   />
                   <SettingsField
                     label="Nombre de usuario"
                     name="username"
-                    value={profile.username}
-                    readOnly
+                    value={profileForm.username}
+                    onChange={handleProfileChange}
+                    required={profile.roleKey === 'admin'}
+                    readOnly={profile.roleKey !== 'admin'}
                   />
                   <SettingsField
                     label="Correo electronico"
                     name="email"
                     type="email"
-                    value={profile.email}
+                    value={profileForm.email}
+                    onChange={handleProfileChange}
                     autoComplete="email"
-                    readOnly
+                    required={profile.roleKey === 'admin'}
+                    readOnly={profile.roleKey !== 'admin'}
                   />
                 </div>
 
@@ -295,7 +463,22 @@ function Configuracion() {
                     Debes cambiar tu contraseña temporal.
                   </p>
                 )}
-              </section>
+
+                {profile.roleKey === 'admin' && (
+                  <>
+                    <StatusMessage status={profileStatus} />
+                    <div className="flex justify-end">
+                      <button
+                        type="submit"
+                        className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#201d31] px-5 text-sm font-extrabold text-white shadow-sm transition hover:bg-[#332d4b]"
+                      >
+                        <AppIcon name="check" />
+                        Actualizar
+                      </button>
+                    </div>
+                  </>
+                )}
+              </form>
 
               <form onSubmit={handlePasswordSubmit} className="space-y-5 rounded-2xl bg-white p-5 shadow-sm">
                 <div className="flex items-center justify-between gap-4 border-b border-[#f1edf5] pb-4">
@@ -424,44 +607,189 @@ function Configuracion() {
                 </div>
               </form>
             )}
-
             {profile.roleKey === 'admin' && (
               <section className="space-y-5 rounded-2xl bg-white p-5 shadow-sm">
                 <div className="border-b border-[#f1edf5] pb-4">
-                  <h2 className="text-base font-extrabold text-[#201d31]">Roles de usuarios</h2>
+                  <h2 className="text-base font-extrabold text-[#201d31]">Gestión de usuarios</h2>
                   <p className="mt-1 text-xs font-bold text-[#8d88a2]">
-                    Selecciona el rol que tendrá cada usuario.
+                    Busca un usuario y elige una acción para editar datos, cambiar rol o restablecer contraseña.
                   </p>
                 </div>
 
-                <div className="space-y-3">
-                  {users.map((user) => (
-                    <div
-                      key={user.id_usuario}
-                      className="grid gap-3 rounded-xl border border-[#f1edf5] p-4 md:grid-cols-[minmax(0,1fr)_220px] md:items-center"
-                    >
-                      <div>
-                        <p className="text-sm font-extrabold text-[#201d31]">{user.nombre_completo}</p>
-                        <p className="mt-1 text-xs font-bold text-[#8d88a2]">
-                          {user.nombre_usuario} · {user.correo}
-                        </p>
-                      </div>
+                <SettingsField
+                  label="Buscar usuario"
+                  name="userSearch"
+                  value={userSearch}
+                  onChange={handleUserSearchChange}
+                  placeholder="Nombre, usuario, correo o rol"
+                />
+
+                <div className="overflow-x-auto rounded-xl border border-[#f1edf5]">
+                  <table className="min-w-full text-left text-sm">
+                    <thead className="bg-[#f7f4ec] text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#8d88a2]">
+                      <tr>
+                        <th className="px-4 py-3">Nombre completo</th>
+                        <th className="px-4 py-3">Nombre de usuario</th>
+                        <th className="px-4 py-3">Correo</th>
+                        <th className="px-4 py-3">Rol</th>
+                        <th className="px-4 py-3">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#f1edf5]">
+                      {filteredUsers.map((user) => (
+                        <tr key={user.id_usuario} className="align-top">
+                          <td className="px-4 py-3 font-extrabold text-[#201d31]">{user.nombre_completo}</td>
+                          <td className="px-4 py-3 font-bold text-[#5d5870]">{user.nombre_usuario}</td>
+                          <td className="px-4 py-3 font-bold text-[#5d5870]">{user.correo}</td>
+                          <td className="px-4 py-3 font-bold text-[#5d5870]">{roleLabels[user.rol] || user.rol}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleSelectedUserAction(user, 'edit')}
+                                className="inline-flex h-9 items-center justify-center rounded-xl bg-[#f2ece0] px-3 text-xs font-extrabold text-[#2a263a] transition hover:bg-[#e9dfd0]"
+                              >
+                                Editar datos
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSelectedUserAction(user, 'role')}
+                                className="inline-flex h-9 items-center justify-center rounded-xl bg-[#f2ece0] px-3 text-xs font-extrabold text-[#2a263a] transition hover:bg-[#e9dfd0]"
+                              >
+                                Cambiar rol
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSelectedUserAction(user, 'reset')}
+                                className="inline-flex h-9 items-center justify-center rounded-xl bg-[#f2ece0] px-3 text-xs font-extrabold text-[#2a263a] transition hover:bg-[#e9dfd0]"
+                              >
+                                Restablecer contraseña
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {filteredUsers.length === 0 && (
+                  <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm font-bold text-amber-700">
+                    No se encontraron usuarios.
+                  </p>
+                )}
+
+                {selectedAction === 'edit' && selectedUser && (
+                  <form onSubmit={handleUpdateUser} className="space-y-4 rounded-xl border border-[#f1edf5] p-4">
+                    <div>
+                      <h3 className="text-sm font-extrabold text-[#201d31]">Editar datos</h3>
+                      <p className="mt-1 text-xs font-bold text-[#8d88a2]">{selectedUser.nombre_completo}</p>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                      <SettingsField
+                        label="Nombre completo"
+                        name="fullName"
+                        value={managedUserForm.fullName}
+                        onChange={handleManagedUserChange}
+                        required
+                      />
+                      <SettingsField
+                        label="Nombre de usuario"
+                        name="username"
+                        value={managedUserForm.username}
+                        onChange={handleManagedUserChange}
+                        required
+                      />
+                      <SettingsField
+                        label="Correo electrónico"
+                        name="email"
+                        type="email"
+                        value={managedUserForm.email}
+                        onChange={handleManagedUserChange}
+                        required
+                      />
+                    </div>
+                    <div className="flex justify-end">
+                      <button
+                        type="submit"
+                        className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#201d31] px-5 text-sm font-extrabold text-white shadow-sm transition hover:bg-[#332d4b]"
+                      >
+                        <AppIcon name="check" />
+                        Guardar datos
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {selectedAction === 'role' && selectedUser && (
+                  <form onSubmit={handleRoleSubmit} className="space-y-4 rounded-xl border border-[#f1edf5] p-4">
+                    <div>
+                      <h3 className="text-sm font-extrabold text-[#201d31]">Cambiar rol</h3>
+                      <p className="mt-1 text-xs font-bold text-[#8d88a2]">{selectedUser.nombre_completo}</p>
+                    </div>
+                    <label className="block">
+                      <span className="mb-2 block text-[11px] font-extrabold text-[#8d88a2]">Rol</span>
                       <select
-                        value={user.rol}
-                        onChange={(event) => handleRoleChange(user.id_usuario, event.target.value)}
+                        value={roleForm}
+                        onChange={(event) => {
+                          setRoleForm(event.target.value)
+                          setManagementStatus({ type: '', text: '' })
+                        }}
                         className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
                       >
                         {Object.entries(roleLabels).map(([value, label]) => (
                           <option key={value} value={value}>{label}</option>
                         ))}
                       </select>
+                    </label>
+                    <div className="flex justify-end">
+                      <button
+                        type="submit"
+                        className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#201d31] px-5 text-sm font-extrabold text-white shadow-sm transition hover:bg-[#332d4b]"
+                      >
+                        <AppIcon name="check" />
+                        Guardar rol
+                      </button>
                     </div>
-                  ))}
-                </div>
+                  </form>
+                )}
+
+                {selectedAction === 'reset' && selectedUser && (
+                  <form onSubmit={handleResetPassword} className="space-y-4 rounded-xl border border-[#f1edf5] p-4">
+                    <div>
+                      <h3 className="text-sm font-extrabold text-[#201d31]">Restablecer contraseña</h3>
+                      <p className="mt-1 text-xs font-bold text-[#8d88a2]">{selectedUser.nombre_completo}</p>
+                    </div>
+                    <SettingsField
+                      label="Nueva contraseña"
+                      name="resetPassword"
+                      type="password"
+                      value={resetForm.password}
+                      onChange={(event) => {
+                        setResetForm((current) => ({
+                          ...current,
+                          userId: String(selectedUser.id_usuario),
+                          password: event.target.value,
+                        }))
+                        setManagementStatus({ type: '', text: '' })
+                      }}
+                      required
+                    />
+                    <div className="flex justify-end">
+                      <button
+                        type="submit"
+                        className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#201d31] px-5 text-sm font-extrabold text-white shadow-sm transition hover:bg-[#332d4b]"
+                      >
+                        <AppIcon name="check" />
+                        Restablecer
+                      </button>
+                    </div>
+                  </form>
+                )}
               </section>
             )}
 
-            {canManageUsers && (
+            {profile.roleKey === 'capturista' && (
               <form onSubmit={handleResetPassword} className="space-y-5 rounded-2xl bg-white p-5 shadow-sm">
                 <div className="border-b border-[#f1edf5] pb-4">
                   <h2 className="text-base font-extrabold text-[#201d31]">Restablecer contraseña</h2>
@@ -483,7 +811,7 @@ function Configuracion() {
                       className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
                     >
                       <option value="">Selecciona un usuario</option>
-                      {users.map((user) => (
+                      {resettableUsers.map((user) => (
                         <option key={user.id_usuario} value={user.id_usuario}>
                           {user.nombre_completo} ({user.nombre_usuario})
                         </option>
