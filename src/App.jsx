@@ -11,7 +11,6 @@ import { bitacoraInicial } from "./Views-Nat/mantenimientoData";
 import Reportes from "./Views-Nat/Reportes";
 import ResguardoFirma from "./Views-Nat/ResguardoFirma";
 import Login from "./Views-Rubi/Login";
-import Register from "./Views-Rubi/Register";
 import Dashboard from "./Views-Rubi/Dashboard";
 import Proveedores from "./Views-Rubi/Proveedores";
 import Colaboradores from "./Views-Rubi/Colaboradores";
@@ -19,6 +18,7 @@ import ListadoEquipos from "./Views-Rubi/ListadoEquipos";
 import EquipoAlta from "./Views-Rubi/EquipoAlta";
 import EquipoFichaTecnica from "./Views-Rubi/EquipoFichaTecnica";
 import Configuracion from "./Views-Rubi/Configuracion";
+import { loadStoredUser } from "./utils/userProfile";
 
 const natRoutes = {
   Asignacion: "/asignacion",
@@ -54,6 +54,12 @@ function AppLayoutRoute({ children }) {
       </div>
     </Layout>
   );
+}
+
+function AdminRoute({ children }) {
+  return loadStoredUser()?.rol === "admin"
+    ? children
+    : <Navigate to="/dashboard" replace />;
 }
 
 function NataliaFlow({ initialScreen = "asignacion" }) {
@@ -294,7 +300,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Route path="/register" element={<Navigate to="/login" replace />} />
         <Route path="/dashboard" element={<AppLayoutRoute><Dashboard /></AppLayoutRoute>} />
         <Route path="/proveedores" element={<AppLayoutRoute><Proveedores /></AppLayoutRoute>} />
         <Route path="/colaboradores" element={<AppLayoutRoute><Colaboradores /></AppLayoutRoute>} />
@@ -307,8 +313,8 @@ export default function App() {
         <Route path="/asignacion" element={<NataliaFlow initialScreen="asignacion" />} />
         <Route path="/asignacion/mantenimiento" element={<NataliaFlow initialScreen="mantenimiento" />} />
         <Route path="/asignacion/reportes" element={<NataliaFlow initialScreen="reportes" />} />
-        <Route path="/asignacion/logs" element={<NataliaFlow initialScreen="logs" />} />
-        <Route path="/asignacion/auditoria" element={<NataliaFlow initialScreen="auditoria" />} />
+        <Route path="/asignacion/logs" element={<AdminRoute><NataliaFlow initialScreen="logs" /></AdminRoute>} />
+        <Route path="/asignacion/auditoria" element={<AdminRoute><NataliaFlow initialScreen="auditoria" /></AdminRoute>} />
         <Route path="/mantenimiento" element={<Navigate to="/asignacion/mantenimiento" replace />} />
         <Route path="/reportes" element={<Navigate to="/asignacion/reportes" replace />} />
         <Route path="/logs" element={<Navigate to="/asignacion/logs" replace />} />

@@ -1,45 +1,72 @@
-export const userProfileStorageKey = 'scaet-user-profile'
+export const userStorageKey = 'scaet-user'
 
-export const defaultUserProfile = {
-  name: 'Ing. Javier E.',
-  email: 'javier.echeverria@scaet.com',
-  role: 'Administrador',
+export const roleLabels = {
+  admin: 'Administrador',
+  capturista: 'Capturista',
+  usuario: 'Usuario',
 }
 
-export function getUserInitials(name) {
-  const nameParts = name
+export const defaultUserProfile = {
+  id: null,
+  name: 'Usuario',
+  username: '',
+  email: '',
+  role: 'Usuario',
+  roleKey: 'usuario',
+  mustChangePassword: false,
+}
+
+export function getUserInitials(name = '') {
+  return name
     .split(' ')
     .filter(Boolean)
-    .filter((part) => !['ing', 'ing.', 'inge', 'inge.'].includes(part.toLowerCase()))
-
-  return nameParts
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
     .join('') || 'US'
 }
 
-export function loadUserProfile() {
+export function loadStoredUser() {
   if (typeof window === 'undefined') {
-    return defaultUserProfile
+    return null
   }
 
   try {
-    const storedProfile = window.localStorage.getItem(userProfileStorageKey)
-
-    if (!storedProfile) {
-      return defaultUserProfile
-    }
-
-    return { ...defaultUserProfile, ...JSON.parse(storedProfile) }
+    const storedUser = window.localStorage.getItem(userStorageKey)
+    return storedUser ? JSON.parse(storedUser) : null
   } catch {
-    return defaultUserProfile
+    return null
   }
 }
 
-export function saveUserProfile(profile) {
-  const nextProfile = { ...defaultUserProfile, ...profile }
+export function loadUserProfile() {
+  const user = loadStoredUser()
 
-  window.localStorage.setItem(userProfileStorageKey, JSON.stringify(nextProfile))
+  if (!user) {
+    return defaultUserProfile
+  }
+
+  return {
+    id: user.id_usuario,
+    name: user.nombre_completo || defaultUserProfile.name,
+    username: user.nombre_usuario || '',
+    email: user.correo || '',
+    role: roleLabels[user.rol] || defaultUserProfile.role,
+    roleKey: user.rol || defaultUserProfile.roleKey,
+    mustChangePassword: Number(user.debe_cambiar_contrasena) === 1,
+  }
+}
+
+export function updateStoredUser(changes) {
+  const currentUser = loadStoredUser()
+
+  if (!currentUser) {
+    return loadUserProfile()
+  }
+
+  const nextUser = { ...currentUser, ...changes }
+  window.localStorage.setItem(userStorageKey, JSON.stringify(nextUser))
+
+  const nextProfile = loadUserProfile()
   window.dispatchEvent(new CustomEvent('scaet-user-profile-updated', { detail: nextProfile }))
 
   return nextProfile

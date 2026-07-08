@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Moon, Sun } from 'lucide-react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import logo from '../assets/logo_final.png'
 
 function Login() {
   const navigate = useNavigate()
   const [isDark, setIsDark] = useState(() => localStorage.getItem('scaet-theme') === 'dark')
-  const [email, setEmail] = useState('')
+  const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -25,12 +25,8 @@ function Login() {
     e.preventDefault()
     setError('')
 
-    if (!email.trim()) {
-      setError('Ingresa tu correo y contraseña.')
-      return
-    }
-    if (!email.includes('@')) {
-      setError('El correo debe incluir @.')
+    if (!identifier.trim()) {
+      setError('Ingresa tu correo o usuario.')
       return
     }
     if (!password.trim()) {
@@ -47,7 +43,7 @@ function Login() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          correo: email,
+          identificador: identifier,
           contrasena: password,
         }),
       })
@@ -115,14 +111,13 @@ function Login() {
           <form noValidate onSubmit={handleLogin} className={`w-full flex flex-col gap-3 sm:gap-4 rounded-2xl border px-4 py-5 sm:px-6 sm:py-6 ${isDark ? 'border-blue-300/10 bg-[#15101f] shadow-[0_18px_50px_rgba(0,0,0,0.35)]' : 'border-blue-100 bg-white shadow-lg shadow-blue-100/60'}`}>
             <div className="flex flex-col gap-1">
               <label className={`text-[14px] sm:text-[17px] font-medium ${isDark ? 'text-blue-300/55' : 'text-gray-500'}`}>
-                Correo 
+                Correo o usuario
               </label>
               <input
                 type="text"
-                inputMode="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="correo@breathlessresorts.com"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                placeholder="correo@breathlessresorts.com o usuario"
                 className={`
                   w-full px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-lg sm:rounded-xl
                   border text-sm focus:outline-none focus:ring-2 focus:ring-blue-400
@@ -174,13 +169,7 @@ function Login() {
           </form>
 
           <p className={`text-[13px] sm:text-[15px] ${isDark ? 'text-blue-200/45' : 'text-gray-400'}`}>
-            ¿No tienes cuenta?{' '}
-            <Link
-              to="/register"
-              className={`${isDark ? 'text-blue-300' : 'text-blue-500'} font-semibold hover:underline`}
-            >
-              Regístrate
-            </Link>
+            Solicita tu acceso al administrador.
           </p>
         </div>
       </div>
