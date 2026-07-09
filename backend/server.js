@@ -64,7 +64,9 @@ async function verificarToken(req, res, next) {
     }
 
     if (Number(usuarios[0].activo) !== 1) {
-      return res.status(403).json({ mensaje: "El usuario está inactivo" });
+      return res.status(403).json({
+        mensaje: "La cuenta está desactivada. Contacta al administrador.",
+      });
     }
 
     req.usuario = {
@@ -122,7 +124,9 @@ app.post("/api/login", async (req, res) => {
     const usuario = usuarios[0];
 
     if (Number(usuario.activo) !== 1) {
-      return res.status(403).json({ mensaje: "El usuario está inactivo" });
+      return res.status(403).json({
+        mensaje: "La cuenta está desactivada. Contacta al administrador.",
+      });
     }
 
     const contrasenaCorrecta = await bcrypt.compare(
@@ -540,6 +544,58 @@ app.put(
 
 
 app.put(
+  "/api/usuarios/:id_usuario/estado",
+  verificarToken,
+  autorizarRoles("admin"),
+  async (req, res) => {
+    const { activo } = req.body;
+    const activoNormalizado = Number(activo);
+
+    if (
+      !["number", "string"].includes(typeof activo) ||
+      activo === "" ||
+      ![0, 1].includes(activoNormalizado)
+    ) {
+      return res.status(400).json({ mensaje: "El estado del usuario no es válido" });
+    }
+
+    if (
+      activoNormalizado === 0 &&
+      String(req.params.id_usuario) === String(req.usuario.id_usuario)
+    ) {
+      return res.status(400).json({ mensaje: "No puedes ocultar tu propia cuenta." });
+    }
+
+    try {
+      const [resultado] = await pool.query(
+        "UPDATE usuarios SET activo = ?, fecha_actualizacion = NOW() WHERE id_usuario = ?",
+        [activoNormalizado, req.params.id_usuario]
+      );
+
+      if (resultado.affectedRows === 0) {
+        return res.status(404).json({ mensaje: "Usuario no encontrado" });
+      }
+
+      const [usuariosActualizados] = await pool.query(
+        "SELECT id_usuario, nombre_completo, nombre_usuario, correo, rol, activo, " +
+          "debe_cambiar_contrasena, fecha_creacion, fecha_actualizacion " +
+          "FROM usuarios WHERE id_usuario = ? LIMIT 1",
+        [req.params.id_usuario]
+      );
+
+      return res.json({
+        mensaje: activoNormalizado === 1
+          ? "Usuario activado correctamente"
+          : "Usuario ocultado correctamente",
+        usuario: usuariosActualizados[0],
+      });
+    } catch (error) {
+      console.error("Error al actualizar estado de usuario:", error);
+      return res.status(500).json({ mensaje: "Error al actualizar estado de usuario" });
+    }
+  }
+);
+app.put(
   "/api/usuarios/:id_usuario",
   verificarToken,
   autorizarRoles("admin"),
@@ -626,6 +682,6 @@ app.put(
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { AppIcon } from '../components/Sidebar'
 import { getUserInitials, loadUserProfile, roleLabels, updateStoredUser } from '../utils/userProfile'
 
-const apiUrl = 'http://localhost:3000/api'
+const apiUrl = '/api'
 
 const emptyPasswordForm = {
   currentPassword: '',
@@ -48,21 +48,48 @@ async function apiRequest(path, options = {}) {
   return data
 }
 
-function SettingsField({ label, name, value, onChange, type = 'text', placeholder, autoComplete, required = false, readOnly = false }) {
+function SettingsField({
+  label,
+  name,
+  value,
+  onChange,
+  type = 'text',
+  placeholder,
+  autoComplete,
+  required = false,
+  readOnly = false,
+  passwordVisible = false,
+  onTogglePassword,
+}) {
+  const hasPasswordToggle = typeof onTogglePassword === 'function'
+
   return (
     <label className="block">
       <span className="mb-2 block text-[11px] font-extrabold text-[#8d88a2]">{label}</span>
-      <input
-        name={name}
-        type={type}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        autoComplete={autoComplete}
-        required={required}
-        readOnly={readOnly}
-        className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition placeholder:text-[#9b95ac] focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
-      />
+      <div className="relative">
+        <input
+          name={name}
+          type={type}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          autoComplete={autoComplete}
+          required={required}
+          readOnly={readOnly}
+          className={`h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition placeholder:text-[#9b95ac] focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100 ${hasPasswordToggle ? 'pr-11' : ''}`}
+        />
+        {hasPasswordToggle && (
+          <button
+            type="button"
+            onClick={onTogglePassword}
+            className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-[#5d5870] transition hover:bg-[#e9dfd0]"
+            aria-label={passwordVisible ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+            title={passwordVisible ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+          >
+            <AppIcon name={passwordVisible ? 'eyeOff' : 'eye'} />
+          </button>
+        )}
+      </div>
     </label>
   )
 }
@@ -95,6 +122,9 @@ function Configuracion() {
   const [resetForm, setResetForm] = useState(emptyResetForm)
   const [users, setUsers] = useState([])
   const [showPasswords, setShowPasswords] = useState(false)
+  const [showUserPassword, setShowUserPassword] = useState(false)
+  const [showResetPassword, setShowResetPassword] = useState(false)
+  const [showHiddenUsers, setShowHiddenUsers] = useState(false)
   const [userSearch, setUserSearch] = useState('')
   const [selectedUserId, setSelectedUserId] = useState('')
   const [selectedAction, setSelectedAction] = useState('')
@@ -194,6 +224,7 @@ function Configuracion() {
       })
       setProfile(updateStoredUser({ debe_cambiar_contrasena: 0 }))
       setPasswordForm(emptyPasswordForm)
+      setShowPasswords(false)
       setPasswordStatus({ type: 'success', text: data.mensaje })
     } catch (error) {
       setPasswordStatus({ type: 'error', text: error.message })
@@ -230,6 +261,7 @@ function Configuracion() {
       })
       setUsers((current) => [...current, data.usuario])
       setUserForm(emptyUserForm)
+      setShowUserPassword(false)
       setManagementStatus({ type: 'success', text: data.mensaje })
     } catch (error) {
       setManagementStatus({ type: 'error', text: error.message })
@@ -238,6 +270,14 @@ function Configuracion() {
 
   const handleUserSearchChange = (event) => {
     setUserSearch(event.target.value)
+  }
+
+  const handleToggleHiddenUsers = () => {
+    setShowHiddenUsers((current) => !current)
+    setSelectedAction('')
+    setSelectedUserId('')
+    setResetForm(emptyResetForm)
+    setManagementStatus({ type: '', text: '' })
   }
 
   const handleSelectedUserAction = (user, action) => {
@@ -264,6 +304,7 @@ function Configuracion() {
         userId: String(user.id_usuario),
         password: '',
       })
+      setShowResetPassword(false)
     }
   }
 
@@ -377,6 +418,7 @@ function Configuracion() {
         )
       )
       setResetForm(emptyResetForm)
+      setShowResetPassword(false)
       if (selectedAction === 'reset') {
         setSelectedAction('')
         setSelectedUserId('')
@@ -387,16 +429,50 @@ function Configuracion() {
     }
   }
 
+  const handleUserStateChange = async (user, activo) => {
+    if (activo === 0 && String(user.id_usuario) === String(profile.id)) {
+      setManagementStatus({ type: 'error', text: 'No puedes ocultar tu propia cuenta.' })
+      return
+    }
+
+    try {
+      const data = await apiRequest(`/usuarios/${user.id_usuario}/estado`, {
+        method: 'PUT',
+        body: JSON.stringify({ activo }),
+      })
+      setUsers((current) =>
+        current.map((currentUser) =>
+          String(currentUser.id_usuario) === String(user.id_usuario) ? data.usuario : currentUser
+        )
+      )
+      if (String(selectedUserId) === String(user.id_usuario)) {
+        setSelectedAction('')
+        setSelectedUserId('')
+        setResetForm(emptyResetForm)
+        setShowResetPassword(false)
+      }
+      setManagementStatus({ type: 'success', text: data.mensaje })
+    } catch (error) {
+      setManagementStatus({ type: 'error', text: error.message })
+    }
+  }
+
   const passwordInputType = showPasswords ? 'text' : 'password'
+  const userPasswordInputType = showUserPassword ? 'text' : 'password'
+  const resetPasswordInputType = showResetPassword ? 'text' : 'password'
   const resettableUsers = profile.roleKey === 'capturista'
     ? users.filter(
-      (user) => user.rol !== 'admin' && String(user.id_usuario) !== String(profile.id)
+      (user) =>
+        user.rol !== 'admin' &&
+        String(user.id_usuario) !== String(profile.id) &&
+        Number(user.activo) === 1
     )
     : users
   const selectedUser = users.find((user) => String(user.id_usuario) === String(selectedUserId))
   const normalizedUserSearch = userSearch.trim().toLowerCase()
+  const visibleUsers = users.filter((user) => Number(user.activo) === (showHiddenUsers ? 0 : 1))
   const filteredUsers = normalizedUserSearch
-    ? users.filter((user) => {
+    ? visibleUsers.filter((user) => {
       const searchableText = [
         user.nombre_completo,
         user.nombre_usuario,
@@ -407,7 +483,14 @@ function Configuracion() {
 
       return searchableText.includes(normalizedUserSearch)
     })
-    : users
+    : visibleUsers
+  const userListTitle = showHiddenUsers ? 'Usuarios ocultos' : 'Usuarios activos'
+  const userListDescription = showHiddenUsers
+    ? 'Usuarios desactivados que se conservan para auditoría y consulta.'
+    : 'Usuarios visibles y con acceso al sistema.'
+  const emptyUsersMessage = showHiddenUsers
+    ? 'No se encontraron usuarios ocultos.'
+    : 'No se encontraron usuarios activos.'
 
   return (
     <div className="space-y-6">
@@ -505,6 +588,8 @@ function Configuracion() {
                     value={passwordForm.currentPassword}
                     onChange={handlePasswordChange}
                     autoComplete="current-password"
+                    passwordVisible={showPasswords}
+                    onTogglePassword={() => setShowPasswords((currentValue) => !currentValue)}
                     required
                   />
                   <SettingsField
@@ -514,6 +599,8 @@ function Configuracion() {
                     value={passwordForm.newPassword}
                     onChange={handlePasswordChange}
                     autoComplete="new-password"
+                    passwordVisible={showPasswords}
+                    onTogglePassword={() => setShowPasswords((currentValue) => !currentValue)}
                     required
                   />
                   <SettingsField
@@ -523,6 +610,8 @@ function Configuracion() {
                     value={passwordForm.confirmPassword}
                     onChange={handlePasswordChange}
                     autoComplete="new-password"
+                    passwordVisible={showPasswords}
+                    onTogglePassword={() => setShowPasswords((currentValue) => !currentValue)}
                     required
                   />
                 </div>
@@ -576,9 +665,11 @@ function Configuracion() {
                   <SettingsField
                     label="Contraseña temporal"
                     name="password"
-                    type="password"
+                    type={userPasswordInputType}
                     value={userForm.password}
                     onChange={handleUserFormChange}
+                    passwordVisible={showUserPassword}
+                    onTogglePassword={() => setShowUserPassword((currentValue) => !currentValue)}
                     required
                   />
                   <label className="block">
@@ -616,68 +707,109 @@ function Configuracion() {
                   </p>
                 </div>
 
-                <SettingsField
-                  label="Buscar usuario"
-                  name="userSearch"
-                  value={userSearch}
-                  onChange={handleUserSearchChange}
-                  placeholder="Nombre, usuario, correo o rol"
-                />
-
-                <div className="overflow-x-auto rounded-xl border border-[#f1edf5]">
-                  <table className="min-w-full text-left text-sm">
-                    <thead className="bg-[#f7f4ec] text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#8d88a2]">
-                      <tr>
-                        <th className="px-4 py-3">Nombre completo</th>
-                        <th className="px-4 py-3">Nombre de usuario</th>
-                        <th className="px-4 py-3">Correo</th>
-                        <th className="px-4 py-3">Rol</th>
-                        <th className="px-4 py-3">Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#f1edf5]">
-                      {filteredUsers.map((user) => (
-                        <tr key={user.id_usuario} className="align-top">
-                          <td className="px-4 py-3 font-extrabold text-[#201d31]">{user.nombre_completo}</td>
-                          <td className="px-4 py-3 font-bold text-[#5d5870]">{user.nombre_usuario}</td>
-                          <td className="px-4 py-3 font-bold text-[#5d5870]">{user.correo}</td>
-                          <td className="px-4 py-3 font-bold text-[#5d5870]">{roleLabels[user.rol] || user.rol}</td>
-                          <td className="px-4 py-3">
-                            <div className="flex flex-wrap gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handleSelectedUserAction(user, 'edit')}
-                                className="inline-flex h-9 items-center justify-center rounded-xl bg-[#f2ece0] px-3 text-xs font-extrabold text-[#2a263a] transition hover:bg-[#e9dfd0]"
-                              >
-                                Editar datos
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleSelectedUserAction(user, 'role')}
-                                className="inline-flex h-9 items-center justify-center rounded-xl bg-[#f2ece0] px-3 text-xs font-extrabold text-[#2a263a] transition hover:bg-[#e9dfd0]"
-                              >
-                                Cambiar rol
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleSelectedUserAction(user, 'reset')}
-                                className="inline-flex h-9 items-center justify-center rounded-xl bg-[#f2ece0] px-3 text-xs font-extrabold text-[#2a263a] transition hover:bg-[#e9dfd0]"
-                              >
-                                Restablecer contraseña
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+                  <SettingsField
+                    label="Buscar usuario"
+                    name="userSearch"
+                    value={userSearch}
+                    onChange={handleUserSearchChange}
+                    placeholder="Nombre, usuario, correo o rol"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleToggleHiddenUsers}
+                    className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-[#e2d9c9] bg-[#fbf7ef] px-3 text-xs font-extrabold text-[#5d5870] shadow-sm transition hover:bg-[#f2ece0] hover:text-[#2a263a]"
+                    aria-label={showHiddenUsers ? 'Ver usuarios activos' : 'Ver usuarios ocultos'}
+                    title={showHiddenUsers ? 'Ver usuarios activos' : 'Ver usuarios ocultos'}
+                  >
+                    <AppIcon name={showHiddenUsers ? 'eye' : 'eyeOff'} />
+                    {showHiddenUsers ? 'Activos' : 'Ocultos'}
+                  </button>
                 </div>
 
-                {filteredUsers.length === 0 && (
-                  <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm font-bold text-amber-700">
-                    No se encontraron usuarios.
-                  </p>
-                )}
+                <div className="space-y-3">
+                  <div>
+                    <h3 className="text-sm font-extrabold text-[#201d31]">{userListTitle}</h3>
+                    <p className="mt-1 text-xs font-bold text-[#8d88a2]">{userListDescription}</p>
+                  </div>
+
+                  <div className="overflow-x-auto rounded-xl border border-[#f1edf5]">
+                    <table className="min-w-full text-left text-sm">
+                      <thead className="bg-[#f7f4ec] text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#8d88a2]">
+                        <tr>
+                          <th className="px-4 py-3">Nombre completo</th>
+                          <th className="px-4 py-3">Nombre de usuario</th>
+                          <th className="px-4 py-3">Correo</th>
+                          <th className="px-4 py-3">Rol</th>
+                          <th className="px-4 py-3">Estado</th>
+                          <th className="px-4 py-3">Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#f1edf5]">
+                        {filteredUsers.map((user) => (
+                          <tr key={user.id_usuario} className="align-top">
+                            <td className="px-4 py-3 font-extrabold text-[#201d31]">{user.nombre_completo}</td>
+                            <td className="px-4 py-3 font-bold text-[#5d5870]">{user.nombre_usuario}</td>
+                            <td className="px-4 py-3 font-bold text-[#5d5870]">{user.correo}</td>
+                            <td className="px-4 py-3 font-bold text-[#5d5870]">{roleLabels[user.rol] || user.rol}</td>
+                            <td className={`px-4 py-3 font-bold ${Number(user.activo) === 1 ? 'text-emerald-600' : 'text-[#8d88a2]'}`}>
+                              {Number(user.activo) === 1 ? 'Activo' : 'Oculto'}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleSelectedUserAction(user, 'edit')}
+                                  className="inline-flex h-9 items-center justify-center rounded-xl bg-[#f2ece0] px-3 text-xs font-extrabold text-[#2a263a] transition hover:bg-[#e9dfd0]"
+                                >
+                                  Editar datos
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSelectedUserAction(user, 'role')}
+                                  className="inline-flex h-9 items-center justify-center rounded-xl bg-[#f2ece0] px-3 text-xs font-extrabold text-[#2a263a] transition hover:bg-[#e9dfd0]"
+                                >
+                                  Cambiar rol
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSelectedUserAction(user, 'reset')}
+                                  className="inline-flex h-9 items-center justify-center rounded-xl bg-[#f2ece0] px-3 text-xs font-extrabold text-[#2a263a] transition hover:bg-[#e9dfd0]"
+                                >
+                                  Restablecer contraseña
+                                </button>
+                                {Number(user.activo) === 1 ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUserStateChange(user, 0)}
+                                    disabled={String(user.id_usuario) === String(profile.id)}
+                                    className="inline-flex h-9 items-center justify-center rounded-xl bg-[#f2ece0] px-3 text-xs font-extrabold text-[#2a263a] transition hover:bg-[#e9dfd0] disabled:cursor-not-allowed disabled:opacity-50"
+                                  >
+                                    Ocultar
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUserStateChange(user, 1)}
+                                    className="inline-flex h-9 items-center justify-center rounded-xl bg-[#f2ece0] px-3 text-xs font-extrabold text-[#2a263a] transition hover:bg-[#e9dfd0]"
+                                  >
+                                    Activar
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {filteredUsers.length === 0 && (
+                    <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm font-bold text-amber-700">
+                      {emptyUsersMessage}
+                    </p>
+                  )}
+                </div>
 
                 {selectedAction === 'edit' && selectedUser && (
                   <form onSubmit={handleUpdateUser} className="space-y-4 rounded-xl border border-[#f1edf5] p-4">
@@ -763,8 +895,10 @@ function Configuracion() {
                     <SettingsField
                       label="Nueva contraseña"
                       name="resetPassword"
-                      type="password"
+                      type={resetPasswordInputType}
                       value={resetForm.password}
+                      passwordVisible={showResetPassword}
+                      onTogglePassword={() => setShowResetPassword((currentValue) => !currentValue)}
                       onChange={(event) => {
                         setResetForm((current) => ({
                           ...current,
@@ -821,8 +955,10 @@ function Configuracion() {
                   <SettingsField
                     label="Nueva contraseña"
                     name="resetPassword"
-                    type="password"
+                    type={resetPasswordInputType}
                     value={resetForm.password}
+                    passwordVisible={showResetPassword}
+                    onTogglePassword={() => setShowResetPassword((currentValue) => !currentValue)}
                     onChange={(event) => {
                       setResetForm((current) => ({ ...current, password: event.target.value }))
                       setManagementStatus({ type: '', text: '' })

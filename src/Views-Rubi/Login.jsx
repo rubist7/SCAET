@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Moon, Sun } from 'lucide-react'
+import { Eye, EyeOff, Moon, Sun } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import logo from '../assets/logo_final.png'
 
@@ -8,6 +8,7 @@ function Login() {
   const [isDark, setIsDark] = useState(() => localStorage.getItem('scaet-theme') === 'dark')
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -37,7 +38,7 @@ function Login() {
     setLoading(true)
 
     try {
-      const response = await fetch('http://localhost:3000/api/login', {
+      const response = await fetch('/api/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -131,18 +132,29 @@ function Login() {
               <label className={`text-[14px] sm:text-[17px] font-medium ${isDark ? 'text-blue-300/55' : 'text-gray-500'}`}>
                 Contraseña
               </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="********"
-                className={`
-                  w-full px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-lg sm:rounded-xl
-                  border text-sm focus:outline-none focus:ring-2 focus:ring-blue-400
-                  transition-shadow
-                  ${isDark ? 'border-blue-300/10 bg-[#221b30] text-blue-50 placeholder:text-blue-200/25' : 'border-blue-100 bg-[#f8fbff] text-gray-700 placeholder:text-gray-300'}
-                `}
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="********"
+                  className={`
+                    w-full px-3.5 py-2 pr-10 sm:px-4 sm:py-2.5 sm:pr-11 rounded-lg sm:rounded-xl
+                    border text-sm focus:outline-none focus:ring-2 focus:ring-blue-400
+                    transition-shadow
+                    ${isDark ? 'border-blue-300/10 bg-[#221b30] text-blue-50 placeholder:text-blue-200/25' : 'border-blue-100 bg-[#f8fbff] text-gray-700 placeholder:text-gray-300'}
+                  `}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((current) => !current)}
+                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  className={`absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg transition ${isDark ? 'text-blue-200/60 hover:bg-blue-100/10' : 'text-gray-400 hover:bg-blue-50 hover:text-blue-500'}`}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             {error && (
