@@ -680,6 +680,447 @@ app.put(
   }
 );
 
+const calificacionesProveedorValidas = ["excelente", "bueno", "regular", "malo"];
+
+function normalizarProveedor(body) {
+  const {
+    nombre_proveedor,
+    empresa,
+    nombre_vendedor = "",
+    rfc_empresa = "",
+    telefono = "",
+    correo = "",
+    direccion = "",
+    calificacion = "bueno",
+    observaciones = "",
+  } = body;
+
+  if (typeof nombre_proveedor !== "string" || !nombre_proveedor.trim()) {
+    return { error: "El nombre del proveedor es obligatorio" };
+  }
+
+  if (typeof empresa !== "string" || !empresa.trim()) {
+    return { error: "La empresa es obligatoria" };
+  }
+
+  if (typeof calificacion !== "string" || !calificacionesProveedorValidas.includes(calificacion)) {
+    return { error: "La calificación no es válida" };
+  }
+
+  return {
+    proveedor: {
+      nombre_proveedor: nombre_proveedor.trim(),
+      empresa: empresa.trim(),
+      nombre_vendedor: typeof nombre_vendedor === "string" ? nombre_vendedor.trim() : "",
+      rfc_empresa: typeof rfc_empresa === "string" ? rfc_empresa.trim().toUpperCase() : "",
+      telefono: typeof telefono === "string" ? telefono.trim() : "",
+      correo: typeof correo === "string" ? correo.trim().toLowerCase() : "",
+      direccion: typeof direccion === "string" ? direccion.trim() : "",
+      calificacion,
+      observaciones: typeof observaciones === "string" ? observaciones.trim() : "",
+    },
+  };
+}
+
+async function obtenerProveedorPorId(idProveedor) {
+  const [proveedores] = await pool.query(
+    "SELECT id_proveedor, nombre_proveedor, empresa, nombre_vendedor, rfc_empresa, " +
+      "telefono, correo, direccion, calificacion, observaciones, activo, " +
+      "fecha_creacion, fecha_actualizacion FROM proveedores WHERE id_proveedor = ? LIMIT 1",
+    [idProveedor]
+  );
+
+  return proveedores[0];
+}
+
+app.get("/api/proveedores", verificarToken, async (req, res) => {
+  const estado = req.query.estado || "activos";
+  const estadosPermitidos = ["activos", "ocultos", "todos"];
+
+  if (!estadosPermitidos.includes(estado)) {
+    return res.status(400).json({ mensaje: "El estado de proveedores no es válido" });
+  }
+
+  const filtros = [];
+  const parametros = [];
+
+  if (estado === "activos") {
+    filtros.push("activo = ?");
+    parametros.push(1);
+  }
+
+  if (estado === "ocultos") {
+    filtros.push("activo = ?");
+    parametros.push(0);
+  }
+
+  try {
+    const [proveedores] = await pool.query(
+      "SELECT id_proveedor, nombre_proveedor, empresa, nombre_vendedor, rfc_empresa, " +
+        "telefono, correo, direccion, calificacion, observaciones, activo, " +
+        "fecha_creacion, fecha_actualizacion FROM proveedores " +
+        (filtros.length ? `WHERE ${filtros.join(" AND ")} ` : "") +
+        "ORDER BY nombre_proveedor, empresa",
+      parametros
+    );
+
+    return res.json({ proveedores });
+  } catch (error) {
+    console.error("Error al listar proveedores:", error);
+    return res.status(500).json({ mensaje: "Error al listar proveedores" });
+  }
+});
+
+app.post(
+  "/api/proveedores",
+  verificarToken,
+  autorizarRoles("admin", "capturista"),
+  async (req, res) => {
+    const { proveedor, error } = normalizarProveedor(req.body);
+
+    if (error) {
+      return res.status(400).json({ mensaje: error });
+    }
+
+    try {
+      const [resultado] = await pool.query(
+        "INSERT INTO proveedores " +
+          "(nombre_proveedor, empresa, nombre_vendedor, rfc_empresa, telefono, correo, " +
+          "direccion, calificacion, observaciones, activo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
+        [
+          proveedor.nombre_proveedor,
+          proveedor.empresa,
+          proveedor.nombre_vendedor,
+          proveedor.rfc_empresa,
+          proveedor.telefono,
+          proveedor.correo,
+          proveedor.direccion,
+          proveedor.calificacion,
+          proveedor.observaciones,
+        ]
+      );
+
+      const proveedorCreado = await obtenerProveedorPorId(resultado.insertId);
+
+      return res.status(201).json({
+        mensaje: "Proveedor creado correctamente",
+        proveedor: proveedorCreado,
+      });
+    } catch (errorCrear) {
+      console.error("Error al crear proveedor:", errorCrear);
+      return res.status(500).json({ mensaje: "Error al crear proveedor" });
+    }
+  }
+);
+
+app.put(
+  "/api/proveedores/:id_proveedor/estado",
+  verificarToken,
+  autorizarRoles("admin"),
+  async (req, res) => {
+    const { activo } = req.body;
+    const activoNormalizado = Number(activo);
+
+    if (
+      !["number", "string"].includes(typeof activo) ||
+      activo === "" ||
+      ![0, 1].includes(activoNormalizado)
+    ) {
+      return res.status(400).json({ mensaje: "El estado del proveedor no es válido" });
+    }
+
+    try {
+      const [resultado] = await pool.query(
+        "UPDATE proveedores SET activo = ?, fecha_actualizacion = NOW() WHERE id_proveedor = ?",
+        [activoNormalizado, req.params.id_proveedor]
+      );
+
+      if (resultado.affectedRows === 0) {
+        return res.status(404).json({ mensaje: "Proveedor no encontrado" });
+      }
+
+      const proveedorActualizado = await obtenerProveedorPorId(req.params.id_proveedor);
+
+      return res.json({
+        mensaje: activoNormalizado === 1
+          ? "Proveedor activado correctamente"
+          : "Proveedor ocultado correctamente",
+        proveedor: proveedorActualizado,
+      });
+    } catch (errorEstado) {
+      console.error("Error al actualizar estado de proveedor:", errorEstado);
+      return res.status(500).json({ mensaje: "Error al actualizar estado de proveedor" });
+    }
+  }
+);
+
+app.put(
+  "/api/proveedores/:id_proveedor",
+  verificarToken,
+  autorizarRoles("admin", "capturista"),
+  async (req, res) => {
+    const { proveedor, error } = normalizarProveedor(req.body);
+
+    if (error) {
+      return res.status(400).json({ mensaje: error });
+    }
+
+    try {
+      const [resultado] = await pool.query(
+        "UPDATE proveedores SET nombre_proveedor = ?, empresa = ?, nombre_vendedor = ?, " +
+          "rfc_empresa = ?, telefono = ?, correo = ?, direccion = ?, calificacion = ?, " +
+          "observaciones = ?, fecha_actualizacion = NOW() WHERE id_proveedor = ?",
+        [
+          proveedor.nombre_proveedor,
+          proveedor.empresa,
+          proveedor.nombre_vendedor,
+          proveedor.rfc_empresa,
+          proveedor.telefono,
+          proveedor.correo,
+          proveedor.direccion,
+          proveedor.calificacion,
+          proveedor.observaciones,
+          req.params.id_proveedor,
+        ]
+      );
+
+      if (resultado.affectedRows === 0) {
+        return res.status(404).json({ mensaje: "Proveedor no encontrado" });
+      }
+
+      const proveedorActualizado = await obtenerProveedorPorId(req.params.id_proveedor);
+
+      return res.json({
+        mensaje: "Proveedor actualizado correctamente",
+        proveedor: proveedorActualizado,
+      });
+    } catch (errorActualizar) {
+      console.error("Error al actualizar proveedor:", errorActualizar);
+      return res.status(500).json({ mensaje: "Error al actualizar proveedor" });
+    }
+  }
+);
+
+const correoColaboradorValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const camposColaborador = "id_colaborador, num_colaborador, nombre_completo, area, departamento, puesto, correo, telefono, extension, foto_key, foto_url, estado, observaciones, activo, fecha_creacion, fecha_actualizacion";
+
+function normalizarColaborador(body) {
+  const texto = (valor) => String(valor ?? "").trim();
+  const opcional = (valor) => texto(valor) || null;
+  const colaborador = {
+    num_colaborador: texto(body.num_colaborador),
+    nombre_completo: texto(body.nombre_completo),
+    area: texto(body.area),
+    departamento: opcional(body.departamento),
+    puesto: opcional(body.puesto),
+    correo: texto(body.correo).toLowerCase() || null,
+    telefono: opcional(body.telefono),
+    extension: opcional(body.extension),
+    estado: texto(body.estado || "activo").toLowerCase(),
+    observaciones: opcional(body.observaciones),
+  };
+
+  if (!colaborador.num_colaborador) return { error: "El número de colaborador es obligatorio" };
+  if (!colaborador.nombre_completo) return { error: "El nombre completo es obligatorio" };
+  if (!colaborador.area) return { error: "El área es obligatoria" };
+  if (colaborador.correo && !correoColaboradorValido.test(colaborador.correo)) {
+    return { error: "El formato del correo no es válido" };
+  }
+  if (!["activo", "inactivo"].includes(colaborador.estado)) {
+    return { error: "El estado debe ser activo o inactivo" };
+  }
+
+  return { colaborador };
+}
+
+async function obtenerColaboradorPorId(idColaborador) {
+  const [filas] = await pool.query(
+    "SELECT " + camposColaborador + " FROM colaboradores WHERE id_colaborador = ? LIMIT 1",
+    [idColaborador]
+  );
+  return filas[0];
+}
+
+function mensajeDuplicadoColaborador(error) {
+  const detalle = String(error.sqlMessage || error.message || "").toLowerCase();
+  return detalle.includes("correo")
+    ? "El correo ya está registrado en otro colaborador."
+    : "El número de colaborador ya está registrado.";
+}
+
+async function validarDuplicadoColaborador(colaborador, idColaborador = null) {
+  const condicionId = idColaborador ? "id_colaborador <> ? AND " : "";
+  const parametros = idColaborador
+    ? [idColaborador, colaborador.num_colaborador, colaborador.correo]
+    : [colaborador.num_colaborador, colaborador.correo];
+  const [existentes] = await pool.query(
+    "SELECT num_colaborador, correo FROM colaboradores WHERE " + condicionId +
+      "(num_colaborador = ? OR (correo IS NOT NULL AND correo = ?))",
+    parametros
+  );
+
+  if (existentes.some((item) => String(item.num_colaborador) === colaborador.num_colaborador)) {
+    return "El número de colaborador ya está registrado.";
+  }
+  if (
+    colaborador.correo &&
+    existentes.some((item) => item.correo?.toLowerCase() === colaborador.correo)
+  ) {
+    return "El correo ya está registrado en otro colaborador.";
+  }
+  return null;
+}
+
+app.get(
+  "/api/colaboradores",
+  verificarToken,
+  autorizarRoles("admin", "capturista"),
+  async (req, res) => {
+    const estado = String(req.query.estado || "activos").toLowerCase();
+    if (!["activos", "ocultos", "todos"].includes(estado)) {
+      return res.status(400).json({ mensaje: "El filtro de estado no es válido" });
+    }
+
+    const condicion = estado === "todos" ? "" : " WHERE activo = ?";
+    const parametros = estado === "todos" ? [] : [estado === "activos" ? 1 : 0];
+
+    try {
+      const [colaboradores] = await pool.query(
+        "SELECT " + camposColaborador + " FROM colaboradores" + condicion +
+          " ORDER BY nombre_completo",
+        parametros
+      );
+      return res.json({ colaboradores });
+    } catch (error) {
+      console.error("Error al listar colaboradores:", error);
+      return res.status(500).json({ mensaje: "Error al listar colaboradores" });
+    }
+  }
+);
+
+app.post(
+  "/api/colaboradores",
+  verificarToken,
+  autorizarRoles("admin", "capturista"),
+  async (req, res) => {
+    const { colaborador, error } = normalizarColaborador(req.body);
+    if (error) return res.status(400).json({ mensaje: error });
+
+    try {
+      const duplicado = await validarDuplicadoColaborador(colaborador);
+      if (duplicado) return res.status(409).json({ mensaje: duplicado });
+
+      const [resultado] = await pool.query(
+        "INSERT INTO colaboradores (num_colaborador, nombre_completo, area, departamento, " +
+          "puesto, correo, telefono, extension, foto_key, foto_url, estado, observaciones, activo) " +
+          "VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, 1)",
+        [
+          colaborador.num_colaborador,
+          colaborador.nombre_completo,
+          colaborador.area,
+          colaborador.departamento,
+          colaborador.puesto,
+          colaborador.correo,
+          colaborador.telefono,
+          colaborador.extension,
+          colaborador.estado,
+          colaborador.observaciones,
+        ]
+      );
+
+      return res.status(201).json({
+        mensaje: "Colaborador creado correctamente",
+        colaborador: await obtenerColaboradorPorId(resultado.insertId),
+      });
+    } catch (errorCrear) {
+      if (errorCrear.code === "ER_DUP_ENTRY") {
+        return res.status(409).json({ mensaje: mensajeDuplicadoColaborador(errorCrear) });
+      }
+      console.error("Error al crear colaborador:", errorCrear);
+      return res.status(500).json({ mensaje: "Error al crear colaborador" });
+    }
+  }
+);
+
+app.put(
+  "/api/colaboradores/:id_colaborador/estado",
+  verificarToken,
+  autorizarRoles("admin"),
+  async (req, res) => {
+    const activo = Number(req.body.activo);
+    if (req.body.activo === "" || req.body.activo == null || ![0, 1].includes(activo)) {
+      return res.status(400).json({ mensaje: "El estado del colaborador no es válido" });
+    }
+
+    try {
+      const [resultado] = await pool.query(
+        "UPDATE colaboradores SET activo = ?, fecha_actualizacion = NOW() WHERE id_colaborador = ?",
+        [activo, req.params.id_colaborador]
+      );
+      if (resultado.affectedRows === 0) {
+        return res.status(404).json({ mensaje: "Colaborador no encontrado" });
+      }
+      return res.json({
+        mensaje: activo ? "Colaborador activado correctamente" : "Colaborador ocultado correctamente",
+        colaborador: await obtenerColaboradorPorId(req.params.id_colaborador),
+      });
+    } catch (errorEstado) {
+      console.error("Error al actualizar estado de colaborador:", errorEstado);
+      return res.status(500).json({ mensaje: "Error al actualizar estado de colaborador" });
+    }
+  }
+);
+
+app.put(
+  "/api/colaboradores/:id_colaborador",
+  verificarToken,
+  autorizarRoles("admin", "capturista"),
+  async (req, res) => {
+    const { colaborador, error } = normalizarColaborador(req.body);
+    if (error) return res.status(400).json({ mensaje: error });
+
+    try {
+      const duplicado = await validarDuplicadoColaborador(
+        colaborador,
+        req.params.id_colaborador
+      );
+      if (duplicado) return res.status(409).json({ mensaje: duplicado });
+
+      const [resultado] = await pool.query(
+        "UPDATE colaboradores SET num_colaborador = ?, nombre_completo = ?, area = ?, " +
+          "departamento = ?, puesto = ?, correo = ?, telefono = ?, extension = ?, estado = ?, " +
+          "observaciones = ?, fecha_actualizacion = NOW() WHERE id_colaborador = ?",
+        [
+          colaborador.num_colaborador,
+          colaborador.nombre_completo,
+          colaborador.area,
+          colaborador.departamento,
+          colaborador.puesto,
+          colaborador.correo,
+          colaborador.telefono,
+          colaborador.extension,
+          colaborador.estado,
+          colaborador.observaciones,
+          req.params.id_colaborador,
+        ]
+      );
+      if (resultado.affectedRows === 0) {
+        return res.status(404).json({ mensaje: "Colaborador no encontrado" });
+      }
+      return res.json({
+        mensaje: "Colaborador actualizado correctamente",
+        colaborador: await obtenerColaboradorPorId(req.params.id_colaborador),
+      });
+    } catch (errorActualizar) {
+      if (errorActualizar.code === "ER_DUP_ENTRY") {
+        return res.status(409).json({ mensaje: mensajeDuplicadoColaborador(errorActualizar) });
+      }
+      console.error("Error al actualizar colaborador:", errorActualizar);
+      return res.status(500).json({ mensaje: "Error al actualizar colaborador" });
+    }
+  }
+);
+
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, "0.0.0.0", () => {

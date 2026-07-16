@@ -1,5 +1,8 @@
-import { Fragment, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { AppIcon } from '../components/Sidebar'
+import { loadUserProfile } from '../utils/userProfile'
+
+const apiUrl = '/api'
 
 const emptyProviderForm = {
   providerName: '',
@@ -9,35 +12,80 @@ const emptyProviderForm = {
   email: '',
   address: '',
   sellerName: '',
-  rating: '5',
+  rating: 'bueno',
   notes: '',
 }
 
 const ratingOptions = [
-  { value: '5', label: '★★★★★ Excelente' },
-  { value: '4', label: '★★★★ Muy bueno' },
-  { value: '3', label: '★★★ Bueno' },
-  { value: '2', label: '★★ Regular' },
-  { value: '1', label: '★ Revisar' },
+  { value: 'excelente', label: '★★★★★ Excelente', stars: 5 },
+  { value: 'bueno', label: '★★★★ Bueno', stars: 4 },
+  { value: 'regular', label: '★★★ Regular', stars: 3 },
+  { value: 'malo', label: '★ Malo', stars: 1 },
 ]
 
-function createProviderId() {
-  return globalThis.crypto?.randomUUID?.() ?? `provider-${Date.now()}`
+async function apiRequest(path, options = {}) {
+  const token = localStorage.getItem('scaet-token')
+  const response = await fetch(`${apiUrl}${path}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      ...options.headers,
+    },
+  })
+  const data = await response.json()
+
+  if (!response.ok) {
+    throw new Error(data.mensaje || 'No se pudo completar la solicitud.')
+  }
+
+  return data
 }
 
 function normalizeText(value) {
-  return value.toString().trim().toLowerCase()
+  return String(value ?? '').trim().toLowerCase()
+}
+
+function mapProviderFromApi(provider) {
+  return {
+    id: provider.id_proveedor,
+    providerName: provider.nombre_proveedor || '',
+    companyName: provider.empresa || '',
+    rfc: provider.rfc_empresa || '',
+    phone: provider.telefono || '',
+    email: provider.correo || '',
+    address: provider.direccion || '',
+    sellerName: provider.nombre_vendedor || '',
+    rating: provider.calificacion || 'bueno',
+    notes: provider.observaciones || '',
+    active: Number(provider.activo) === 1,
+  }
+}
+
+function buildProviderPayload(form) {
+  return {
+    nombre_proveedor: form.providerName.trim(),
+    empresa: form.companyName.trim(),
+    nombre_vendedor: form.sellerName.trim(),
+    rfc_empresa: form.rfc.trim().toUpperCase(),
+    telefono: form.phone.trim(),
+    correo: form.email.trim().toLowerCase(),
+    direccion: form.address.trim(),
+    calificacion: form.rating,
+    observaciones: form.notes.trim(),
+  }
 }
 
 function RatingStars({ value }) {
-  const rating = Number(value)
+  const option = ratingOptions.find((ratingOption) => ratingOption.value === value)
+  const rating = option?.stars ?? 0
 
   if (!rating) {
-    return <span className="text-xs font-extrabold text-[#b3adbf]">Sin calificacion</span>
+    return <span className="text-xs font-extrabold text-[#b3adbf]">Sin calificación</span>
   }
 
   return (
-    <span className="inline-flex items-center gap-0.5 text-amber-400" aria-label={`${rating} de 5 estrellas`}>
+    <span className="inline-flex items-center gap-0.5 text-amber-400" aria-label={option.label}>
       {Array.from({ length: rating }).map((_, index) => (
         <span key={index}>★</span>
       ))}
@@ -62,13 +110,31 @@ function Field({ label, name, value, onChange, placeholder, type = 'text', requi
   )
 }
 
-function EmptyState({ hasProviders }) {
+function StatusMessage({ status }) {
+  if (!status.text) {
+    return null
+  }
+
+  const toneClass = status.type === 'error'
+    ? 'bg-rose-50 text-rose-600'
+    : 'bg-emerald-50 text-emerald-600'
+
+  return (
+    <p className={`rounded-xl px-4 py-3 text-sm font-bold ${toneClass}`} aria-live="polite">
+      {status.text}
+    </p>
+  )
+}
+
+function EmptyState({ hasProviders, canCreateProvider }) {
   return (
     <div className="flex min-h-[260px] items-center justify-center px-5 py-10 text-center sm:min-h-[340px]">
       <p className="max-w-md text-sm font-bold text-[#8d88a2]">
         {hasProviders
-          ? 'No se encontraron proveedores con esa busqueda.'
-          : 'Aun no hay proveedores registrados. Presiona Nuevo proveedor para agregar el primero.'}
+          ? 'No se encontraron proveedores con esa búsqueda.'
+          : canCreateProvider
+            ? 'Aún no hay proveedores registrados. Presiona Nuevo proveedor para agregar el primero.'
+            : 'Aún no hay proveedores registrados.'}
       </p>
     </div>
   )
@@ -92,13 +158,13 @@ function ProviderDetails({ provider }) {
     <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-4 dark:border-[#393141] dark:bg-[#211b2a]">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <DetailItem label="RFC" value={provider.rfc} />
-        <DetailItem label="Telefono" value={provider.phone} />
+        <DetailItem label="Teléfono" value={provider.phone} />
         <DetailItem label="Correo" value={provider.email} />
-        <DetailItem label="Calificacion" value={ratingOptions.find((option) => option.value === provider.rating)?.label} />
+        <DetailItem label="Calificación" value={ratingOptions.find((option) => option.value === provider.rating)?.label} />
         <DetailItem label="Proveedor" value={provider.providerName} />
         <DetailItem label="Empresa" value={provider.companyName} />
         <DetailItem label="Vendedor" value={provider.sellerName} />
-        <DetailItem label="Direccion" value={provider.address} />
+        <DetailItem label="Dirección" value={provider.address} />
         <DetailItem label="Observaciones" value={provider.notes} className="sm:col-span-2 xl:col-span-4" />
       </div>
     </div>
@@ -106,14 +172,54 @@ function ProviderDetails({ provider }) {
 }
 
 function Proveedores() {
+  const [profile] = useState(() => loadUserProfile())
   const [providers, setProviders] = useState([])
   const [form, setForm] = useState(emptyProviderForm)
   const [search, setSearch] = useState('')
   const [editingId, setEditingId] = useState(null)
   const [showForm, setShowForm] = useState(false)
+  const [showHiddenProviders, setShowHiddenProviders] = useState(false)
   const [expandedProviderId, setExpandedProviderId] = useState(null)
+  const [status, setStatus] = useState({ type: '', text: '' })
   const formRef = useRef(null)
   const listRef = useRef(null)
+
+  const canManageProvider = profile.roleKey === 'admin' || profile.roleKey === 'capturista'
+  const canChangeProviderState = profile.roleKey === 'admin'
+  const providerState = showHiddenProviders ? 'ocultos' : 'activos'
+  const viewTitle = showHiddenProviders ? 'Proveedores ocultos' : 'Proveedores activos'
+  const viewDescription = showHiddenProviders
+    ? 'Proveedores desactivados que se conservan para auditoría y consulta.'
+    : 'Proveedores visibles y disponibles para el sistema.'
+
+  const loadProviders = async (state = providerState) => {
+    try {
+      const data = await apiRequest(`/proveedores?estado=${state}`)
+      setProviders(data.proveedores.map(mapProviderFromApi))
+    } catch (error) {
+      setStatus({ type: 'error', text: error.message })
+    }
+  }
+
+  useEffect(() => {
+    let ignore = false
+
+    apiRequest(`/proveedores?estado=${providerState}`)
+      .then((data) => {
+        if (!ignore) {
+          setProviders(data.proveedores.map(mapProviderFromApi))
+        }
+      })
+      .catch((error) => {
+        if (!ignore) {
+          setStatus({ type: 'error', text: error.message })
+        }
+      })
+
+    return () => {
+      ignore = true
+    }
+  }, [providerState])
 
   const filteredProviders = useMemo(() => {
     const term = normalizeText(search)
@@ -130,7 +236,6 @@ function Proveedores() {
         provider.rfc,
         provider.phone,
         provider.email,
-        provider.address,
       ].some((value) => normalizeText(value).includes(term))
     ))
   }, [providers, search])
@@ -139,7 +244,11 @@ function Proveedores() {
 
   const handleInputChange = (event) => {
     const { name, value } = event.target
-    setForm((currentForm) => ({ ...currentForm, [name]: value }))
+    setForm((currentForm) => ({
+      ...currentForm,
+      [name]: name === 'rfc' ? value.toUpperCase() : value,
+    }))
+    setStatus({ type: '', text: '' })
   }
 
   const scrollToForm = () => {
@@ -154,11 +263,23 @@ function Proveedores() {
     })
   }
 
+  const handleToggleHiddenProviders = () => {
+    setShowHiddenProviders((current) => !current)
+    setExpandedProviderId(null)
+    setStatus({ type: '', text: '' })
+  }
+
   const handleNewProvider = () => {
+    if (!canManageProvider) {
+      return
+    }
+
     setForm(emptyProviderForm)
     setEditingId(null)
+    setShowHiddenProviders(false)
     setShowForm(true)
     setExpandedProviderId(null)
+    setStatus({ type: '', text: '' })
     scrollToForm()
   }
 
@@ -166,34 +287,62 @@ function Proveedores() {
     setForm(emptyProviderForm)
     setEditingId(null)
     setShowForm(false)
+    setStatus({ type: '', text: '' })
   }
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
 
-    const cleanProvider = Object.fromEntries(
-      Object.entries(form).map(([key, value]) => [key, value.trim()]),
-    )
-    const savedProviderId = editingId ?? createProviderId()
+    if (!canManageProvider) {
+      setStatus({ type: 'error', text: 'No tienes permiso para guardar proveedores.' })
+      return
+    }
 
-    setProviders((currentProviders) => {
-      if (editingId) {
-        return currentProviders.map((provider) => (
-          provider.id === editingId ? { ...provider, ...cleanProvider } : provider
-        ))
-      }
+    if (!form.providerName.trim()) {
+      setStatus({ type: 'error', text: 'El nombre del proveedor es obligatorio.' })
+      return
+    }
 
-      return [{ id: savedProviderId, ...cleanProvider }, ...currentProviders]
-    })
+    if (!form.companyName.trim()) {
+      setStatus({ type: 'error', text: 'La empresa es obligatoria.' })
+      return
+    }
 
-    setForm(emptyProviderForm)
-    setEditingId(null)
-    setShowForm(false)
-    setExpandedProviderId(savedProviderId)
-    scrollToList()
+    if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      setStatus({ type: 'error', text: 'El correo no tiene un formato válido.' })
+      return
+    }
+
+    try {
+      const payload = buildProviderPayload(form)
+      const data = await apiRequest(
+        isEditing ? `/proveedores/${editingId}` : '/proveedores',
+        {
+          method: isEditing ? 'PUT' : 'POST',
+          body: JSON.stringify(payload),
+        }
+      )
+      const savedProvider = mapProviderFromApi(data.proveedor)
+      const nextState = isEditing ? providerState : 'activos'
+
+      setForm(emptyProviderForm)
+      setEditingId(null)
+      setShowForm(false)
+      setShowHiddenProviders(nextState === 'ocultos')
+      setExpandedProviderId(savedProvider.id)
+      setStatus({ type: 'success', text: data.mensaje })
+      await loadProviders(nextState)
+      scrollToList()
+    } catch (error) {
+      setStatus({ type: 'error', text: error.message })
+    }
   }
 
   const handleEdit = (provider) => {
+    if (!canManageProvider) {
+      return
+    }
+
     setForm({
       providerName: provider.providerName,
       companyName: provider.companyName,
@@ -208,18 +357,33 @@ function Proveedores() {
     setEditingId(provider.id)
     setShowForm(true)
     setExpandedProviderId(provider.id)
+    setStatus({ type: '', text: '' })
     scrollToForm()
   }
 
-  const handleDelete = (providerId) => {
-    setProviders((currentProviders) => currentProviders.filter((provider) => provider.id !== providerId))
-
-    if (providerId === expandedProviderId) {
-      setExpandedProviderId(null)
+  const handleProviderStateChange = async (provider, active) => {
+    if (!canChangeProviderState) {
+      return
     }
 
-    if (providerId === editingId) {
-      handleCancel()
+    try {
+      const data = await apiRequest(`/proveedores/${provider.id}/estado`, {
+        method: 'PUT',
+        body: JSON.stringify({ activo: active ? 1 : 0 }),
+      })
+
+      if (provider.id === expandedProviderId) {
+        setExpandedProviderId(null)
+      }
+
+      if (provider.id === editingId) {
+        handleCancel()
+      }
+
+      setStatus({ type: 'success', text: data.mensaje })
+      await loadProviders(providerState)
+    } catch (error) {
+      setStatus({ type: 'error', text: error.message })
     }
   }
 
@@ -235,33 +399,55 @@ function Proveedores() {
               <div className="min-w-0">
                 <h1 className="text-2xl font-extrabold text-[#201d31] sm:text-3xl">Proveedores</h1>
                 <p className="mt-1 text-sm font-bold text-[#8d88a2]">
-                  {providers.length} {providers.length === 1 ? 'registro local' : 'registros locales'}
+                  {providers.length} {providers.length === 1 ? 'proveedor' : 'proveedores'} {showHiddenProviders ? 'ocultos' : 'activos'}
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={handleNewProvider}
-                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#3A9AF2] px-5 text-sm font-extrabold text-[#FFFFFF] shadow-sm transition hover:bg-[#238BEA] focus:outline-none focus:ring-4 focus:ring-blue-100 sm:w-auto"
-              >
-                <AppIcon name="plus" />
-                Nuevo proveedor
-              </button>
+              {canManageProvider && (
+                <button
+                  type="button"
+                  onClick={handleNewProvider}
+                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#3A9AF2] px-5 text-sm font-extrabold text-[#FFFFFF] shadow-sm transition hover:bg-[#238BEA] focus:outline-none focus:ring-4 focus:ring-blue-100 sm:w-auto"
+                >
+                  <AppIcon name="plus" />
+                  Nuevo proveedor
+                </button>
+              )}
             </section>
 
+            <StatusMessage status={status} />
+
             <section className="space-y-4">
-              <label className="relative block">
-                <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#9b95ac]">
-                  <AppIcon name="search" />
-                </span>
-                <input
-                  type="search"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Buscar proveedor..."
-                  className="h-12 w-full rounded-2xl border border-[#e8dfd0] bg-[#f2ece0] pl-11 pr-4 text-sm font-bold text-[#2a263a] outline-none transition placeholder:text-[#9b95ac] focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
-                />
-              </label>
+              <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+                <label className="relative block">
+                  <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#9b95ac]">
+                    <AppIcon name="search" />
+                  </span>
+                  <input
+                    type="search"
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Buscar proveedor..."
+                    className="h-12 w-full rounded-2xl border border-[#e8dfd0] bg-[#f2ece0] pl-11 pr-4 text-sm font-bold text-[#2a263a] outline-none transition placeholder:text-[#9b95ac] focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
+                  />
+                </label>
+
+                <button
+                  type="button"
+                  onClick={handleToggleHiddenProviders}
+                  className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-[#e2d9c9] bg-[#fbf7ef] px-3 text-xs font-extrabold text-[#5d5870] shadow-sm transition hover:bg-[#f2ece0] hover:text-[#2a263a]"
+                  aria-label={showHiddenProviders ? 'Ver proveedores activos' : 'Ver proveedores ocultos'}
+                  title={showHiddenProviders ? 'Ver proveedores activos' : 'Ver proveedores ocultos'}
+                >
+                  <AppIcon name={showHiddenProviders ? 'eye' : 'eyeOff'} />
+                  {showHiddenProviders ? 'Activos' : 'Ocultos'}
+                </button>
+              </div>
+
+              <div>
+                <h2 className="text-sm font-extrabold text-[#201d31]">{viewTitle}</h2>
+                <p className="mt-1 text-xs font-bold text-[#8d88a2]">{viewDescription}</p>
+              </div>
 
               <div className="hidden min-h-[360px] overflow-x-auto rounded-2xl bg-white shadow-sm lg:block">
                 <table className="w-full min-w-[940px] table-fixed text-left">
@@ -270,9 +456,9 @@ function Proveedores() {
                       <th className="px-5 py-3">Nombre</th>
                       <th className="px-5 py-3">Empresa</th>
                       <th className="px-5 py-3">Vendedor</th>
-                      <th className="px-5 py-3">Telefono</th>
+                      <th className="px-5 py-3">Teléfono</th>
                       <th className="px-5 py-3">Correo</th>
-                      <th className="px-5 py-3">Calificacion</th>
+                      <th className="px-5 py-3">Calificación</th>
                       <th className="w-40 px-5 py-3 text-right">Acciones</th>
                     </tr>
                   </thead>
@@ -302,30 +488,38 @@ function Proveedores() {
                                         ? 'bg-[#3A9AF2] text-[#FFFFFF]'
                                         : 'bg-blue-50 text-blue-500 hover:bg-blue-100'
                                     }`}
-                                    aria-label={`${isExpanded ? 'Ocultar' : 'Ver'} informacion de ${provider.providerName}`}
-                                    title="Informacion"
+                                    aria-label={`${isExpanded ? 'Ocultar' : 'Ver'} información de ${provider.providerName}`}
+                                    title="Información"
                                     aria-expanded={isExpanded}
                                   >
                                     <AppIcon name="info" />
                                   </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleEdit(provider)}
-                                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-500 transition hover:bg-blue-100"
-                                    aria-label={`Editar ${provider.providerName}`}
-                                    title="Editar"
-                                  >
-                                    <AppIcon name="edit" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDelete(provider.id)}
-                                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50 text-rose-400 transition hover:bg-rose-100"
-                                    aria-label={`Eliminar ${provider.providerName}`}
-                                    title="Eliminar"
-                                  >
-                                    <AppIcon name="trash" />
-                                  </button>
+                                  {canManageProvider && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleEdit(provider)}
+                                      className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-500 transition hover:bg-blue-100"
+                                      aria-label={`Editar ${provider.providerName}`}
+                                      title="Editar"
+                                    >
+                                      <AppIcon name="edit" />
+                                    </button>
+                                  )}
+                                  {canChangeProviderState && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleProviderStateChange(provider, !provider.active)}
+                                      className={`flex h-9 w-9 items-center justify-center rounded-xl transition ${
+                                        provider.active
+                                          ? 'bg-rose-50 text-rose-400 hover:bg-rose-100'
+                                          : 'bg-emerald-50 text-emerald-500 hover:bg-emerald-100'
+                                      }`}
+                                      aria-label={`${provider.active ? 'Ocultar' : 'Activar'} ${provider.providerName}`}
+                                      title={provider.active ? 'Ocultar' : 'Activar'}
+                                    >
+                                      <AppIcon name={provider.active ? 'eyeOff' : 'eye'} />
+                                    </button>
+                                  )}
                                 </div>
                               </td>
                             </tr>
@@ -342,7 +536,7 @@ function Proveedores() {
                     ) : (
                       <tr>
                         <td colSpan="7">
-                          <EmptyState hasProviders={providers.length > 0} />
+                          <EmptyState hasProviders={providers.length > 0} canCreateProvider={canManageProvider} />
                         </td>
                       </tr>
                     )}
@@ -387,49 +581,57 @@ function Proveedores() {
                             </div>
                           )}
 
-                          <div className="mt-4 grid grid-cols-1 gap-2 min-[430px]:grid-cols-3">
+                          <div className="mt-4 flex flex-wrap gap-2">
                             <button
                               type="button"
                               onClick={() => handleToggleDetails(provider.id)}
-                              className={`inline-flex h-10 items-center justify-center gap-2 rounded-xl text-xs font-extrabold transition ${
+                              className={`inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl text-xs font-extrabold transition ${
                                 isExpanded
                                   ? 'bg-[#3A9AF2] text-[#FFFFFF]'
                                   : 'bg-blue-50 text-blue-500 hover:bg-blue-100'
                               }`}
-                              aria-label={`${isExpanded ? 'Ocultar' : 'Ver'} informacion de ${provider.providerName}`}
+                              aria-label={`${isExpanded ? 'Ocultar' : 'Ver'} información de ${provider.providerName}`}
                               aria-expanded={isExpanded}
                             >
                               <AppIcon name="info" />
                               Info
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => handleEdit(provider)}
-                              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-50 text-xs font-extrabold text-blue-500 transition hover:bg-blue-100"
-                            >
-                              <AppIcon name="edit" />
-                              Editar
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(provider.id)}
-                              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-rose-50 text-xs font-extrabold text-rose-400 transition hover:bg-rose-100"
-                            >
-                              <AppIcon name="trash" />
-                              Eliminar
-                            </button>
+                            {canManageProvider && (
+                              <button
+                                type="button"
+                                onClick={() => handleEdit(provider)}
+                                className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-blue-50 text-xs font-extrabold text-blue-500 transition hover:bg-blue-100"
+                              >
+                                <AppIcon name="edit" />
+                                Editar
+                              </button>
+                            )}
+                            {canChangeProviderState && (
+                              <button
+                                type="button"
+                                onClick={() => handleProviderStateChange(provider, !provider.active)}
+                                className={`inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl text-xs font-extrabold transition ${
+                                  provider.active
+                                    ? 'bg-rose-50 text-rose-400 hover:bg-rose-100'
+                                    : 'bg-emerald-50 text-emerald-500 hover:bg-emerald-100'
+                                }`}
+                              >
+                                <AppIcon name={provider.active ? 'eyeOff' : 'eye'} />
+                                {provider.active ? 'Ocultar' : 'Activar'}
+                              </button>
+                            )}
                           </div>
                         </article>
                       )
                     })}
                   </div>
                 ) : (
-                  <EmptyState hasProviders={providers.length > 0} />
+                  <EmptyState hasProviders={providers.length > 0} canCreateProvider={canManageProvider} />
                 )}
               </div>
             </section>
 
-            {showForm && (
+            {showForm && canManageProvider && (
               <section ref={formRef} className="rounded-2xl bg-white p-4 shadow-sm sm:p-6">
                 <div className="border-b border-[#f0edf6] pb-4">
                   <p className="text-[10px] font-extrabold uppercase tracking-[0.28em] text-blue-300">
@@ -470,13 +672,12 @@ function Proveedores() {
                       placeholder="RFC"
                     />
                     <Field
-                      label="Telefono"
+                      label="Teléfono"
                       name="phone"
                       value={form.phone}
                       onChange={handleInputChange}
-                      placeholder="Telefono de contacto"
+                      placeholder="Teléfono de contacto"
                       type="tel"
-                      required
                     />
                     <Field
                       label="Gmail / Correo de contacto"
@@ -485,19 +686,18 @@ function Proveedores() {
                       onChange={handleInputChange}
                       placeholder="correo@empresa.com"
                       type="email"
-                      required
                     />
                     <Field
-                      label="Direccion"
+                      label="Dirección"
                       name="address"
                       value={form.address}
                       onChange={handleInputChange}
-                      placeholder="Calle, numero, ciudad"
+                      placeholder="Calle, número, ciudad"
                       className="lg:col-span-2"
                     />
 
                     <label className="block">
-                      <span className="mb-2 block text-[11px] font-extrabold text-[#8d88a2]">Calificacion</span>
+                      <span className="mb-2 block text-[11px] font-extrabold text-[#8d88a2]">Calificación</span>
                       <select
                         name="rating"
                         value={form.rating}

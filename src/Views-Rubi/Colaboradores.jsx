@@ -1,5 +1,23 @@
-import { Fragment, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AppIcon } from '../components/Sidebar'
+import { loadUserProfile } from '../utils/userProfile'
+
+const apiUrl = '/api'
+function apiHeaders() {
+  const token = localStorage.getItem('scaet-token')
+  return { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token }
+}
+function mapCollaborator(item) {
+  return {
+    id: item.id_colaborador, employeeNumber: String(item.num_colaborador ?? ''),
+    fullName: item.nombre_completo ?? '', area: item.area ?? '',
+    department: item.departamento ?? '', position: item.puesto ?? '',
+    email: item.correo ?? '', phone: item.telefono ?? '', extension: item.extension ?? '',
+    equipmentCount: '0', status: item.estado === 'inactivo' ? 'Inactivo' : 'Activo',
+    notes: item.observaciones ?? '', photoUrl: item.foto_url ?? '', photoName: '',
+    hidden: Number(item.activo) !== 1,
+  }
+}
 
 const emptyCollaboratorForm = {
   employeeNumber: '',
@@ -129,16 +147,38 @@ function Colaboradores() {
   const [showForm, setShowForm] = useState(false)
   const [expandedCollaboratorId, setExpandedCollaboratorId] = useState(null)
   const [showHidden, setShowHidden] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [message, setMessage] = useState('')
+  const role = loadUserProfile().roleKey
+  const canManage = role === 'admin' || role === 'capturista'
+  const canChangeState = role === 'admin'
   const formRef = useRef(null)
   const listRef = useRef(null)
   const uploadInputRef = useRef(null)
   const cameraInputRef = useRef(null)
 
-  const visibleCollaborators = useMemo(() => (
-    collaborators.filter((collaborator) => Boolean(collaborator.hidden) === showHidden)
-  ), [collaborators, showHidden])
+  const loadCollaborators = useCallback(async () => {
+    setLoading(true)
+    setMessage('')
+    try {
+      const endpoint = apiUrl + '/colaboradores?estado=' + (showHidden ? 'ocultos' : 'activos')
+      const response = await fetch(endpoint, { headers: apiHeaders() })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.mensaje || 'No fue posible cargar colaboradores')
+      setCollaborators((data.colaboradores || []).map(mapCollaborator))
+    } catch (error) {
+      setCollaborators([])
+      setMessage(error.message)
+    } finally {
+      setLoading(false)
+    }
+  }, [showHidden])
 
-  const hiddenCollaboratorsCount = collaborators.filter((collaborator) => collaborator.hidden).length
+  useEffect(() => {
+    loadCollaborators()
+  }, [loadCollaborators])
+
+  const visibleCollaborators = collaborators
 
   const areaOptions = useMemo(() => (
     Array.from(new Set(visibleCollaborators.map((collaborator) => collaborator.area).filter(Boolean))).sort()
@@ -233,31 +273,41 @@ function Colaboradores() {
     setShowForm(false)
   }
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
-
-    const cleanCollaborator = Object.fromEntries(
-      Object.entries(form).map(([key, value]) => [key, value.trim()]),
-    )
-    const savedCollaboratorId = editingId ?? createCollaboratorId()
-
-    setCollaborators((currentCollaborators) => {
-      if (editingId) {
-        return currentCollaborators.map((collaborator) => (
-          collaborator.id === editingId ? { ...collaborator, ...cleanCollaborator } : collaborator
-        ))
-      }
-
-      return [{ id: savedCollaboratorId, hidden: false, ...cleanCollaborator }, ...currentCollaborators]
-    })
-
-    setForm(emptyCollaboratorForm)
-    setEditingId(null)
-    setShowForm(false)
-    setExpandedCollaboratorId(null)
-    scrollToList()
+    setMessage('')
+    const payload = {
+      num_colaborador: form.employeeNumber.trim(),
+      nombre_completo: form.fullName.trim(),
+      area: form.area.trim(),
+      departamento: form.department.trim(),
+      puesto: form.position.trim(),
+      correo: form.email.trim(),
+      telefono: form.phone.trim(),
+      extension: form.extension.trim(),
+      estado: form.status.toLowerCase(),
+      observaciones: form.notes.trim(),
+    }
+    try {
+      const endpoint = editingId ? apiUrl + '/colaboradores/' + editingId : apiUrl + '/colaboradores'
+      const response = await fetch(endpoint, {
+        method: editingId ? 'PUT' : 'POST',
+        headers: apiHeaders(),
+        body: JSON.stringify(payload),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.mensaje || 'No fue posible guardar el colaborador')
+      setForm(emptyCollaboratorForm)
+      setEditingId(null)
+      setShowForm(false)
+      setExpandedCollaboratorId(null)
+      await loadCollaborators()
+      setMessage(data.mensaje)
+      scrollToList()
+    } catch (error) {
+      setMessage(error.message)
+    }
   }
-
   const handleEdit = (collaborator) => {
     setForm({
       employeeNumber: collaborator.employeeNumber,
@@ -280,24 +330,24 @@ function Colaboradores() {
     scrollToForm()
   }
 
-  const handleToggleHidden = (collaboratorId, shouldHide) => {
-    setCollaborators((currentCollaborators) => (
-      currentCollaborators.map((collaborator) => (
-        collaborator.id === collaboratorId
-          ? { ...collaborator, hidden: shouldHide, hiddenAt: shouldHide ? new Date().toISOString() : '' }
-          : collaborator
-      ))
-    ))
-
-    if (collaboratorId === expandedCollaboratorId) {
+  const handleToggleHidden = async (collaboratorId, shouldHide) => {
+    setMessage('')
+    try {
+      const response = await fetch(apiUrl + '/colaboradores/' + collaboratorId + '/estado', {
+        method: 'PUT',
+        headers: apiHeaders(),
+        body: JSON.stringify({ activo: shouldHide ? 0 : 1 }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.mensaje || 'No fue posible cambiar el estado')
       setExpandedCollaboratorId(null)
-    }
-
-    if (collaboratorId === editingId) {
-      handleCancel()
+      if (collaboratorId === editingId) handleCancel()
+      await loadCollaborators()
+      setMessage(data.mensaje)
+    } catch (error) {
+      setMessage(error.message)
     }
   }
-
   const handleToggleDetails = (collaboratorId) => {
     setExpandedCollaboratorId((currentCollaboratorId) => (
       currentCollaboratorId === collaboratorId ? null : collaboratorId
@@ -325,11 +375,12 @@ function Colaboradores() {
                   className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#f2ece0] px-5 text-sm font-extrabold text-[#5d5870] shadow-sm transition hover:bg-[#e9dfd0]"
                 >
                   <AppIcon name={showHidden ? 'eye' : 'eyeOff'} />
-                  {showHidden ? 'Ver visibles' : `Ocultos (${hiddenCollaboratorsCount})`}
+                  {showHidden ? 'Activos' : 'Ocultos'}
                 </button>
                 <button
                   type="button"
                   onClick={handleNewCollaborator}
+                  style={{ display: canManage ? undefined : 'none' }}
                   className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#3A9AF2] px-5 text-sm font-extrabold text-[#FFFFFF] shadow-sm transition hover:bg-[#238BEA] focus:outline-none focus:ring-4 focus:ring-blue-100"
                 >
                   <AppIcon name="plus" />
@@ -338,6 +389,7 @@ function Colaboradores() {
               </div>
             </section>
 
+            {message && <p className="rounded-xl bg-blue-50 px-4 py-3 text-sm font-bold text-blue-600">{message}</p>}
             <section className="space-y-4">
               <div className="grid gap-3 lg:grid-cols-[1fr_220px]">
                 <label className="relative block">
@@ -419,6 +471,7 @@ function Colaboradores() {
                                   <button
                                     type="button"
                                     onClick={() => handleEdit(collaborator)}
+                                    style={{ display: canManage ? undefined : 'none' }}
                                     className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-500 transition hover:bg-blue-100"
                                     aria-label={`Editar ${collaborator.fullName}`}
                                     title="Editar"
@@ -428,6 +481,7 @@ function Colaboradores() {
                                   <button
                                     type="button"
                                     onClick={() => handleToggleHidden(collaborator.id, !showHidden)}
+                                    style={{ display: canChangeState ? undefined : 'none' }}
                                     className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#f2ece0] text-[#6f6a85] transition hover:bg-[#e9dfd0]"
                                     aria-label={`${showHidden ? 'Restaurar' : 'Ocultar'} ${collaborator.fullName}`}
                                     title={showHidden ? 'Restaurar' : 'Ocultar'}
@@ -518,6 +572,7 @@ function Colaboradores() {
                             <button
                               type="button"
                               onClick={() => handleEdit(collaborator)}
+                                    style={{ display: canManage ? undefined : 'none' }}
                               className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-50 text-xs font-extrabold text-blue-500 transition hover:bg-blue-100"
                             >
                               <AppIcon name="edit" />
@@ -526,6 +581,7 @@ function Colaboradores() {
                             <button
                               type="button"
                               onClick={() => handleToggleHidden(collaborator.id, !showHidden)}
+                                    style={{ display: canChangeState ? undefined : 'none' }}
                               className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#f2ece0] text-xs font-extrabold text-[#6f6a85] transition hover:bg-[#e9dfd0]"
                             >
                               <AppIcon name={showHidden ? 'eye' : 'eyeOff'} />
@@ -542,7 +598,7 @@ function Colaboradores() {
               </div>
             </section>
 
-            {showForm && (
+            {showForm && canManage && (
               <section ref={formRef} className="rounded-2xl bg-white p-4 shadow-sm sm:p-6">
                 <div className="border-b border-[#f0edf6] pb-4">
                   <p className="text-[10px] font-extrabold uppercase tracking-[0.28em] text-blue-300">
