@@ -3,6 +3,7 @@ import { Download, Eraser, Mail, PenLine, Plus, Send, Trash2, X } from "lucide-r
 import DateInput from "./DateInput";
 import { formatDate } from "./dateUtils";
 import { colaboradores, equipos } from "./asignacionData";
+import Signature from "../components/Signature";
 
 const RESGUARDO_OPTIONS = [
   { value: "equipo", label: "Equipo tecnologico" },
@@ -33,7 +34,7 @@ const defaultResguardo = {
   accesorios: "",
   estadoFisico: "Buen estado",
   ubicacionTrabajo: "Gerencia de Sistemas",
-  responsableEntrega: "Ing. Javier",
+  responsableEntrega: "Javier Echeverria",
   idTarjeta: "TC-3612",
   cantidad: "1",
   estadoEntrega: "Nueva / Buen estado",
@@ -45,7 +46,7 @@ const defaultResguardo = {
   serieYubikey: "",
   modeloYubikey: "YubiKey 5 NFC",
   userId: "ana.lopez",
-  pin: "Asignado de forma confidencial",
+  pin: "",
   correoAsociado: "",
   sistemasAutorizados: "",
   ligasSeguridad: "https://security.example.com",
@@ -135,7 +136,7 @@ function Field({ label, children }) {
   );
 }
 
-function SoftInput({ value, onChange, placeholder, icon }) {
+function SoftInput({ value, onChange, placeholder, icon, inputMode, maxLength, pattern }) {
   return (
     <div className="relative">
       <input
@@ -143,6 +144,9 @@ function SoftInput({ value, onChange, placeholder, icon }) {
         readOnly={!onChange}
         onChange={(event) => onChange?.(event.target.value)}
         placeholder={placeholder}
+        inputMode={inputMode}
+        maxLength={maxLength}
+        pattern={pattern}
         className="h-10 w-full min-w-0 rounded-[8px] border border-[#ded6c8] bg-[#eee8dc] px-4 pr-9 text-sm font-normal text-[#3c3445] outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
       />
       {icon && <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6f6584]">{icon}</div>}
@@ -426,23 +430,26 @@ function SignatureImage({ value, fallback }) {
   return <img src={value} alt="Firma del colaborador" className="mx-auto h-12 w-full object-contain dark:brightness-0 dark:invert" />;
 }
 
-function SignatureSection({ signature, deliveryName, includeApproval = true }) {
+function ReceiverSignatureDetails({ colaborador }) {
   return (
-    <div className={`mt-7 grid gap-6 text-center ${includeApproval ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+    <div className="mt-1 text-[9px] font-semibold text-[#6f6584]">
+      <p>{colaborador?.nombre || "-"}</p>
+      <p>{colaborador?.puesto || colaborador?.area || "-"}</p>
+    </div>
+  );
+}
+
+function SignatureSection({ signature, colaborador }) {
+  return (
+    <div className="mx-auto mt-7 grid max-w-2xl gap-8 text-center sm:grid-cols-2">
       <div>
-        <SignatureImage value={signature} fallback="Pendiente" />
-        <div className="mt-2 border-t border-[#b7ab9b] pt-2 text-[9px] font-bold uppercase tracking-[0.14em] text-[#b7ab9b]">Firma de recibe</div>
-      </div>
-      <div>
-        <p className="min-h-8 font-serif text-2xl text-[#21192c]">~{deliveryName}~</p>
-        <div className="mt-2 border-t border-[#b7ab9b] pt-2 text-[9px] font-bold uppercase tracking-[0.14em] text-[#b7ab9b]">Firma de entrega</div>
-      </div>
-      {includeApproval && (
-        <div>
-          <p className="min-h-8 font-serif text-2xl text-[#21192c]">Vo. Bo.</p>
-          <div className="mt-2 border-t border-[#b7ab9b] pt-2 text-[9px] font-bold uppercase tracking-[0.14em] text-[#b7ab9b]">Autorizacion</div>
+        <div className="flex h-32 items-center justify-center overflow-hidden">
+          <SignatureImage value={signature} fallback="Pendiente" />
         </div>
-      )}
+        <div className="mt-2 border-t border-[#b7ab9b] pt-2 text-[9px] font-bold uppercase tracking-[0.14em] text-[#b7ab9b]">Firma de recibe</div>
+        <ReceiverSignatureDetails colaborador={colaborador} />
+      </div>
+      <Signature type="entrega" />
     </div>
   );
 }
@@ -463,7 +470,7 @@ function ResguardoEquipo({ data, signature }) {
       </div>
       <AssetsTable items={data.items} />
       <ResponsibilityText>{responsibilityForItems(data.items)}</ResponsibilityText>
-      <SignatureSection signature={signature} deliveryName={data.responsableEntrega} />
+      <SignatureSection signature={signature} colaborador={data.colaborador} />
     </>
   );
 }
@@ -482,7 +489,7 @@ function ResguardoGeneral({ data, signature }) {
       </div>
       <AssetsTable items={data.items} />
       <ResponsibilityText>{responsibilityForItems(data.items)}</ResponsibilityText>
-      <SignatureSection signature={signature} deliveryName={data.responsableEntrega} />
+      <SignatureSection signature={signature} colaborador={data.colaborador} />
     </>
   );
 }
@@ -503,7 +510,7 @@ function ResguardoTarjetaComedor({ data, signature }) {
         <PreviewRow label="Observaciones" value={data.observaciones} />
       </div>
       <ResponsibilityText>{RESPONSIBILITY_TEXTS.tarjeta}</ResponsibilityText>
-      <SignatureSection signature={signature} deliveryName={data.responsableEntrega} includeApproval={false} />
+      <SignatureSection signature={signature} colaborador={data.colaborador} />
     </>
   );
 }
@@ -515,18 +522,14 @@ function ResguardoYubikey({ data, signature }) {
       <div className="mt-4">
         <PreviewRow label="Responsable" value={data.colaborador.nombre} />
         <PreviewRow label="Posicion / Area" value={`${data.colaborador.puesto} / ${data.colaborador.area}`} />
-        <PreviewRow label="Yubikey" value={data.yubikey} />
-        <PreviewRow label="Numero de serie" value={data.serieYubikey} />
-        <PreviewRow label="Modelo" value={data.modeloYubikey} />
+        <PreviewRow label="Yubikey" value={data.serieYubikey || data.yubikey} />
         <PreviewRow label="User ID" value={data.userId} />
         <PreviewRow label="PIN" value={data.pin} />
-        <PreviewRow label="Correo / Cuenta" value={data.correoAsociado} />
-        <PreviewRow label="Sistemas autorizados" value={data.sistemasAutorizados} />
         <PreviewRow label="Liga de seguridad" value={data.ligasSeguridad} />
         <PreviewRow label="Liga de trabajo" value={data.ligasTrabajo} />
       </div>
       <ResponsibilityText>{RESPONSIBILITY_TEXTS.yubikey}</ResponsibilityText>
-      <SignatureSection signature={signature} deliveryName={data.responsableEntrega} />
+      <SignatureSection signature={signature} colaborador={data.colaborador} />
     </>
   );
 }
@@ -662,25 +665,20 @@ function ConditionalFields({ data, setters }) {
     return (
       <div className="grid min-w-0 gap-4 md:grid-cols-2">
         <Field label="Yubikey">
-          <SoftInput value={data.yubikey} onChange={setters.setYubikey} />
-        </Field>
-        <Field label="Numero de serie">
-          <SoftInput value={data.serieYubikey} onChange={setters.setSerieYubikey} />
-        </Field>
-        <Field label="Modelo">
-          <SoftInput value={data.modeloYubikey} onChange={setters.setModeloYubikey} />
+          <SoftInput value={data.serieYubikey || data.yubikey} onChange={setters.setSerieYubikey} />
         </Field>
         <Field label="User ID">
           <SoftInput value={data.userId} onChange={setters.setUserId} />
         </Field>
         <Field label="PIN">
-          <SoftInput value={data.pin} onChange={setters.setPin} />
-        </Field>
-        <Field label="Correo / Cuenta asociada">
-          <SoftInput value={data.correoAsociado} onChange={setters.setCorreoAsociado} />
-        </Field>
-        <Field label="Sistemas o plataformas autorizadas">
-          <SoftInput value={data.sistemasAutorizados} onChange={setters.setSistemasAutorizados} />
+          <SoftInput
+            value={data.pin}
+            onChange={(value) => setters.setPin(value.replace(/\D/g, "").slice(0, 4))}
+            placeholder="2510"
+            inputMode="numeric"
+            maxLength={4}
+            pattern="\d{4}"
+          />
         </Field>
         <Field label="Liga de seguridad">
           <SoftInput value={data.ligasSeguridad} onChange={setters.setLigasSeguridad} />

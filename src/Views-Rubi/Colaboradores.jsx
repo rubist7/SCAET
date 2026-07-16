@@ -305,16 +305,16 @@ function Colaboradores() {
   }
 
   return (
-    <div className="space-y-6">
-            <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between" ref={listRef}>
-              <div>
+    <div className="min-w-0 space-y-6">
+            <section className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between" ref={listRef}>
+              <div className="min-w-0">
                 <h1 className="text-2xl font-extrabold text-[#201d31] sm:text-3xl">Colaboradores</h1>
                 <p className="mt-1 text-sm font-bold text-[#8d88a2]">
                   {visibleCollaborators.length} {showHidden ? 'ocultos' : 'visibles'}
                 </p>
               </div>
 
-              <div className="flex flex-col gap-3 sm:flex-row">
+              <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
                 <button
                   type="button"
                   onClick={() => {
@@ -365,8 +365,8 @@ function Colaboradores() {
                 </select>
               </div>
 
-              <div className="hidden min-h-[360px] overflow-hidden rounded-2xl bg-white shadow-sm lg:block">
-                <table className="w-full table-fixed text-left">
+              <div className="hidden min-h-[360px] overflow-x-auto rounded-2xl bg-white shadow-sm lg:block">
+                <table className="w-full min-w-[1080px] table-fixed text-left">
                   <thead className="bg-[#eee7d9] text-[10px] font-extrabold uppercase tracking-[0.28em] text-blue-300">
                     <tr>
                       <th className="w-20 px-5 py-3">Foto</th>
@@ -500,7 +500,7 @@ function Colaboradores() {
                             </div>
                           )}
 
-                          <div className="mt-4 grid grid-cols-3 gap-2">
+                          <div className="mt-4 grid grid-cols-1 gap-2 min-[430px]:grid-cols-3">
                             <button
                               type="button"
                               onClick={() => handleToggleDetails(collaborator.id)}

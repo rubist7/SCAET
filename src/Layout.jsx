@@ -18,6 +18,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import scaetLogo from "./assets/logo_final.png";
 import { getUserInitials, loadUserProfile } from "./utils/userProfile";
+import NotificationCenter from "./features/notifications/NotificationCenter";
 
 const navItems = [
   { label: "Dashboard", icon: Gauge },
@@ -226,27 +227,34 @@ export default function Layout({ children, activeNav, onNavigate }) {
     setMenuOpen(false);
   };
 
+  const handleNotificationNavigate = (route) => {
+    navigate(route);
+    setMenuOpen(false);
+  };
+
   const headerTitle = headerTitles[activeNav] ?? "Inventario de equipos";
   const visibleSystemItems = profile.roleKey === "admin" ? systemItems : [];
 
   return (
-    <div className="min-h-screen bg-[#f4f1ec] text-[#241d2f]">
-      <div className="flex min-h-screen">
-        <aside className="hidden w-64 shrink-0 border-r border-[#ebe5db] bg-white shadow-sm lg:flex lg:flex-col">
+    <div className="h-screen h-dvh overflow-hidden bg-[#f4f1ec] text-[#241d2f]">
+      <div className="flex h-full min-w-0">
+        <aside className="hidden h-full w-64 shrink-0 overflow-hidden border-r border-[#ebe5db] bg-white shadow-sm lg:flex lg:flex-col">
           <Logo onClick={handleLogoClick} />
-          <NavList title="Principal" items={navItems} activeNav={activeNav} onNavigate={handleNavigate} />
-          {visibleSystemItems.length > 0 && (
-            <div className="mt-6">
-              <NavList title="Sistema" items={visibleSystemItems} activeNav={activeNav} onNavigate={handleNavigate} />
-            </div>
-          )}
-          <div className="mt-auto">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-4">
+            <NavList title="Principal" items={navItems} activeNav={activeNav} onNavigate={handleNavigate} />
+            {visibleSystemItems.length > 0 && (
+              <div className="mt-6">
+                <NavList title="Sistema" items={visibleSystemItems} activeNav={activeNav} onNavigate={handleNavigate} />
+              </div>
+            )}
+          </div>
+          <div className="shrink-0">
             <UserBlock activeNav={activeNav} onNavigate={handleNavigate} />
           </div>
         </aside>
 
-        <main className="flex min-w-0 flex-1 flex-col">
-          <header className="flex h-16 items-center justify-between gap-3 border-b border-[#ebe5db] bg-white px-4 shadow-sm sm:px-5">
+        <main className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
+          <header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-[#ebe5db] bg-white px-4 shadow-sm sm:px-5">
            <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
               <button
                 type="button"
@@ -262,7 +270,8 @@ export default function Layout({ children, activeNav, onNavigate }) {
                 {headerTitle}
               </p>
             </div>
-            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <div className="flex min-w-0 shrink-0 items-center gap-2 sm:gap-3">
+              <NotificationCenter onNavigate={handleNotificationNavigate} />
               <button
                 type="button"
                 onClick={() => setDarkMode((current) => !current)}
@@ -271,7 +280,7 @@ export default function Layout({ children, activeNav, onNavigate }) {
                 title={darkMode ? "Modo oscuro" : "Modo claro"} >
                 {darkMode ? <Moon size={15} /> : <Sun size={15} />}
               </button>
-              <button type="button" className="rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-xs font-black text-blue-600 dark:text-blue-300 sm:block">
+              <button type="button" className="max-w-24 truncate rounded-full border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-black text-blue-600 dark:text-blue-300 sm:max-w-none sm:px-4">
                 <span className="hidden sm:inline">{profile.role}</span>
                 <span className="sm:hidden">{profile.role}</span>
               </button>
@@ -281,7 +290,7 @@ export default function Layout({ children, activeNav, onNavigate }) {
             </div>
           </header>
 
-          <div className="flex-1 overflow-auto p-3 sm:p-5 md:p-7">{children}</div>
+          <div className="min-w-0 flex-1 overflow-auto p-2 sm:p-5 md:p-7">{children}</div>
         </main>
       </div>
 

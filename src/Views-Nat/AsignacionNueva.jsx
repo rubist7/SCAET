@@ -333,7 +333,7 @@ function ActiveAssignments({ rows, onOpenResguardo, onOpenDevolucion }) {
   const totalAssets = filteredRows.reduce((count, row) => count + (row.items?.length || 0), 0);
 
   return (
-    <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-[#16131F] sm:p-6">
+    <div className="min-w-0 rounded-2xl border border-gray-100 bg-white p-3 shadow-sm dark:border-gray-800 dark:bg-[#16131F] sm:p-6">
       <div className="mb-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(260px,430px)_auto] lg:items-start">
         <div>
           <h2 className="text-sm font-bold uppercase tracking-wide text-gray-700 dark:text-gray-300">Asignaciones activas</h2>
@@ -352,7 +352,7 @@ function ActiveAssignments({ rows, onOpenResguardo, onOpenDevolucion }) {
           {rows.length === 0 ? "Aun no hay activos asignados." : "No se encontraron asignaciones con esa busqueda."}
         </div>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="max-w-full overflow-x-auto">
           <table className="w-full min-w-[900px] text-sm">
             <thead>
               <tr className="border-b border-gray-100 dark:border-gray-800">
@@ -512,6 +512,7 @@ export default function NuevaAsignacion({ initialColaborador, initialStep = 0, a
       serieYubikey: tipoActivo === "yubikey" ? activo.serie : "",
       modeloYubikey: tipoActivo === "yubikey" ? activo.modelo : "YubiKey 5 NFC",
       userId: colaborador.nombre.toLowerCase().split(" ").slice(0, 2).join("."),
+      pin: "",
       observaciones: "",
     });
 
@@ -519,7 +520,7 @@ export default function NuevaAsignacion({ initialColaborador, initialStep = 0, a
   };
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="mx-auto min-w-0 max-w-4xl space-y-6">
       <div>
         <h1 className="text-xl font-black tracking-tight text-gray-900 dark:text-white">
           {addingToExistingResguardo ? "Agregar activo al resguardo" : "Nueva asignacion"}

@@ -3,12 +3,12 @@ import { AppIcon } from '../components/Sidebar'
 import { formatShortDate, getEquipmentQrValue, statusClass, warrantyClass } from './equiposData'
 
 export function EquipmentShell({ children }) {
-  return <div className="space-y-6">{children}</div>
+  return <div className="min-w-0 max-w-full space-y-6 overflow-x-hidden">{children}</div>
 }
 
 export function StatusBadge({ status }) {
   return (
-    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-extrabold ${statusClass(status)}`}>
+    <span className={`inline-flex max-w-full rounded-full px-3 py-1 text-xs font-extrabold ${statusClass(status)}`}>
       {status}
     </span>
   )
@@ -20,7 +20,7 @@ export function WarrantyBadge({ warrantyEnd, compact = false }) {
     : 'Sin garantia'
 
   return (
-    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-extrabold ${warrantyClass(warrantyEnd)}`}>
+    <span className={`inline-flex max-w-full rounded-full px-3 py-1 text-xs font-extrabold ${warrantyClass(warrantyEnd)}`}>
       {label}
     </span>
   )

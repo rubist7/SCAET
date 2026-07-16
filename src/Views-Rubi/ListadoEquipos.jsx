@@ -157,26 +157,26 @@ function stopScanner(scanner, shouldClear = true) {
 function EquipmentCard({ equipment, showHidden, onToggleHidden }) {
   return (
     <article className="rounded-2xl bg-white p-4 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex min-w-0 items-start justify-between gap-3">
         <EquipmentPhoto equipment={equipment} size="sm" />
         <StatusBadge status={equipment.status} />
       </div>
 
-      <div className="mt-4">
+      <div className="mt-4 min-w-0">
         <h2 className="truncate text-lg font-extrabold text-[#201d31]">{equipment.title}</h2>
         <div className="mt-3 space-y-1 text-xs font-bold text-[#8d88a2]">
-          <p>{equipment.type} - {equipment.serialNumber}</p>
-          <p>Area: {equipment.area}</p>
-          <p>Empresa: {equipment.company}</p>
+          <p className="break-words">{equipment.type} - {equipment.serialNumber}</p>
+          <p className="break-words">Area: {equipment.area}</p>
+          <p className="break-words">Empresa: {equipment.company}</p>
           <p>F. compra: {formatDate(equipment.purchaseDate)}</p>
         </div>
       </div>
 
-      <div className="mt-4 flex items-end justify-between gap-3 border-t border-[#f1edf5] pt-3">
+      <div className="mt-4 flex flex-col gap-3 border-t border-[#f1edf5] pt-3 min-[430px]:flex-row min-[430px]:items-end min-[430px]:justify-between">
         <div className="rounded-xl bg-[#f2ece0] p-2">
           <QrCode equipment={equipment} />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="grid w-full grid-cols-[auto_minmax(0,1fr)] items-center gap-2 min-[430px]:w-auto">
           <button
             type="button"
             onClick={() => onToggleHidden(equipment.id, !showHidden)}
@@ -200,8 +200,8 @@ function EquipmentCard({ equipment, showHidden, onToggleHidden }) {
 
 function EquipmentTable({ equipments, showHidden, onToggleHidden }) {
   return (
-    <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
-      <table className="w-full table-fixed text-left">
+    <div className="overflow-x-auto rounded-2xl bg-white shadow-sm">
+      <table className="w-full min-w-[1180px] table-fixed text-left">
         <thead className="bg-[#eee7d9] text-[10px] font-extrabold uppercase tracking-[0.28em] text-blue-300">
           <tr>
             <th className="w-24 px-5 py-3">ID</th>
@@ -438,7 +438,7 @@ function ListadoEquipos() {
 
   return (
     <EquipmentShell>
-      <div className="space-y-6 px-4 py-7 sm:px-6 lg:px-8">
+      <div className="min-w-0 space-y-6 px-0 py-2 sm:px-1 sm:py-4 lg:px-2">
         <section className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <h1 className="mt-3 text-2xl font-extrabold text-[#201d31] sm:text-3xl">Selecciona un equipo</h1>
@@ -447,7 +447,7 @@ function ListadoEquipos() {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-3 xl:w-auto">
             <button
               type="button"
               onClick={() => setShowHidden((currentValue) => !currentValue)}

@@ -8,6 +8,10 @@
   --font-logo: "Archivo Black", Roboto, ui-sans-serif, system-ui, sans-serif;
 }
 
+* {
+  box-sizing: border-box;
+}
+
 html {
   background: #f4f1ec;
 }
@@ -18,6 +22,18 @@ body {
   background: #f4f1ec;
   font-family: var(--font-sans);
   font-weight: 400;
+  overflow-x: hidden;
+}
+
+#root {
+  min-width: 0;
+}
+
+img,
+svg,
+canvas,
+video {
+  max-width: 100%;
 }
 
 .font-logo {
@@ -142,6 +158,12 @@ select {
 
 .rubi-content header {
   display: none;
+}
+
+.rubi-content {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .dark .rubi-content {

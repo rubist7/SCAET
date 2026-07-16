@@ -230,9 +230,9 @@ function Proveedores() {
   }
 
   return (
-    <div className="space-y-6">
-            <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between" ref={listRef}>
-              <div>
+    <div className="min-w-0 space-y-6">
+            <section className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between" ref={listRef}>
+              <div className="min-w-0">
                 <h1 className="text-2xl font-extrabold text-[#201d31] sm:text-3xl">Proveedores</h1>
                 <p className="mt-1 text-sm font-bold text-[#8d88a2]">
                   {providers.length} {providers.length === 1 ? 'registro local' : 'registros locales'}
@@ -242,7 +242,7 @@ function Proveedores() {
               <button
                 type="button"
                 onClick={handleNewProvider}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#3A9AF2] px-5 text-sm font-extrabold text-[#FFFFFF] shadow-sm transition hover:bg-[#238BEA] focus:outline-none focus:ring-4 focus:ring-blue-100"
+                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#3A9AF2] px-5 text-sm font-extrabold text-[#FFFFFF] shadow-sm transition hover:bg-[#238BEA] focus:outline-none focus:ring-4 focus:ring-blue-100 sm:w-auto"
               >
                 <AppIcon name="plus" />
                 Nuevo proveedor
@@ -263,8 +263,8 @@ function Proveedores() {
                 />
               </label>
 
-              <div className="hidden min-h-[360px] overflow-hidden rounded-2xl bg-white shadow-sm lg:block">
-                <table className="w-full table-fixed text-left">
+              <div className="hidden min-h-[360px] overflow-x-auto rounded-2xl bg-white shadow-sm lg:block">
+                <table className="w-full min-w-[940px] table-fixed text-left">
                   <thead className="bg-[#eee7d9] text-[10px] font-extrabold uppercase tracking-[0.28em] text-blue-300">
                     <tr>
                       <th className="px-5 py-3">Nombre</th>
@@ -387,7 +387,7 @@ function Proveedores() {
                             </div>
                           )}
 
-                          <div className="mt-4 grid grid-cols-3 gap-2">
+                          <div className="mt-4 grid grid-cols-1 gap-2 min-[430px]:grid-cols-3">
                             <button
                               type="button"
                               onClick={() => handleToggleDetails(provider.id)}

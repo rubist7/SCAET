@@ -49,7 +49,7 @@ function AppLayoutRoute({ children }) {
 
   return (
     <Layout activeNav={activeNavFromPath(location.pathname)}>
-      <div className="rubi-content">
+      <div className="rubi-content min-w-0 max-w-full">
         {children}
       </div>
     </Layout>

@@ -3,6 +3,7 @@ import { ChevronDown, Download, Eraser, Mail, PenLine, X } from "lucide-react";
 import DateInput from "./DateInput";
 import { formatDate } from "./dateUtils";
 import { colaboradores, equipos } from "./asignacionData";
+import Signature from "../components/Signature";
 
 const defaultDevolucion = {
   folio: "RSG-2026-049",
@@ -390,7 +391,7 @@ function AutoSignature() {
   return (
     <div className="flex h-20 items-center justify-center rounded-[8px] border border-[#ded6c8] bg-[#eee8dc]">
       <div className="text-center">
-        <p className="font-serif text-2xl text-[#0F83F0]">~Inge. Javier~</p>
+        <p className="font-serif text-2xl text-[#0F83F0]">~Javier Echeverria~</p>
         <p className="mt-1 text-[10px] font-semibold text-[#b1a58f]">Firma cargada automaticamente.</p>
         <p className="text-[10px] font-semibold text-[#b1a58f]">Se aplica a cada documento.</p>
       </div>
@@ -418,6 +419,15 @@ function SignatureImage({ value }) {
       alt="Firma del colaborador"
       className="mx-auto h-12 w-full object-contain dark:brightness-0 dark:invert"
     />
+  );
+}
+
+function ReceiverSignatureDetails({ colaborador }) {
+  return (
+    <div className="mt-1 text-[9px] font-semibold text-[#6f6584]">
+      <p>{colaborador?.nombre || "-"}</p>
+      <p>{colaborador?.puesto || colaborador?.area || "-"}</p>
+    </div>
   );
 }
 
@@ -472,13 +482,13 @@ function DocumentPreview({ data, items, signature }) {
 
       <div className="mt-7 grid gap-8 text-center sm:grid-cols-2">
         <div>
-          <SignatureImage value={signature} />
+          <div className="flex h-32 items-center justify-center overflow-hidden">
+            <SignatureImage value={signature} />
+          </div>
           <p className="mt-2 border-t border-[#b7ab9b] pt-2 text-[10px] font-semibold tracking-[0.18em] text-[#b7ab9b]">Firma del colaborador</p>
+          <ReceiverSignatureDetails colaborador={data.colaborador} />
         </div>
-        <div>
-          <p className="font-serif text-3xl text-[#21192c]">~Javier~</p>
-          <p className="mt-2 text-[10px] font-semibold tracking-[0.18em] text-[#b7ab9b]">Depto. Sistemas - Ing. Javier</p>
-        </div>
+        <Signature type="entrega" />
       </div>
     </div>
   );
@@ -607,7 +617,7 @@ export default function DevolucionFirma({ devolucion, initialSelectedItemKeys, o
               <Field label="Firma del colaborador *">
                 <SignaturePad value={signature} onChange={setSignature} disabled={!canCaptureSignature} />
               </Field>
-              <Field label="Ing. Javier">
+              <Field label="Javier Echeverria">
                 <div className="mb-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-500">
                   Por defecto
                 </div>
