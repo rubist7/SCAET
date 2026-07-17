@@ -10,11 +10,15 @@ import {
   Menu,
   Moon,
   PenTool,
+  Settings,
   Sun,
   Users,
   Wrench,
 } from "lucide-react";
-import scaetLogo from "./assets/Scaet_logo_final.png";
+import { useNavigate } from "react-router-dom";
+import scaetLogo from "./assets/logo_final.png";
+import { getUserInitials, loadUserProfile } from "./utils/userProfile";
+import NotificationCenter from "./features/notifications/NotificationCenter";
 
 const navItems = [
   { label: "Dashboard", icon: Gauge },
@@ -31,9 +35,41 @@ const systemItems = [
   { label: "Auditoria", icon: Activity },
 ];
 
-function Logo({ compact = false }) {
+const routesByLabel = {
+  Dashboard: "/dashboard",
+  Proveedores: "/proveedores",
+  Colaboradores: "/colaboradores",
+  Equipos: "/equipos",
+  Asignacion: "/asignacion",
+  Mantenimiento: "/asignacion/mantenimiento",
+  Reportes: "/asignacion/reportes",
+  Logs: "/asignacion/logs",
+  Auditoria: "/asignacion/auditoria",
+  Configuracion: "/configuracion",
+};
+
+const headerTitles = {
+  Dashboard: "Inventario de equipos",
+  Proveedores: "Inventario de proveedores",
+  Colaboradores: "Inventario de colaboradores",
+  Equipos: "Inventario de equipos",
+  Asignacion: "Inventario de equipos",
+  Mantenimiento: "Mantenimiento de equipos",
+  Reportes: "Reportes",
+  Logs: "Logs de actividad",
+  Auditoria: "Auditoria",
+  Configuracion: "Configuracion de cuenta",
+};
+
+function Logo({ compact = false, onClick }) {
   return (
-    <div className={`flex items-center gap-0 ${compact ? "shrink-0" : "px-4 py-4"}`}>
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center gap-0 text-left transition hover:opacity-80 ${compact ? "shrink-0" : "px-4 py-4"}`}
+      aria-label="Ir al dashboard"
+      title="Ir al dashboard"
+    >
       <div
         className={`${
           compact
@@ -50,7 +86,7 @@ function Logo({ compact = false }) {
             compact
               ? "text-[18px] sm:text-xl md:text-lg lg:text-xl tracking-[0.02em]"
               : "text-xs md:text-sm tracking-[0.12em]"
-          } whitespace-nowrap font-logo font-black text-violet-700`}
+          } whitespace-nowrap font-logo font-black text-[#0F83F0]`}
         >
           SCAET
         </p>
@@ -61,7 +97,7 @@ function Logo({ compact = false }) {
           </p>
         )}
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -78,7 +114,7 @@ function NavList({ title, items, activeNav, onNavigate }) {
               key={label}
               type="button"
               onClick={() => onNavigate?.(label)}
-              className={`flex h-11 w-full items-center gap-3 rounded-[12px] px-3 text-left text-base font-bold transition lg:h-10 lg:rounded-[8px] lg:text-sm ${active ? "bg-violet-50 text-violet-700" : "text-[#554c62] hover:bg-violet-50/70 hover:text-violet-600"
+              className={`flex h-11 w-full items-center gap-3 rounded-[12px] px-3 text-left text-base font-black tracking-[0.01em] transition lg:h-10 lg:rounded-[8px] lg:text-[15px] ${active ? "bg-blue-50 text-[#0F83F0] dark:bg-blue-900/35 dark:text-[#0F83F0]" : "text-[#3f334c] hover:bg-blue-50/70 hover:text-blue-600 dark:text-white dark:hover:bg-blue-900/25 dark:hover:text-blue-200"
                 }`}
             >
               <Icon size={17} />
@@ -91,21 +127,50 @@ function NavList({ title, items, activeNav, onNavigate }) {
   );
 }
 
-function UserBlock() {
+function UserBlock({ activeNav, onNavigate }) {
+  const [profile, setProfile] = useState(() => loadUserProfile());
+
+  useEffect(() => {
+    const handleProfileUpdate = (event) => {
+      setProfile(event.detail ?? loadUserProfile());
+    };
+
+    window.addEventListener("scaet-user-profile-updated", handleProfileUpdate);
+    window.addEventListener("storage", handleProfileUpdate);
+
+    return () => {
+      window.removeEventListener("scaet-user-profile-updated", handleProfileUpdate);
+      window.removeEventListener("storage", handleProfileUpdate);
+    };
+  }, []);
+
   return (
     <div className="border-t border-[#f0ebe3] p-4">
+      <button
+        type="button"
+        onClick={() => onNavigate?.("Configuracion")}
+        className={`mb-4 flex h-10 w-full items-center gap-3 rounded-[8px] px-3 text-left text-[15px] font-black tracking-[0.01em] transition ${
+          activeNav === "Configuracion"
+            ? "bg-blue-50 text-[#0F83F0] dark:bg-blue-900/35 dark:text-[#0F83F0]"
+            : "text-[#3f334c] hover:bg-blue-50/70 hover:text-blue-600 dark:text-white dark:hover:bg-blue-900/25 dark:hover:text-blue-200"
+        }`}
+      >
+        <Settings size={17} />
+        Configuracion
+      </button>
       <div className="mb-4 flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-full border border-violet-300 bg-violet-50 text-xs font-black text-violet-600 dark:text-violet-300">
-          JE
+        <div className="flex h-9 w-9 items-center justify-center rounded-full border border-blue-300 bg-blue-50 text-xs font-black text-blue-600 dark:text-blue-300">
+          {getUserInitials(profile.name)}
         </div>
         <div>
-          <p className="text-sm font-black">Ing. Javier E.</p>
-          <p className="text-xs font-semibold text-[#9e95aa]">Administrador</p>
+          <p className="text-sm font-black">{profile.name}</p>
+          <p className="text-xs font-semibold text-[#9e95aa]">{profile.role}</p>
         </div>
       </div>
       <button
         type="button"
-        className="flex h-10 w-full items-center justify-center gap-2 rounded-[8px] bg-violet-50 text-xs font-bold text-violet-600"
+        onClick={() => onNavigate?.("Cerrar Sesion")}
+        className="flex h-10 w-full items-center justify-center gap-2 rounded-[8px] bg-blue-50 text-sm font-black text-blue-600 transition hover:bg-blue-100 dark:bg-blue-900/35 dark:text-white dark:hover:bg-blue-900/50"
       >
         <LogOut size={14} />
         Cerrar Sesion
@@ -115,35 +180,81 @@ function UserBlock() {
 }
 
 export default function Layout({ children, activeNav, onNavigate }) {
+  const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem("scaet-theme") === "dark");
+  const [profile, setProfile] = useState(() => loadUserProfile());
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
     localStorage.setItem("scaet-theme", darkMode ? "dark" : "light");
   }, [darkMode]);
 
+  useEffect(() => {
+    const handleProfileUpdate = (event) => {
+      setProfile(event.detail ?? loadUserProfile());
+    };
+
+    window.addEventListener("scaet-user-profile-updated", handleProfileUpdate);
+    window.addEventListener("storage", handleProfileUpdate);
+
+    return () => {
+      window.removeEventListener("scaet-user-profile-updated", handleProfileUpdate);
+      window.removeEventListener("storage", handleProfileUpdate);
+    };
+  }, []);
+
   const handleNavigate = (label) => {
-    onNavigate?.(label);
+    if (label === "Cerrar Sesion") {
+      localStorage.removeItem("scaet-token");
+      localStorage.removeItem("scaet-user");
+      navigate("/login");
+      setMenuOpen(false);
+      return;
+    }
+
+    if (onNavigate) {
+      onNavigate(label);
+    } else if (routesByLabel[label]) {
+      navigate(routesByLabel[label]);
+    }
+
     setMenuOpen(false);
   };
 
+  const handleLogoClick = () => {
+    navigate("/dashboard");
+    setMenuOpen(false);
+  };
+
+  const handleNotificationNavigate = (route) => {
+    navigate(route);
+    setMenuOpen(false);
+  };
+
+  const headerTitle = headerTitles[activeNav] ?? "Inventario de equipos";
+  const visibleSystemItems = profile.roleKey === "admin" ? systemItems : [];
+
   return (
-    <div className="min-h-screen bg-[#f4f1ec] text-[#241d2f]">
-      <div className="flex min-h-screen">
-        <aside className="hidden w-64 shrink-0 border-r border-[#ebe5db] bg-white shadow-sm lg:flex lg:flex-col">
-          <Logo />
-          <NavList title="Principal" items={navItems} activeNav={activeNav} onNavigate={handleNavigate} />
-          <div className="mt-6">
-            <NavList title="Sistema" items={systemItems} activeNav={activeNav} onNavigate={handleNavigate} />
+    <div className="h-screen h-dvh overflow-hidden bg-[#f4f1ec] text-[#241d2f]">
+      <div className="flex h-full min-w-0">
+        <aside className="hidden h-full w-64 shrink-0 overflow-hidden border-r border-[#ebe5db] bg-white shadow-sm lg:flex lg:flex-col">
+          <Logo onClick={handleLogoClick} />
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-4">
+            <NavList title="Principal" items={navItems} activeNav={activeNav} onNavigate={handleNavigate} />
+            {visibleSystemItems.length > 0 && (
+              <div className="mt-6">
+                <NavList title="Sistema" items={visibleSystemItems} activeNav={activeNav} onNavigate={handleNavigate} />
+              </div>
+            )}
           </div>
-          <div className="mt-auto">
-            <UserBlock />
+          <div className="shrink-0">
+            <UserBlock activeNav={activeNav} onNavigate={handleNavigate} />
           </div>
         </aside>
 
-        <main className="flex min-w-0 flex-1 flex-col">
-          <header className="flex h-16 items-center justify-between gap-3 border-b border-[#ebe5db] bg-white px-4 shadow-sm sm:px-5">
+        <main className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
+          <header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-[#ebe5db] bg-white px-4 shadow-sm sm:px-5">
            <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
               <button
                 type="button"
@@ -153,32 +264,33 @@ export default function Layout({ children, activeNav, onNavigate }) {
                 <Menu size={22} />
               </button>
               <div className="lg:hidden">
-                <Logo compact />
+                <Logo compact onClick={handleLogoClick} />
               </div>
               <p className="hidden truncate text-[11px] font-black uppercase tracking-[0.24em] text-[#887e96] lg:block">
-                Inventario de equipos
+                {headerTitle}
               </p>
             </div>
-            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <div className="flex min-w-0 shrink-0 items-center gap-2 sm:gap-3">
+              <NotificationCenter onNavigate={handleNotificationNavigate} />
               <button
                 type="button"
                 onClick={() => setDarkMode((current) => !current)}
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-violet-200 bg-violet-50 text-violet-600 dark:text-violet-300 transition hover:bg-violet-100"
-                aria-label={darkMode ? "Activar modo claro" : "Activar modo oscuro"}
-                title={darkMode ? "Modo claro" : "Modo oscuro"} >
-                {darkMode ? <Sun size={15} /> : <Moon size={15} />}
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-blue-200 bg-blue-50 text-blue-600 dark:text-blue-300 transition hover:bg-blue-100"
+                aria-label={darkMode ? "Modo oscuro" : "Modo claro"}
+                title={darkMode ? "Modo oscuro" : "Modo claro"} >
+                {darkMode ? <Moon size={15} /> : <Sun size={15} />}
               </button>
-              <button type="button" className="rounded-full border border-violet-200 bg-violet-50 px-4 py-2 text-xs font-black text-violet-600 dark:text-violet-300 sm:block">
-                <span className="hidden sm:inline">Administrador</span>
-                <span className="sm:hidden">Admin</span>
+              <button type="button" className="max-w-24 truncate rounded-full border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-black text-blue-600 dark:text-blue-300 sm:max-w-none sm:px-4">
+                <span className="hidden sm:inline">{profile.role}</span>
+                <span className="sm:hidden">{profile.role}</span>
               </button>
-              <div className="flex h-9 w-9 items-center justify-center rounded-full border border-violet-300 bg-violet-50 text-xs font-black text-violet-600 dark:text-violet-300">
-                JE
+              <div className="flex h-9 w-9 items-center justify-center rounded-full border border-blue-300 bg-blue-50 text-xs font-black text-blue-600 dark:text-blue-300">
+                {getUserInitials(profile.name)}
               </div>
             </div>
           </header>
 
-          <div className="flex-1 overflow-auto p-3 sm:p-5 md:p-7">{children}</div>
+          <div className="min-w-0 flex-1 overflow-auto p-2 sm:p-5 md:p-7">{children}</div>
         </main>
       </div>
 
@@ -202,17 +314,19 @@ export default function Layout({ children, activeNav, onNavigate }) {
             >
               <Menu size={22} />
             </button>
-            <Logo compact />
+            <Logo compact onClick={handleLogoClick} />
           </div>
 
           <div className="flex-1 overflow-y-auto py-5">
             <NavList title="Principal" items={navItems} activeNav={activeNav} onNavigate={handleNavigate} />
-            <div className="mt-6">
-              <NavList title="Sistema" items={systemItems} activeNav={activeNav} onNavigate={handleNavigate} />
-            </div>
+            {visibleSystemItems.length > 0 && (
+              <div className="mt-6">
+                <NavList title="Sistema" items={visibleSystemItems} activeNav={activeNav} onNavigate={handleNavigate} />
+              </div>
+            )}
           </div>
 
-          <UserBlock />
+          <UserBlock activeNav={activeNav} onNavigate={handleNavigate} />
         </aside>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import Layout from "./Layout";
 import NuevaAsignacion from "./Views-Nat/AsignacionNueva";
 import AuditoriaList from "./Views-Nat/AuditoriaList";
@@ -9,9 +10,61 @@ import MantenimientoEquipos from "./Views-Nat/MantenimientoEquipos";
 import { bitacoraInicial } from "./Views-Nat/mantenimientoData";
 import Reportes from "./Views-Nat/Reportes";
 import ResguardoFirma from "./Views-Nat/ResguardoFirma";
+import Login from "./Views-Rubi/Login";
+import Dashboard from "./Views-Rubi/Dashboard";
+import Proveedores from "./Views-Rubi/Proveedores";
+import Colaboradores from "./Views-Rubi/Colaboradores";
+import ListadoEquipos from "./Views-Rubi/ListadoEquipos";
+import EquipoAlta from "./Views-Rubi/EquipoAlta";
+import EquipoFichaTecnica from "./Views-Rubi/EquipoFichaTecnica";
+import Configuracion from "./Views-Rubi/Configuracion";
+import { loadStoredUser } from "./utils/userProfile";
 
-export default function App() {
-  const [screen, setScreen] = useState("asignacion");
+const natRoutes = {
+  Asignacion: "/asignacion",
+  Mantenimiento: "/asignacion/mantenimiento",
+  Reportes: "/asignacion/reportes",
+  Logs: "/asignacion/logs",
+  Auditoria: "/asignacion/auditoria",
+};
+
+const appRoutes = {
+  Dashboard: "/dashboard",
+  Proveedores: "/proveedores",
+  Colaboradores: "/colaboradores",
+  Equipos: "/equipos",
+  Configuracion: "/configuracion",
+};
+
+function activeNavFromPath(pathname) {
+  if (pathname.startsWith("/proveedores")) return "Proveedores";
+  if (pathname.startsWith("/colaboradores")) return "Colaboradores";
+  if (pathname.startsWith("/equipos")) return "Equipos";
+  if (pathname.startsWith("/configuracion")) return "Configuracion";
+  return "Dashboard";
+}
+
+function AppLayoutRoute({ children }) {
+  const location = useLocation();
+
+  return (
+    <Layout activeNav={activeNavFromPath(location.pathname)}>
+      <div className="rubi-content min-w-0 max-w-full">
+        {children}
+      </div>
+    </Layout>
+  );
+}
+
+function AdminRoute({ children }) {
+  return loadStoredUser()?.rol === "admin"
+    ? children
+    : <Navigate to="/dashboard" replace />;
+}
+
+function NataliaFlow({ initialScreen = "asignacion" }) {
+  const navigate = useNavigate();
+  const [screen, setScreen] = useState(initialScreen);
   const [resguardo, setResguardo] = useState(null);
   const [resguardosPorColaborador, setResguardosPorColaborador] = useState({});
   const [asignacionInicial, setAsignacionInicial] = useState(null);
@@ -86,6 +139,7 @@ export default function App() {
       step: resguardo?.colaborador ? 1 : 0,
     });
     setScreen("asignacion");
+    navigate(natRoutes.Asignacion);
   };
 
   const handleOpenResguardoActivo = (nextResguardo) => {
@@ -115,12 +169,14 @@ export default function App() {
       setResguardo(null);
       setAsignacionInicial(null);
       setScreen("asignacion");
+      navigate(natRoutes.Asignacion);
       return;
     }
 
-    const nextResguardo = nextItems.length === 1
-      ? resguardoFromSingleItem({ ...resguardo, items: nextItems }, nextItems[0])
-      : { ...resguardo, items: nextItems };
+    const nextResguardo =
+      nextItems.length === 1
+        ? resguardoFromSingleItem({ ...resguardo, items: nextItems }, nextItems[0])
+        : { ...resguardo, items: nextItems };
 
     setResguardosPorColaborador((previous) => ({
       ...previous,
@@ -130,6 +186,11 @@ export default function App() {
   };
 
   const handleNavigate = (label) => {
+    if (appRoutes[label]) {
+      navigate(appRoutes[label]);
+      return;
+    }
+
     if (label === "Asignacion") {
       setAsignacionInicial(null);
       setScreen("asignacion");
@@ -138,6 +199,10 @@ export default function App() {
     if (label === "Reportes") setScreen("reportes");
     if (label === "Logs") setScreen("logs");
     if (label === "Auditoria") setScreen("auditoria");
+
+    if (natRoutes[label]) {
+      navigate(natRoutes[label]);
+    }
   };
 
   const handleOpenBitacora = (equipo) => {
@@ -213,12 +278,48 @@ export default function App() {
       return <AuditoriaList />;
     }
 
-    return <MantenimientoBitacora equipo={maintenanceEquipo} onBack={() => setScreen("mantenimiento")} onAddEntry={handleAddMaintenanceEntry} />;
+    return (
+      <MantenimientoBitacora
+        equipo={maintenanceEquipo}
+        onBack={() => setScreen("mantenimiento")}
+        onAddEntry={handleAddMaintenanceEntry}
+      />
+    );
   };
 
   return (
     <Layout activeNav={activeNav} onNavigate={handleNavigate}>
       {renderScreen()}
     </Layout>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Navigate to="/login" replace />} />
+        <Route path="/dashboard" element={<AppLayoutRoute><Dashboard /></AppLayoutRoute>} />
+        <Route path="/proveedores" element={<AppLayoutRoute><Proveedores /></AppLayoutRoute>} />
+        <Route path="/colaboradores" element={<AppLayoutRoute><Colaboradores /></AppLayoutRoute>} />
+        <Route path="/equipos" element={<AppLayoutRoute><ListadoEquipos /></AppLayoutRoute>} />
+        <Route path="/equipos/alta" element={<AppLayoutRoute><EquipoAlta /></AppLayoutRoute>} />
+        <Route path="/equipos/alta/:equipmentId" element={<AppLayoutRoute><EquipoAlta /></AppLayoutRoute>} />
+        <Route path="/equipos/editar/:equipmentId" element={<AppLayoutRoute><EquipoAlta /></AppLayoutRoute>} />
+        <Route path="/equipos/ficha/:equipmentId" element={<AppLayoutRoute><EquipoFichaTecnica /></AppLayoutRoute>} />
+        <Route path="/configuracion" element={<AppLayoutRoute><Configuracion /></AppLayoutRoute>} />
+        <Route path="/asignacion" element={<NataliaFlow initialScreen="asignacion" />} />
+        <Route path="/asignacion/mantenimiento" element={<NataliaFlow initialScreen="mantenimiento" />} />
+        <Route path="/asignacion/reportes" element={<NataliaFlow initialScreen="reportes" />} />
+        <Route path="/asignacion/logs" element={<AdminRoute><NataliaFlow initialScreen="logs" /></AdminRoute>} />
+        <Route path="/asignacion/auditoria" element={<AdminRoute><NataliaFlow initialScreen="auditoria" /></AdminRoute>} />
+        <Route path="/mantenimiento" element={<Navigate to="/asignacion/mantenimiento" replace />} />
+        <Route path="/reportes" element={<Navigate to="/asignacion/reportes" replace />} />
+        <Route path="/logs" element={<Navigate to="/asignacion/logs" replace />} />
+        <Route path="/auditoria" element={<Navigate to="/asignacion/auditoria" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }

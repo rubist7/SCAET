@@ -69,7 +69,7 @@ function SoftSelect({ value, onChange, options }) {
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-10 w-full appearance-none rounded-full border border-[#ded6c8] bg-[#eee8dc] px-4 pr-9 text-xs font-black text-[#3c3445] outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 lg:min-w-44"
+        className="h-10 w-full appearance-none rounded-full border border-[#ded6c8] bg-[#eee8dc] px-4 pr-9 text-xs font-black text-[#3c3445] outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 lg:min-w-44"
       >
         {options.map((option) => (
           <option key={option}>{option}</option>
@@ -124,7 +124,7 @@ export default function AuditoriaList() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Buscar..."
-              className="h-10 w-full rounded-full border border-[#ded6c8] bg-[#eee8dc] pl-11 pr-4 text-sm font-semibold text-[#3c3445] outline-none transition placeholder:text-[#9b927f] focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+              className="h-10 w-full rounded-full border border-[#ded6c8] bg-[#eee8dc] pl-11 pr-4 text-sm font-semibold text-[#3c3445] outline-none transition placeholder:text-[#9b927f] focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
             />
           </div>
           <SoftSelect
@@ -153,7 +153,7 @@ export default function AuditoriaList() {
             <tbody>
               {filtered.map((row) => (
                 <tr key={`${row.fecha}-${row.accion}-${row.modulo}`} className="border-b border-[#eee8f6] last:border-0">
-                  <td className="px-4 py-4 font-semibold text-violet-300">{row.fecha}</td>
+                  <td className="px-4 py-4 font-semibold text-blue-300">{row.fecha}</td>
                   <td className="px-4 py-4 font-black text-[#21192c]">{row.usuario}</td>
                   <td className="px-4 py-4 font-semibold text-[#3c3445]">{row.accion}</td>
                   <td className="px-4 py-4 font-semibold text-[#6f6584]">{row.modulo}</td>

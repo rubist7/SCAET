@@ -28,7 +28,7 @@ function SelectFilter({ value, onChange, options }) {
             <select
                 value={value}
                 onChange={(event) => onChange(event.target.value)}
-                className="h-10 w-full appearance-none rounded-full border border-[#ded6c8] bg-white px-4 pr-9 text-xs font-bold text-[#3c3445] outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 lg:w-auto"
+                className="h-10 w-full appearance-none rounded-full border border-[#ded6c8] bg-white px-4 pr-9 text-xs font-bold text-[#3c3445] outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 lg:w-auto"
             >
                 {options.map((option) => (
                     <option key={option}>{option}</option>
@@ -44,11 +44,11 @@ function StatusBadge({ value }) {
 }
 
 function MaintenanceStatusBadge({ value }) {
-    return <span className={`rounded-full px-3 py-1 text-[11px] font-black ${maintenanceStatusStyles[value] || "bg-violet-50 text-violet-600"}`}>{value}</span>;
+    return <span className={`rounded-full px-3 py-1 text-[11px] font-black ${maintenanceStatusStyles[value] || "bg-blue-50 text-blue-600"}`}>{value}</span>;
 }
 
 function MaintenanceEntryCard({ entry, isHidden = false, onHide, onRestore }) {
-    const categoryStyle = categoriaStyles[entry.categoria] || "border-violet-400 bg-violet-50 text-violet-600";
+    const categoryStyle = categoriaStyles[entry.categoria] || "border-blue-400 bg-blue-50 text-blue-600";
     const canHide = entry.estado === "Resuelto";
 
     return (
@@ -61,7 +61,7 @@ function MaintenanceEntryCard({ entry, isHidden = false, onHide, onRestore }) {
                         </span>
                         <h3 className="text-sm font-black text-[#21192c]">{entry.titulo}</h3>
                     </div>
-                    <p className="mt-2 text-xs font-black text-violet-500">
+                    <p className="mt-2 text-xs font-black text-blue-500">
                         {entry.equipoNombre || "Equipo sin nombre"}
                         {entry.equipoSerie ? <span className="font-semibold text-[#9e95aa]"> - {entry.equipoSerie}</span> : null}
                     </p>
@@ -73,7 +73,7 @@ function MaintenanceEntryCard({ entry, isHidden = false, onHide, onRestore }) {
                     </div>
                 </div>
                 <div className="shrink-0 text-left sm:text-right">
-                    <p className="text-xs font-bold text-violet-300">{formatDate(entry.fecha)}</p>
+                    <p className="text-xs font-bold text-blue-300">{formatDate(entry.fecha)}</p>
                     <p className="mt-8 text-sm font-black text-[#21192c]">{formatCurrency(entry.costo)}</p>
                 </div>
             </div>
@@ -82,7 +82,7 @@ function MaintenanceEntryCard({ entry, isHidden = false, onHide, onRestore }) {
                     <button
                         type="button"
                         onClick={() => onRestore?.(entry.id)}
-                        className="inline-flex h-8 items-center gap-2 rounded-[8px] bg-violet-50 px-3 text-xs font-black text-violet-600 transition hover:bg-violet-100"
+                        className="inline-flex h-8 items-center gap-2 rounded-[8px] bg-blue-50 px-3 text-xs font-black text-blue-600 transition hover:bg-blue-100"
                     >
                         <RotateCcw size={14} />
                         Restaurar
@@ -141,6 +141,7 @@ export default function MantenimientoEquipos({ entries = [], onOpenBitacora }) {
 
     const handleRestoreEntry = (entryId) => {
         setHiddenEntryIds((current) => current.filter((id) => id !== entryId));
+        setShowHiddenEntries(false);
     };
 
     return (
@@ -161,7 +162,7 @@ export default function MantenimientoEquipos({ entries = [], onOpenBitacora }) {
                             value={search}
                             onChange={(event) => setSearch(event.target.value)}
                             placeholder="Buscar por nombre o serie..."
-                            className="h-10 w-full rounded-full border border-[#ded6c8] bg-[#eee8dc] pl-11 pr-4 text-sm font-semibold text-[#3c3445] outline-none transition placeholder:text-[#9b927f] focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                            className="h-10 w-full rounded-full border border-[#ded6c8] bg-[#eee8dc] pl-11 pr-4 text-sm font-semibold text-[#3c3445] outline-none transition placeholder:text-[#9b927f] focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
                         />
                     </div>
                     <SelectFilter value={tipo} onChange={setTipo} options={["Todos los tipos", "Laptop", "Tablet", "Computadora"]} />
@@ -185,7 +186,7 @@ export default function MantenimientoEquipos({ entries = [], onOpenBitacora }) {
                         <tbody>
                             {filtered.map((equipo) => (
                                 <tr key={equipo.id} className="border-b border-[#eee8f6] last:border-0">
-                                    <td className="px-4 py-4 font-normal text-violet-300">#{equipo.codigo}</td>
+                                    <td className="px-4 py-4 font-normal text-blue-300">#{equipo.codigo}</td>
                                     <td className="px-4 py-4 font-normal text-[#3c3445]">{equipo.tipo}</td>
                                     <td className="px-4 py-4">
                                         <p className="font-black text-[#21192c]">{equipo.nombre}</p>
@@ -202,7 +203,7 @@ export default function MantenimientoEquipos({ entries = [], onOpenBitacora }) {
                                         <button
                                             type="button"
                                             onClick={() => onOpenBitacora(equipo)}
-                                            className="inline-flex h-8 min-w-[112px] items-center justify-center whitespace-nowrap rounded-[8px] bg-violet-600 px-3 text-xs font-black text-white transition hover:bg-violet-700"
+                                            className="inline-flex h-8 min-w-[112px] items-center justify-center whitespace-nowrap rounded-[8px] bg-[#3A9AF2] px-3 text-xs font-black text-[#FFFFFF] transition hover:bg-[#238BEA]"
                                         >
                                             Abrir bitacora
                                         </button>
@@ -231,7 +232,7 @@ export default function MantenimientoEquipos({ entries = [], onOpenBitacora }) {
                             </button>
                         ) : null}
                         <div className="text-right">
-                            <p className="text-[11px] font-black uppercase tracking-[0.16em] text-violet-300">{visibleEntries.length} entradas</p>
+                            <p className="text-[11px] font-black uppercase tracking-[0.16em] text-blue-300">{visibleEntries.length} entradas</p>
                             <p className="text-sm font-black text-[#21192c]">
                                 {formatCurrency(totalCost)}
                             </p>
@@ -241,7 +242,7 @@ export default function MantenimientoEquipos({ entries = [], onOpenBitacora }) {
 
                 {showHiddenEntries && hiddenEntries.length ? (
                     <div className="mt-4 space-y-3">
-                        <p className="text-[11px] font-black uppercase tracking-[0.18em] text-violet-300">Ocultos</p>
+                        <p className="text-[11px] font-black uppercase tracking-[0.18em] text-blue-300">Ocultos</p>
                         {hiddenEntries.map((entry) => (
                             <MaintenanceEntryCard key={entry.id} entry={entry} isHidden onRestore={handleRestoreEntry} />
                         ))}

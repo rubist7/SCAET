@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { AlertTriangle, BarChart3, Eye, FileArchive, Pencil, Trash2, X } from "lucide-react";
+import { loadEquipments, normalizeText } from "../Views-Rubi/equiposData";
 
 const FIELD_OPTIONS = ["Tag", "Tipo", "Marca", "Modelo", "Serie", "Estado", "Gar.Tipo", "Gar.Fin", "Ubicacion", "Costo", "Asignado", "Proveedor"];
 
@@ -123,11 +125,11 @@ const INITIAL_ROWS_BY_SOURCE = Object.fromEntries(
 function PillSelect({ label, value, onChange, options }) {
   return (
     <label className="block min-w-0">
-      <span className="mb-1 block text-[10px] font-black uppercase tracking-[0.2em] text-violet-300">{label}</span>
+      <span className="mb-1 block text-[10px] font-black uppercase tracking-[0.2em] text-blue-300">{label}</span>
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-10 w-full rounded-[8px] border border-gray-200 bg-gray-50 px-3 text-sm font-normal text-gray-700 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-200 dark:focus:ring-violet-900/30"
+        className="h-10 w-full rounded-[8px] border border-gray-200 bg-gray-50 px-3 text-sm font-normal text-gray-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-200 dark:focus:ring-blue-900/30"
       >
         {options.map((option) => (
           <option key={option}>{option}</option>
@@ -158,7 +160,7 @@ function ReportValue({ field, value }) {
             <p className="mt-1 text-xs text-[#6f6584] dark:text-gray-400">Sin costos de mantenimiento.</p>
           )}
         </div>
-        <p className="border-t border-gray-100 pt-1 text-xs font-black text-violet-600 dark:border-gray-700 dark:text-violet-300">
+        <p className="border-t border-gray-100 pt-1 text-xs font-black text-blue-600 dark:border-gray-700 dark:text-blue-300">
           Total: {value.total}
         </p>
       </div>
@@ -177,13 +179,13 @@ function DetailModal({ record, onClose }) {
         <div className="max-h-[calc(100dvh-2rem)] w-full overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl dark:border-gray-800 dark:bg-[#16131F]">
           <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-gray-100 bg-white/95 p-4 backdrop-blur dark:border-gray-800 dark:bg-[#16131F]/95 sm:p-5">
             <div className="min-w-0">
-              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-violet-300">Ficha tecnica completa</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-blue-300">Ficha tecnica completa</p>
               <h2 className="mt-2 truncate text-lg font-black text-[#21192c] dark:text-white sm:text-xl">{record.Marca} {record.Modelo}</h2>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-50 text-violet-600 transition hover:bg-violet-100 dark:bg-violet-900/25 dark:text-violet-300 dark:hover:bg-violet-900/40"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600 transition hover:bg-blue-100 dark:bg-blue-900/25 dark:text-blue-300 dark:hover:bg-blue-900/40"
               aria-label="Cerrar detalle"
             >
               <X size={18} />
@@ -199,7 +201,7 @@ function DetailModal({ record, onClose }) {
                 </div>
               ))}
             </div>
-            <div className="mt-4 rounded-[8px] bg-violet-50 p-3 text-xs text-[#6f6584] dark:bg-violet-900/20 dark:text-gray-400">
+            <div className="mt-4 rounded-[8px] bg-blue-50 p-3 text-xs text-[#6f6584] dark:bg-blue-900/20 dark:text-gray-400">
               Historial de fallas, mantenimientos, vales firmados y proveedor quedaran conectados a base de datos en la siguiente fase.
             </div>
           </div>
@@ -242,6 +244,7 @@ function DeleteModal({ record, reason, setReason, onCancel, onConfirm }) {
 }
 
 export default function Reportes() {
+  const navigate = useNavigate();
   const [source, setSource] = useState("Inventario");
   const [rowsBySource, setRowsBySource] = useState(INITIAL_ROWS_BY_SOURCE);
   const [filter, setFilter] = useState("Todos");
@@ -250,7 +253,6 @@ export default function Reportes() {
   const [detailRecord, setDetailRecord] = useState(null);
   const [deleteRecord, setDeleteRecord] = useState(null);
   const [deleteReason, setDeleteReason] = useState("");
-  const [editRoute, setEditRoute] = useState("");
 
   const config = SOURCE_CONFIG[source];
 
@@ -272,10 +274,40 @@ export default function Reportes() {
 
   const selectedColumns = activeFields.length ? activeFields : ["Tag", "Tipo", "Marca", "Modelo", "Estado"];
 
+  const getEquipmentEditRoute = (row) => {
+    const equipments = loadEquipments();
+    const cleanTag = row.Tag?.replace("#", "");
+    const matchingEquipment = equipments.find((equipment) => (
+      equipment.id === row.id
+      || equipment.publicId === row.Tag
+      || normalizeText(equipment.serialNumber) === normalizeText(row.Serie)
+      || normalizeText(equipment.model) === normalizeText(row.Modelo)
+      || normalizeText(equipment.title) === normalizeText(`${row.Marca} ${row.Modelo}`)
+      || equipment.publicId?.replace("#", "") === cleanTag
+    ));
+
+    return matchingEquipment ? `/equipos/editar/${matchingEquipment.id}` : `/equipos/editar/${row.id}`;
+  };
+
   const handleEdit = (row) => {
-    const route = `/equipos/editar/${row.id}`;
-    window.history.pushState({ from: "reportes", editId: row.id }, "", route);
-    setEditRoute(route);
+    if (source === "Inventario") {
+      navigate(getEquipmentEditRoute(row), {
+        state: {
+          returnTo: "/asignacion/reportes",
+          returnLabel: "Reportes",
+          reportDraft: row,
+        },
+      });
+      return;
+    }
+
+    const sourceRoutes = {
+      Resguardos: "/asignacion",
+      Mantenimiento: "/asignacion/mantenimiento",
+      Proveedores: "/proveedores",
+    };
+
+    navigate(sourceRoutes[source] || "/asignacion/reportes");
   };
 
   const handleConfirmDelete = () => {
@@ -292,7 +324,7 @@ export default function Reportes() {
   return (
     <div className="space-y-4">
       <section className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-[#16131F] sm:p-5">
-        <p className="text-[11px] font-black uppercase tracking-[0.26em] text-violet-200">Generador dinamico de consultas</p>
+        <p className="text-[11px] font-black uppercase tracking-[0.26em] text-blue-200">Generador dinamico de consultas</p>
           <h2 className="mt-3 text-lg font-black text-[#21192c] dark:text-white sm:text-xl">Reportes</h2>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <PillSelect
@@ -309,13 +341,13 @@ export default function Reportes() {
 
         <div className="mt-5">
           <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-violet-300">Campos</p>
-            <label className="inline-flex w-fit items-center gap-2 rounded-[8px] border border-gray-100 bg-gray-50 px-3 py-2 text-xs font-bold text-[#6f6584] transition hover:border-violet-300 hover:bg-violet-50/60 dark:border-gray-700 dark:bg-gray-800/40 dark:text-gray-300 dark:hover:border-violet-600 dark:hover:bg-violet-900/20">
+            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-blue-300">Campos</p>
+            <label className="inline-flex w-fit items-center gap-2 rounded-[8px] border border-gray-100 bg-gray-50 px-3 py-2 text-xs font-bold text-[#6f6584] transition hover:border-blue-300 hover:bg-blue-50/60 dark:border-gray-700 dark:bg-gray-800/40 dark:text-gray-300 dark:hover:border-blue-600 dark:hover:bg-blue-900/20">
               <input
                 type="checkbox"
                 checked={allFieldsSelected}
                 onChange={handleToggleAllFields}
-                className="h-4 w-4 accent-violet-600"
+                className="h-4 w-4 accent-blue-600"
               />
               Seleccionar todos
             </label>
@@ -330,8 +362,8 @@ export default function Reportes() {
                   onClick={() => toggleField(field)}
                   className={`h-9 rounded-full border px-4 text-xs font-black transition ${
                     active
-                      ? "border-violet-500 bg-violet-600 text-white shadow-sm"
-                      : "border-gray-200 bg-gray-50 text-[#6f6584] hover:border-violet-300 hover:bg-violet-50/60 dark:border-gray-700 dark:bg-gray-800/40 dark:text-violet-200 dark:hover:border-violet-600 dark:hover:bg-violet-900/20"
+                      ? "border-[#3A9AF2] bg-[#3A9AF2] text-[#FFFFFF] shadow-sm"
+                      : "border-gray-200 bg-gray-50 text-[#6f6584] hover:border-blue-300 hover:bg-blue-50/60 dark:border-gray-700 dark:bg-gray-800/40 dark:text-blue-200 dark:hover:border-blue-600 dark:hover:bg-blue-900/20"
                   }`}
                 >
                   {field}
@@ -366,15 +398,10 @@ export default function Reportes() {
       </div>
 
       <section className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-[#16131F] sm:p-5">
-        <p className="mb-3 text-[11px] font-black uppercase tracking-[0.26em] text-violet-300">Resultados</p>
-        {editRoute && (
-          <div className="mb-3 rounded-[8px] bg-blue-50 p-3 text-xs font-normal text-blue-600 dark:bg-blue-900/20 dark:text-blue-300">
-            Redireccion simulada a <span className="font-black">{editRoute}</span>. Al guardar, el sistema regresaria a Reportes.
-          </div>
-        )}
+        <p className="mb-3 text-[11px] font-black uppercase tracking-[0.26em] text-blue-300">Resultados</p>
         <div className="space-y-2">
           {rows.map((row) => (
-            <article key={row.id} className="rounded-2xl border border-gray-100 bg-gray-50 p-4 transition hover:border-violet-200 hover:bg-violet-50/30 dark:border-gray-700 dark:bg-gray-800/40 dark:hover:border-violet-700 dark:hover:bg-violet-900/10">
+            <article key={row.id} className="rounded-2xl border border-gray-100 bg-gray-50 p-4 transition hover:border-blue-200 hover:bg-blue-50/30 dark:border-gray-700 dark:bg-gray-800/40 dark:hover:border-blue-700 dark:hover:bg-blue-900/10">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div className="grid flex-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
                   {selectedColumns.map((column) => (
@@ -385,7 +412,7 @@ export default function Reportes() {
                   ))}
                 </div>
                 <div className="flex shrink-0 gap-2">
-                  <button type="button" onClick={() => setDetailRecord(row)} className="inline-flex h-8 items-center gap-1 rounded-[8px] bg-violet-50 px-3 text-xs font-black text-violet-600 transition hover:bg-violet-100 dark:bg-violet-900/30 dark:text-violet-300 dark:hover:bg-violet-900/45">
+                  <button type="button" onClick={() => setDetailRecord(row)} className="inline-flex h-8 items-center gap-1 rounded-[8px] bg-blue-50 px-3 text-xs font-black text-blue-600 transition hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/45">
                     <Eye size={13} />
                     Ver
                   </button>

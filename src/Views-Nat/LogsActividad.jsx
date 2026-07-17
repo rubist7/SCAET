@@ -24,7 +24,7 @@ const logs = [
     hora: "11:24 am",
     accion: "Asignacion",
     icon: KeyRound,
-    iconStyle: "bg-violet-100 text-violet-600",
+    iconStyle: "bg-blue-100 text-blue-600",
   },
   {
     id: 3,
@@ -57,7 +57,7 @@ const logs = [
     hora: "11:20 am",
     accion: "Edicion",
     icon: PenLine,
-    iconStyle: "bg-violet-100 text-violet-600",
+    iconStyle: "bg-blue-100 text-blue-600",
   },
 ];
 
@@ -67,7 +67,7 @@ function SoftSelect({ value, onChange, options }) {
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-10 w-full appearance-none rounded-full border border-[#ded6c8] bg-[#eee8dc] px-4 pr-9 text-xs font-black text-[#3c3445] outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 sm:min-w-44"
+        className="h-10 w-full appearance-none rounded-full border border-[#ded6c8] bg-[#eee8dc] px-4 pr-9 text-xs font-black text-[#3c3445] outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 sm:min-w-44"
       >
         {options.map((option) => (
           <option key={option}>{option}</option>
@@ -84,7 +84,7 @@ function DateFilter({ value, onChange }) {
       <DateInput
         value={value}
         onChange={onChange}
-        className="h-10 w-full rounded-full border border-[#ded6c8] bg-[#eee8dc] px-4 pr-10 text-xs font-black text-[#3c3445] outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+        className="h-10 w-full rounded-full border border-[#ded6c8] bg-[#eee8dc] px-4 pr-10 text-xs font-black text-[#3c3445] outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
       />
     </div>
   );
