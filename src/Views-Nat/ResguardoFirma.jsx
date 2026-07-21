@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, Eraser, Mail, PenLine, Plus, Send, Trash2, X } from "lucide-react";
 import DateInput from "./DateInput";
 import { formatDate } from "./dateUtils";
-import { colaboradores, equipos } from "./asignacionData";
 import Signature from "../components/Signature";
 
 const RESGUARDO_OPTIONS = [
@@ -21,36 +20,37 @@ const RESPONSIBILITY_TEXTS = {
 };
 
 const defaultResguardo = {
-  folio: "RSG-20260508-001",
-  fecha: "2026-05-08",
-  colaborador: colaboradores[0],
-  equipo: equipos[1],
+  folio: "",
+  fecha: "",
+  colaborador: { id: null, numero: "", nombre: "", area: "", departamento: "", puesto: "", correo: "" },
+  equipo: { id: null, codigo: "", nombre: "", tipo: "", marca: "", modelo: "", serie: "", proveedor: "" },
   tipo: "Permanente",
   fechaDev: "",
   observaciones: "",
   tipoResguardo: "equipo",
-  numeroEmpleado: colaboradores[0].numero,
-  activoInventario: equipos[1].codigo,
+  numeroEmpleado: "",
+  activoInventario: "",
   accesorios: "",
   estadoFisico: "Buen estado",
-  ubicacionTrabajo: "Gerencia de Sistemas",
-  responsableEntrega: "Javier Echeverria",
-  idTarjeta: "TC-3612",
+  ubicacionTrabajo: "",
+  responsableEntrega: "Responsable de entrega",
+  idTarjeta: "",
   cantidad: "1",
-  estadoEntrega: "Nueva / Buen estado",
-  departamentoTarjeta: colaboradores[0].departamento,
-  puestoTarjeta: colaboradores[0].puesto,
-  fechaEntregaTarjeta: "2026-05-08",
+  estadoEntrega: "Buen estado",
+  departamentoTarjeta: "",
+  puestoTarjeta: "",
+  fechaEntregaTarjeta: "",
   motivoTarjeta: "Entrega",
-  yubikey: "YubiKey 5 NFC",
+  yubikey: "",
   serieYubikey: "",
-  modeloYubikey: "YubiKey 5 NFC",
-  userId: "ana.lopez",
+  modeloYubikey: "",
+  userId: "",
   pin: "",
   correoAsociado: "",
   sistemasAutorizados: "",
-  ligasSeguridad: "https://security.example.com",
-  ligasTrabajo: "https://workspace.example.com",
+  ligasSeguridad: "",
+  ligasTrabajo: "",
+  items: [],
 };
 
 function normalizeResguardoItem(data) {
@@ -386,7 +386,7 @@ function AssetsTable({ items }) {
       <table className="w-full min-w-[680px] border-collapse text-[10px]">
         <thead className="bg-[#eee8dc] text-[#6f6584]">
           <tr>
-            {["Tipo", "Equipo / Activo", "Marca", "Modelo", "No. Serie", "Inventario", "Asignacion"].map((heading) => (
+            {["Tipo", "Equipo / Activo", "Marca", "Modelo", "No. Serie", "Inventario", "Asignacion", "Devolucion", "Estado / Accesorios", "Observaciones"].map((heading) => (
               <th key={heading} className="border-b border-[#ded6c8] px-3 py-2 text-left font-black uppercase tracking-[0.12em]">
                 {heading}
               </th>
@@ -405,6 +405,9 @@ function AssetsTable({ items }) {
               <td className="px-3 py-2 text-[#6f6584]">
                 {item.tipoAsignacion || "-"} {item.fechaAsignacion ? `- ${formatDate(item.fechaAsignacion)}` : ""}
               </td>
+              <td className="px-3 py-2 text-[#6f6584]">{item.fechaDev ? formatDate(item.fechaDev) : "Permanente"}</td>
+              <td className="px-3 py-2 text-[#6f6584]">{item.estadoEntrega || "-"}{item.accesorios ? ` / ${item.accesorios}` : ""}</td>
+              <td className="px-3 py-2 text-[#6f6584]">{item.observaciones || "-"}</td>
             </tr>
           ))}
         </tbody>
@@ -553,6 +556,17 @@ function DocumentPreview({ data, signature }) {
 }
 
 function GeneratedResguardoModal({ data, signature, onClose }) {
+  const documentRef = useRef(null);
+
+  const downloadPdf = () => {
+    const printWindow = window.open("", "_blank", "width=900,height=700");
+    if (!printWindow || !documentRef.current) return;
+    printWindow.document.write(`<html><head>${document.head.innerHTML}<title>${data.folio || "Resguardo"}</title></head><body>${documentRef.current.innerHTML}</body></html>`);
+    printWindow.document.close();
+    printWindow.focus();
+    window.setTimeout(() => printWindow.print(), 350);
+  };
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 px-3 py-4 sm:p-5">
       <div className="mx-auto flex min-h-full w-full max-w-4xl items-start">
@@ -562,27 +576,13 @@ function GeneratedResguardoModal({ data, signature, onClose }) {
               <p className="text-[11px] font-black uppercase tracking-[0.24em] text-blue-300">Resguardo generado</p>
               <h2 className="truncate text-sm font-black text-[#21192c]">{documentTitle(data)}</h2>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#eee8dc] text-[#6f6584] transition hover:bg-[#e4dccf]"
-              aria-label="Cerrar resguardo generado"
-            >
-              <X size={16} />
-            </button>
+            <button type="button" onClick={onClose} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#eee8dc] text-[#6f6584] transition hover:bg-[#e4dccf]" aria-label="Cerrar resguardo generado"><X size={16} /></button>
           </div>
-
           <div className="p-4 sm:p-5">
-            <DocumentPreview data={data} signature={signature} />
+            <div ref={documentRef}><DocumentPreview data={data} signature={signature} /></div>
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              <button type="button" className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#3A9AF2] text-xs font-black text-[#FFFFFF] transition hover:bg-[#238BEA]">
-                <Mail size={14} />
-                Enviar por Gmail
-              </button>
-              <button type="button" className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#eee8dc] text-xs font-black text-[#6f6584]">
-                <Download size={14} />
-                Descargar PDF
-              </button>
+              <button type="button" onClick={() => window.alert("El envío por correo se configurará en una fase posterior.")} className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#3A9AF2] text-xs font-black text-[#FFFFFF] transition hover:bg-[#238BEA]"><Mail size={14} />Enviar por Gmail</button>
+              <button type="button" onClick={downloadPdf} className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#eee8dc] text-xs font-black text-[#6f6584]"><Download size={14} />Descargar PDF</button>
             </div>
           </div>
         </section>
@@ -601,6 +601,7 @@ function ResguardoItemsSummary({ items, onAddItem, onRemoveItem }) {
         <button
           type="button"
           onClick={onAddItem}
+          disabled={!onAddItem}
           className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#3A9AF2] text-[#FFFFFF] transition hover:bg-[#238BEA]"
           aria-label="Agregar otro activo al resguardo"
           title="Agregar otro activo"
@@ -616,12 +617,13 @@ function ResguardoItemsSummary({ items, onAddItem, onRemoveItem }) {
                 {item.nombre} {item.codigo ? `#${item.codigo}` : ""}
               </span>
               <span className="min-w-0 break-words text-[#8f879b]">
-                {item.tipoLabel} - {item.marca || "-"} {item.modelo || ""} - {item.serie || "Sin serie"}
+                {item.tipoLabel} - {item.marca || "-"} {item.modelo || ""} - {item.serie || "Sin serie"} - {item.tipoAsignacion || "-"} - {item.fechaDev ? `Dev. ${formatDate(item.fechaDev)}` : "Permanente"}
               </span>
             </div>
             <button
               type="button"
               onClick={() => onRemoveItem?.(item.key)}
+              disabled={!onRemoveItem}
               className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-red-50 text-red-500 transition hover:bg-red-100"
               aria-label={`Eliminar ${item.nombre} del resguardo`}
               title="Eliminar activo"
@@ -718,7 +720,7 @@ function ConditionalFields({ data, setters }) {
   );
 }
 
-export default function ResguardoFirma({ resguardo, onBack, onGoDevolucion, onAddItem, onRemoveItem }) {
+function ResguardoEditor({ resguardo, onBack, onGoDevolucion, onAddItem, onRemoveItem, onGenerate }) {
   const source = useMemo(() => ({ ...defaultResguardo, ...resguardo }), [resguardo]);
   const canCaptureSignature = useCanCaptureTouchSignature();
   const tipoResguardo = source.tipoResguardo;
@@ -746,8 +748,11 @@ export default function ResguardoFirma({ resguardo, onBack, onGoDevolucion, onAd
   const [sistemasAutorizados, setSistemasAutorizados] = useState(source.sistemasAutorizados);
   const [ligasSeguridad, setLigasSeguridad] = useState(source.ligasSeguridad);
   const [ligasTrabajo, setLigasTrabajo] = useState(source.ligasTrabajo);
-  const [signature, setSignature] = useState("");
+  const [signature, setSignature] = useState(source.firmaColaborador || "");
   const [generatedOpen, setGeneratedOpen] = useState(false);
+  const [generatedResult, setGeneratedResult] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
 
   const editableSource = {
     ...source,
@@ -806,6 +811,32 @@ export default function ResguardoFirma({ resguardo, onBack, onGoDevolucion, onAd
     setLigasTrabajo,
   };
 
+  const handleGenerate = async () => {
+    setSaving(true);
+    setMessage("");
+    try {
+      let result = generatedResult;
+      if (!source.persisted && !result) {
+        result = await onGenerate?.(data);
+        setGeneratedResult(result);
+      }
+      const idResguardo = source.idResguardo || result?.id_resguardo;
+      if (idResguardo && signature) {
+        const response = await fetch(`/api/resguardos/${idResguardo}/firmas`, {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${localStorage.getItem("scaet-token")}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ firma_colaborador: signature, firma_responsable: source.firmaResponsable || null }),
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.mensaje || "No se pudo guardar la firma");
+      }
+      setGeneratedOpen(true);
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setSaving(false);
+    }
+  };
   return (
     <div className="min-w-0 space-y-4 overflow-hidden">
       <h1 className="text-sm font-bold text-blue-300">Resguardo - Firma Digital</h1>
@@ -869,21 +900,104 @@ export default function ResguardoFirma({ resguardo, onBack, onGoDevolucion, onAd
             </div>
           </div>
 
+          {message && <p className="mt-4 rounded-[8px] bg-red-50 px-4 py-3 text-xs font-bold text-red-600">{message}</p>}
           <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <button type="button" onClick={onBack} className="h-10 rounded-[8px] bg-[#eee8dc] px-5 text-xs font-black text-[#6f6584]">Cancelar</button>
             <button
               type="button"
-              onClick={() => setGeneratedOpen(true)}
+              onClick={handleGenerate}
+              disabled={saving}
               className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#3A9AF2] px-5 text-xs font-black text-[#FFFFFF] transition hover:bg-[#238BEA]"
             >
               <Send size={14} />
-              Generar resguardo
+              {saving ? "Generando..." : "Generar resguardo"}
             </button>
           </div>
         </section>
       </div>
 
-      {generatedOpen && <GeneratedResguardoModal data={data} signature={signature} onClose={() => setGeneratedOpen(false)} />}
+      {generatedOpen && <GeneratedResguardoModal data={{ ...data, folio: generatedResult?.folio || data.folio }} signature={signature} onClose={() => { setGeneratedOpen(false); if (generatedResult) onBack?.(); }} />}
     </div>
   );
+}
+function mapApiResguardo(payload) {
+  const first = payload.activos?.[0] || {};
+  const tipoResguardo = first.tipo_equipo === "Tarjeta" ? "tarjeta" : first.tipo_equipo === "YubiKey" ? "yubikey" : "equipo";
+  const colaborador = {
+    id: Number(payload.colaborador.id_colaborador),
+    numero: payload.colaborador.num_colaborador,
+    nombre: payload.colaborador.nombre_completo,
+    area: payload.colaborador.area,
+    departamento: payload.colaborador.departamento,
+    puesto: payload.colaborador.puesto,
+    correo: payload.colaborador.correo,
+  };
+  const items = (payload.activos || []).map((item) => ({
+    key: `detalle-${item.id_detalle}`,
+    id: Number(item.id_equipo),
+    idDetalle: item.id_detalle,
+    tipoResguardo: item.tipo_equipo === "Tarjeta" ? "tarjeta" : item.tipo_equipo === "YubiKey" ? "yubikey" : "equipo",
+    tipoLabel: item.tipo_equipo,
+    codigo: item.codigo_equipo,
+    nombre: item.nombre_equipo,
+    tipoActivo: item.tipo_equipo,
+    marca: item.marca,
+    modelo: item.modelo,
+    serie: item.numero_serie,
+    fechaAsignacion: item.fecha_asignacion,
+    tipoAsignacion: `${item.tipo_asignacion[0].toUpperCase()}${item.tipo_asignacion.slice(1)}`,
+    fechaDev: item.fecha_devolucion_programada || "",
+    accesorios: item.accesorios_entregados || "",
+    estadoEntrega: item.estado_fisico_entrega || "Buen estado",
+    observaciones: item.observaciones || "",
+  }));
+
+  return {
+    persisted: true,
+    idResguardo: payload.resguardo.id_resguardo,
+    idAsignacion: payload.asignacion.id_asignacion,
+    folio: payload.resguardo.folio,
+    fecha: String(payload.asignacion.fecha_resguardo || "").slice(0, 10),
+    colaborador,
+    equipo: {
+      id: Number(first.id_equipo), codigo: first.codigo_equipo, nombre: first.nombre_equipo,
+      tipo: first.tipo_equipo, marca: first.marca, modelo: first.modelo, serie: first.numero_serie,
+    },
+    tipo: first.tipo_asignacion ? `${first.tipo_asignacion[0].toUpperCase()}${first.tipo_asignacion.slice(1)}` : "Permanente",
+    fechaDev: first.fecha_devolucion_programada || "",
+    tipoResguardo,
+    numeroEmpleado: colaborador.numero,
+    activoInventario: first.codigo_equipo || "",
+    accesorios: first.accesorios_entregados || "",
+    estadoFisico: first.estado_fisico_entrega || "Buen estado",
+    ubicacionTrabajo: colaborador.area || colaborador.departamento || "-",
+    responsableEntrega: payload.responsable?.nombre_completo || "-",
+    observaciones: payload.asignacion.observaciones_generales || "",
+    firmaColaborador: payload.resguardo.firma_colaborador || "",
+    firmaResponsable: payload.resguardo.firma_responsable || "",
+    items,
+  };
+}
+
+export default function ResguardoFirma(props) {
+  const [loadedResguardo, setLoadedResguardo] = useState(null);
+  const [loadError, setLoadError] = useState("");
+  const idResguardo = props.resguardo?.idResguardo;
+
+  useEffect(() => {
+    if (!idResguardo) return;
+    fetch(`/api/resguardos/${idResguardo}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("scaet-token")}` },
+    }).then(async (response) => {
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.mensaje || "No se pudo cargar el resguardo");
+      setLoadedResguardo(mapApiResguardo(payload));
+    }).catch((error) => setLoadError(error.message));
+  }, [idResguardo]);
+
+  if (idResguardo && !loadedResguardo) {
+    return <div className="rounded-2xl bg-white p-6 text-sm font-semibold text-gray-500 shadow-sm">{loadError || "Cargando resguardo..."}</div>;
+  }
+
+  return <ResguardoEditor key={idResguardo || "draft"} {...props} resguardo={loadedResguardo || props.resguardo} />;
 }

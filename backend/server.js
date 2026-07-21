@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 const pool = require("./config/db");
 require("dotenv").config();
 
@@ -55,7 +56,7 @@ async function verificarToken(req, res, next) {
 
   try {
     const [usuarios] = await pool.query(
-      "SELECT id_usuario, correo, rol, activo FROM usuarios WHERE id_usuario = ? LIMIT 1",
+      "SELECT id_usuario, nombre_completo, correo, rol, activo FROM usuarios WHERE id_usuario = ? LIMIT 1",
       [datosToken.id_usuario]
     );
 
@@ -71,6 +72,7 @@ async function verificarToken(req, res, next) {
 
     req.usuario = {
       ...datosToken,
+      nombre_completo: usuarios[0].nombre_completo,
       correo: usuarios[0].correo,
       rol: usuarios[0].rol,
     };
@@ -783,6 +785,13 @@ app.post(
     }
 
     try {
+      const [duplicados] = await pool.query(
+        "SELECT id_proveedor FROM proveedores WHERE LOWER(nombre_proveedor) = LOWER(?) AND LOWER(empresa) = LOWER(?) LIMIT 1",
+        [proveedor.nombre_proveedor, proveedor.empresa]
+      );
+      if (duplicados.length) {
+        return res.status(409).json({ mensaje: "Ya existe un proveedor con el mismo nombre y empresa" });
+      }
       const [resultado] = await pool.query(
         "INSERT INTO proveedores " +
           "(nombre_proveedor, empresa, nombre_vendedor, rfc_empresa, telefono, correo, " +
@@ -901,6 +910,528 @@ app.put(
   }
 );
 
+const estadosEquipoValidos = ["disponible", "asignado", "mantenimiento", "baja"];
+const camposEquipo = "e.id_equipo, e.id_proveedor, e.codigo_equipo, e.nombre_equipo, e.tipo_equipo, e.marca, e.modelo, e.numero_serie, e.fecha_compra, e.garantia_meses, e.vence_garantia, e.especificaciones_tecnicas, e.foto_key, e.foto_url, e.qr_token, e.qr_url, e.estado, e.activo, e.fecha_creacion, e.fecha_actualizacion, p.nombre_proveedor, p.empresa, p.nombre_vendedor";
+
+function normalizarEquipo(body) {
+  const texto = (valor) => String(valor ?? "").trim();
+  const equipo = {
+    id_proveedor: body.id_proveedor === "" || body.id_proveedor == null ? null : Number(body.id_proveedor),
+    codigo_equipo: texto(body.codigo_equipo).toUpperCase(),
+    nombre_equipo: texto(body.nombre_equipo), tipo_equipo: texto(body.tipo_equipo), marca: texto(body.marca),
+    modelo: texto(body.modelo), numero_serie: texto(body.numero_serie), fecha_compra: texto(body.fecha_compra) || null,
+    garantia_meses: body.garantia_meses === "" || body.garantia_meses == null ? null : Number(body.garantia_meses),
+    especificaciones_tecnicas: texto(body.especificaciones_tecnicas) || null,
+    estado: texto(body.estado).toLowerCase() || "disponible",
+  };
+  if (!equipo.tipo_equipo || !equipo.marca || !equipo.modelo || !equipo.numero_serie) return { error: "Tipo, marca, modelo y numero de serie son obligatorios" };
+  if (equipo.id_proveedor !== null && (!Number.isInteger(equipo.id_proveedor) || equipo.id_proveedor < 1)) return { error: "El proveedor seleccionado no es valido" };
+  if (equipo.garantia_meses !== null && (!Number.isInteger(equipo.garantia_meses) || equipo.garantia_meses < 0)) return { error: "La garantia en meses no es valida" };
+  if (!estadosEquipoValidos.includes(equipo.estado)) return { error: "El estado del equipo no es valido" };
+  equipo.nombre_equipo ||= `${equipo.tipo_equipo} ${equipo.marca} ${equipo.modelo}`;
+  equipo.vence_garantia = null;
+  if (equipo.fecha_compra && equipo.garantia_meses !== null) {
+    const fecha = new Date(`${equipo.fecha_compra}T12:00:00Z`);
+    if (!Number.isNaN(fecha.getTime())) { fecha.setUTCMonth(fecha.getUTCMonth() + equipo.garantia_meses); equipo.vence_garantia = fecha.toISOString().slice(0, 10); }
+  }
+  return { equipo };
+}
+
+async function obtenerEquipo(clausula, valor) {
+  const [filas] = await pool.query(`SELECT ${camposEquipo} FROM equipos e LEFT JOIN proveedores p ON p.id_proveedor = e.id_proveedor WHERE ${clausula} LIMIT 1`, [valor]);
+  return filas[0];
+}
+
+app.get("/api/equipos", verificarToken, async (req, res) => {
+  const vista = req.query.estado || "activos";
+  if (!["activos", "ocultos", "todos"].includes(vista)) return res.status(400).json({ mensaje: "El estado de consulta no es valido" });
+  const filtros = [], parametros = [];
+  if (vista !== "todos") { filtros.push("e.activo = ?"); parametros.push(vista === "activos" ? 1 : 0); }
+  for (const campo of ["tipo_equipo", "marca", "id_proveedor"]) if (req.query[campo]) { filtros.push(`e.${campo} = ?`); parametros.push(req.query[campo]); }
+  if (req.query.estado_equipo) { filtros.push("e.estado = ?"); parametros.push(req.query.estado_equipo); }
+  try {
+    const [equipos] = await pool.query(`SELECT ${camposEquipo} FROM equipos e LEFT JOIN proveedores p ON p.id_proveedor = e.id_proveedor ${filtros.length ? `WHERE ${filtros.join(" AND ")}` : ""} ORDER BY e.fecha_creacion DESC`, parametros);
+    return res.json({ equipos });
+  } catch (error) { console.error("Error al listar equipos:", error); return res.status(500).json({ mensaje: "Error al listar equipos" }); }
+});
+
+app.post("/api/equipos", verificarToken, autorizarRoles("admin", "capturista"), async (req, res) => {
+  const { equipo, error } = normalizarEquipo(req.body);
+  if (error) return res.status(400).json({ mensaje: error });
+  try {
+    if (!equipo.codigo_equipo) { const [seq] = await pool.query("SELECT COALESCE(MAX(id_equipo), 0) + 1 siguiente FROM equipos"); equipo.codigo_equipo = `EQ-${String(seq[0].siguiente).padStart(4, "0")}`; }
+    const qrToken = crypto.randomUUID();
+    const qrUrl = `/equipos/qr/${qrToken}`;
+    const [resultado] = await pool.query("INSERT INTO equipos (id_proveedor, codigo_equipo, nombre_equipo, tipo_equipo, marca, modelo, numero_serie, fecha_compra, garantia_meses, vence_garantia, especificaciones_tecnicas, foto_key, foto_url, qr_token, qr_url, estado, activo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, 1)", [equipo.id_proveedor, equipo.codigo_equipo, equipo.nombre_equipo, equipo.tipo_equipo, equipo.marca, equipo.modelo, equipo.numero_serie, equipo.fecha_compra, equipo.garantia_meses, equipo.vence_garantia, equipo.especificaciones_tecnicas, qrToken, qrUrl, equipo.estado]);
+    return res.status(201).json({ mensaje: "Equipo creado correctamente", equipo: await obtenerEquipo("e.id_equipo = ?", resultado.insertId) });
+  } catch (err) {
+    if (err.code === "ER_DUP_ENTRY") return res.status(409).json({ mensaje: err.message.toLowerCase().includes("serie") ? "El numero de serie ya esta registrado" : "El codigo del equipo ya esta registrado" });
+    console.error("Error al crear equipo:", err); return res.status(500).json({ mensaje: "Error al crear equipo" });
+  }
+});
+
+app.put("/api/equipos/:id_equipo/estado", verificarToken, autorizarRoles("admin"), async (req, res) => {
+  const activo = Number(req.body.activo);
+  if (![0, 1].includes(activo)) return res.status(400).json({ mensaje: "El estado activo no es valido" });
+  try { const [r] = await pool.query("UPDATE equipos SET activo = ?, fecha_actualizacion = NOW() WHERE id_equipo = ?", [activo, req.params.id_equipo]); if (!r.affectedRows) return res.status(404).json({ mensaje: "Equipo no encontrado" }); return res.json({ mensaje: activo ? "Equipo activado correctamente" : "Equipo ocultado correctamente", equipo: await obtenerEquipo("e.id_equipo = ?", req.params.id_equipo) }); }
+  catch (error) { console.error("Error al cambiar estado del equipo:", error); return res.status(500).json({ mensaje: "Error al cambiar estado del equipo" }); }
+});
+
+app.get("/api/equipos/qr/:qr_token", verificarToken, async (req, res) => {
+  try { const equipo = await obtenerEquipo("e.qr_token = ?", req.params.qr_token); return equipo ? res.json({ equipo }) : res.status(404).json({ mensaje: "Equipo no encontrado" }); }
+  catch { return res.status(500).json({ mensaje: "Error al consultar equipo" }); }
+});
+
+app.get("/api/equipos/:id_equipo", verificarToken, async (req, res) => {
+  try { const equipo = await obtenerEquipo("e.id_equipo = ?", req.params.id_equipo); return equipo ? res.json({ equipo }) : res.status(404).json({ mensaje: "Equipo no encontrado" }); }
+  catch { return res.status(500).json({ mensaje: "Error al consultar equipo" }); }
+});
+
+app.put("/api/equipos/:id_equipo", verificarToken, autorizarRoles("admin", "capturista"), async (req, res) => {
+  const { equipo, error } = normalizarEquipo(req.body);
+  if (error) return res.status(400).json({ mensaje: error });
+  try {
+    const [actuales] = await pool.query("SELECT qr_token, qr_url FROM equipos WHERE id_equipo = ? LIMIT 1", [req.params.id_equipo]);
+    if (!actuales.length) return res.status(404).json({ mensaje: "Equipo no encontrado" });
+    const qrToken = actuales[0].qr_token || crypto.randomUUID();
+    const qrUrl = actuales[0].qr_url || `/equipos/qr/${qrToken}`;
+    await pool.query("UPDATE equipos SET id_proveedor = ?, codigo_equipo = COALESCE(NULLIF(?, ''), codigo_equipo), nombre_equipo = ?, tipo_equipo = ?, marca = ?, modelo = ?, numero_serie = ?, fecha_compra = ?, garantia_meses = ?, vence_garantia = ?, especificaciones_tecnicas = ?, estado = ?, qr_token = ?, qr_url = ?, fecha_actualizacion = NOW() WHERE id_equipo = ?", [equipo.id_proveedor, equipo.codigo_equipo, equipo.nombre_equipo, equipo.tipo_equipo, equipo.marca, equipo.modelo, equipo.numero_serie, equipo.fecha_compra, equipo.garantia_meses, equipo.vence_garantia, equipo.especificaciones_tecnicas, equipo.estado, qrToken, qrUrl, req.params.id_equipo]);
+    return res.json({ mensaje: "Equipo actualizado correctamente", equipo: await obtenerEquipo("e.id_equipo = ?", req.params.id_equipo) });
+  } catch (err) { if (err.code === "ER_DUP_ENTRY") return res.status(409).json({ mensaje: "El numero de serie o codigo ya esta registrado en otro equipo" }); return res.status(500).json({ mensaje: "Error al editar equipo" }); }
+});
+
+const tiposAsignacionValidos = ["temporal", "permanente"];
+
+function textoOpcional(valor) {
+  const texto = String(valor ?? "").trim();
+  return texto || null;
+}
+
+function agruparAsignacionesActivas(filas) {
+  const asignaciones = new Map();
+
+  for (const fila of filas) {
+    if (!asignaciones.has(fila.id_asignacion)) {
+      asignaciones.set(fila.id_asignacion, {
+        id_asignacion: fila.id_asignacion,
+        fecha_resguardo: fila.fecha_resguardo,
+        estado: fila.estado_asignacion,
+        observaciones_generales: fila.observaciones_generales,
+        colaborador: {
+          id_colaborador: fila.id_colaborador,
+          nombre_completo: fila.nombre_completo,
+          num_colaborador: fila.num_colaborador,
+          area: fila.area,
+          departamento: fila.departamento,
+          puesto: fila.puesto,
+          correo: fila.correo,
+        },
+        resguardo: fila.id_resguardo ? {
+          id_resguardo: fila.id_resguardo,
+          folio: fila.folio,
+          tipo_documento: fila.tipo_documento,
+        } : null,
+        activos: [],
+      });
+    }
+
+    asignaciones.get(fila.id_asignacion).activos.push({
+      id_detalle: fila.id_detalle,
+      id_equipo: fila.id_equipo,
+      codigo_equipo: fila.codigo_equipo,
+      nombre_equipo: fila.nombre_equipo,
+      tipo_equipo: fila.tipo_equipo,
+      marca: fila.marca,
+      modelo: fila.modelo,
+      numero_serie: fila.numero_serie,
+      tipo_asignacion: fila.tipo_asignacion,
+      fecha_asignacion: fila.fecha_asignacion,
+      fecha_devolucion_programada: fila.fecha_devolucion_programada,
+      accesorios_entregados: fila.accesorios_entregados,
+      estado_fisico_entrega: fila.estado_fisico_entrega,
+      observaciones: fila.observaciones,
+      estado_detalle: fila.estado_detalle,
+      fecha_devolucion_real: fila.fecha_devolucion_real,
+      estado_fisico_devolucion: fila.estado_fisico_devolucion,
+      accesorios_devueltos: fila.accesorios_devueltos,
+      observaciones_devolucion: fila.observaciones_devolucion,
+    });
+  }
+
+  return [...asignaciones.values()].map((asignacion) => {
+    const tipos = [...new Set(asignacion.activos.map((activo) => activo.tipo_asignacion))];
+    const fechasDevolucion = asignacion.activos
+      .map((activo) => activo.fecha_devolucion_programada)
+      .filter(Boolean)
+      .sort();
+
+    return {
+      ...asignacion,
+      cantidad_activos: asignacion.activos.length,
+      tipos_activos: [...new Set(asignacion.activos.map((activo) => activo.tipo_equipo))],
+      tipo_asignacion_general: tipos.length === 1 ? tipos[0] : "mixto",
+      fecha_inicio: asignacion.activos.map((activo) => activo.fecha_asignacion).filter(Boolean).sort()[0] || asignacion.fecha_resguardo,
+      fecha_devolucion_programada: fechasDevolucion.at(-1) || null,
+    };
+  });
+}
+
+async function consultarAsignacionCompleta(ejecutor, idAsignacion) {
+  const [filas] = await ejecutor.query(
+    `SELECT a.id_asignacion, a.fecha_resguardo, a.estado AS estado_asignacion, a.observaciones_generales,
+      c.id_colaborador, c.nombre_completo, c.num_colaborador, c.area, c.departamento, c.puesto, c.correo,
+      u.id_usuario AS id_responsable, u.nombre_completo AS responsable_nombre, u.rol AS responsable_rol,
+      r.id_resguardo, r.folio, r.tipo_documento, r.estado AS estado_resguardo,
+      r.firma_colaborador, r.firma_responsable, r.pdf_key, r.pdf_url, r.correo_enviado,
+      d.id_detalle, d.id_equipo, d.tipo_asignacion, d.fecha_asignacion,
+      d.fecha_devolucion_programada, d.fecha_devolucion_real, d.accesorios_entregados,
+      d.estado_fisico_entrega, d.observaciones, d.estado_detalle, d.estado_fisico_devolucion,
+      d.accesorios_devueltos, d.observaciones_devolucion,
+      COALESCE(d.codigo_equipo_snapshot, e.codigo_equipo) AS codigo_equipo,
+      COALESCE(d.nombre_equipo_snapshot, e.nombre_equipo) AS nombre_equipo,
+      COALESCE(d.tipo_equipo_snapshot, e.tipo_equipo) AS tipo_equipo,
+      COALESCE(d.marca_snapshot, e.marca) AS marca, COALESCE(d.modelo_snapshot, e.modelo) AS modelo,
+      COALESCE(d.numero_serie_snapshot, e.numero_serie) AS numero_serie
+    FROM asignaciones a
+    JOIN colaboradores c ON c.id_colaborador = a.id_colaborador
+    LEFT JOIN usuarios u ON u.id_usuario = a.id_usuario_entrega
+    LEFT JOIN resguardos r ON r.id_asignacion = a.id_asignacion AND r.tipo_documento = 'asignacion'
+    JOIN asignacion_detalles d ON d.id_asignacion = a.id_asignacion
+    JOIN equipos e ON e.id_equipo = d.id_equipo
+    WHERE a.id_asignacion = ?
+    ORDER BY d.id_detalle`,
+    [idAsignacion]
+  );
+
+  if (!filas.length) return null;
+  const agrupada = agruparAsignacionesActivas(filas)[0];
+  return {
+    asignacion: {
+      id_asignacion: agrupada.id_asignacion,
+      fecha_resguardo: agrupada.fecha_resguardo,
+      estado: agrupada.estado,
+      observaciones_generales: agrupada.observaciones_generales,
+    },
+    colaborador: agrupada.colaborador,
+    responsable: filas[0].id_responsable ? {
+      id_usuario: filas[0].id_responsable,
+      nombre_completo: filas[0].responsable_nombre,
+      rol: filas[0].responsable_rol,
+    } : null,
+    resguardo: agrupada.resguardo ? {
+      ...agrupada.resguardo,
+      estado: filas[0].estado_resguardo,
+      firma_colaborador: filas[0].firma_colaborador,
+      firma_responsable: filas[0].firma_responsable,
+      pdf_key: filas[0].pdf_key,
+      pdf_url: filas[0].pdf_url,
+      correo_enviado: filas[0].correo_enviado,
+    } : null,
+    activos: agrupada.activos,
+  };
+}
+
+app.get("/api/asignaciones/activas", verificarToken, async (req, res) => {
+  try {
+    const [filas] = await pool.query(
+      `SELECT a.id_asignacion, a.fecha_resguardo, a.estado AS estado_asignacion, a.observaciones_generales,
+        c.id_colaborador, c.nombre_completo, c.num_colaborador, c.area, c.departamento, c.puesto, c.correo,
+        r.id_resguardo, r.folio, r.tipo_documento,
+        d.id_detalle, d.id_equipo, d.tipo_asignacion, d.fecha_asignacion,
+        d.fecha_devolucion_programada, d.accesorios_entregados, d.estado_fisico_entrega,
+        d.observaciones, d.estado_detalle,
+        COALESCE(d.codigo_equipo_snapshot, e.codigo_equipo) AS codigo_equipo,
+        COALESCE(d.nombre_equipo_snapshot, e.nombre_equipo) AS nombre_equipo,
+        COALESCE(d.tipo_equipo_snapshot, e.tipo_equipo) AS tipo_equipo,
+        COALESCE(d.marca_snapshot, e.marca) AS marca, COALESCE(d.modelo_snapshot, e.modelo) AS modelo,
+        COALESCE(d.numero_serie_snapshot, e.numero_serie) AS numero_serie
+      FROM asignaciones a
+      JOIN colaboradores c ON c.id_colaborador = a.id_colaborador
+      JOIN asignacion_detalles d ON d.id_asignacion = a.id_asignacion AND d.estado_detalle = 'activo'
+      JOIN equipos e ON e.id_equipo = d.id_equipo
+      LEFT JOIN resguardos r ON r.id_asignacion = a.id_asignacion AND r.tipo_documento = 'asignacion'
+      WHERE a.estado = 'activa'
+      ORDER BY a.fecha_resguardo DESC, a.id_asignacion DESC, d.id_detalle`,
+    );
+    return res.json({ asignaciones: agruparAsignacionesActivas(filas) });
+  } catch (error) {
+    console.error("Error al listar asignaciones activas:", error);
+    return res.status(500).json({ mensaje: "Error al listar asignaciones activas" });
+  }
+});
+
+app.post(
+  "/api/asignaciones",
+  verificarToken,
+  autorizarRoles("admin", "capturista"),
+  async (req, res) => {
+    const idColaborador = Number(req.body.id_colaborador);
+    const activos = req.body.activos;
+
+    if (!Number.isInteger(idColaborador) || idColaborador < 1) {
+      return res.status(400).json({ mensaje: "El colaborador es obligatorio" });
+    }
+    if (!Array.isArray(activos) || activos.length === 0) {
+      return res.status(400).json({ mensaje: "Debes incluir al menos un activo" });
+    }
+
+    const ids = new Set();
+    const normalizados = [];
+    for (const activo of activos) {
+      const idEquipo = Number(activo.id_equipo);
+      const tipoAsignacion = String(activo.tipo_asignacion || "").trim().toLowerCase();
+      const fechaDevolucion = textoOpcional(activo.fecha_devolucion_programada);
+
+      if (!Number.isInteger(idEquipo) || idEquipo < 1) {
+        return res.status(400).json({ mensaje: "Cada activo debe tener un id_equipo valido" });
+      }
+      if (ids.has(idEquipo)) {
+        return res.status(400).json({ mensaje: "No puedes incluir el mismo equipo dos veces" });
+      }
+      if (!tiposAsignacionValidos.includes(tipoAsignacion)) {
+        return res.status(400).json({ mensaje: "El tipo de asignacion debe ser temporal o permanente" });
+      }
+      if (tipoAsignacion === "temporal" && !fechaDevolucion) {
+        return res.status(400).json({ mensaje: "La fecha de devolucion es obligatoria para activos temporales" });
+      }
+
+      ids.add(idEquipo);
+      normalizados.push({
+        id_equipo: idEquipo,
+        tipo_asignacion: tipoAsignacion,
+        fecha_devolucion_programada: tipoAsignacion === "permanente" ? null : fechaDevolucion,
+        accesorios_entregados: textoOpcional(activo.accesorios_entregados),
+        estado_fisico_entrega: textoOpcional(activo.estado_fisico_entrega) || "Buen estado",
+        observaciones: textoOpcional(activo.observaciones),
+      });
+    }
+
+    const conexion = await pool.getConnection();
+    try {
+      await conexion.beginTransaction();
+      const [colaboradores] = await conexion.query(
+        "SELECT id_colaborador, nombre_completo, num_colaborador, correo FROM colaboradores WHERE id_colaborador = ? AND activo = 1 LIMIT 1 FOR UPDATE",
+        [idColaborador]
+      );
+      if (!colaboradores.length) {
+        await conexion.rollback();
+        return res.status(400).json({ mensaje: "El colaborador no existe o esta inactivo" });
+      }
+
+      const marcadores = normalizados.map(() => "?").join(", ");
+      const idsEquipos = normalizados.map((activo) => activo.id_equipo);
+      const [equiposDisponibles] = await conexion.query(
+        `SELECT id_equipo, codigo_equipo, nombre_equipo, tipo_equipo, marca, modelo, numero_serie FROM equipos WHERE id_equipo IN (${marcadores}) AND activo = 1 AND estado = 'disponible' FOR UPDATE`,
+        idsEquipos
+      );
+      if (equiposDisponibles.length !== normalizados.length) {
+        await conexion.rollback();
+        return res.status(409).json({ mensaje: "Uno o mas equipos ya no estan disponibles" });
+      }
+
+      const [detallesActivos] = await conexion.query(
+        `SELECT id_equipo FROM asignacion_detalles WHERE id_equipo IN (${marcadores}) AND estado_detalle = 'activo' LIMIT 1 FOR UPDATE`,
+        idsEquipos
+      );
+      if (detallesActivos.length) {
+        await conexion.rollback();
+        return res.status(409).json({ mensaje: "Uno o mas equipos ya tienen una asignacion activa" });
+      }
+
+      const [asignacion] = await conexion.query(
+        "INSERT INTO asignaciones (id_colaborador, id_usuario_entrega, fecha_resguardo, estado, observaciones_generales) VALUES (?, ?, CURDATE(), 'activa', ?)",
+        [idColaborador, req.usuario.id_usuario || null, textoOpcional(req.body.observaciones_generales)]
+      );
+
+      const equiposPorId = new Map(equiposDisponibles.map((equipo) => [Number(equipo.id_equipo), equipo]));
+      for (const activo of normalizados) {
+        const equipo = equiposPorId.get(activo.id_equipo);
+        await conexion.query(
+          `INSERT INTO asignacion_detalles
+            (id_asignacion, id_equipo, codigo_equipo_snapshot, nombre_equipo_snapshot,
+             tipo_equipo_snapshot, marca_snapshot, modelo_snapshot, numero_serie_snapshot,
+             tipo_asignacion, fecha_asignacion, fecha_devolucion_programada,
+             accesorios_entregados, estado_fisico_entrega, observaciones, estado_detalle)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURDATE(), ?, ?, ?, ?, 'activo')`,
+          [asignacion.insertId, activo.id_equipo, equipo.codigo_equipo, equipo.nombre_equipo,
+            equipo.tipo_equipo, equipo.marca, equipo.modelo, equipo.numero_serie,
+            activo.tipo_asignacion, activo.fecha_devolucion_programada,
+            activo.accesorios_entregados, activo.estado_fisico_entrega, activo.observaciones]
+        );
+      }
+
+      await conexion.query(
+        `UPDATE equipos SET estado = 'asignado', fecha_actualizacion = NOW() WHERE id_equipo IN (${marcadores})`,
+        idsEquipos
+      );
+
+      const folio = `RES-${String(asignacion.insertId).padStart(6, "0")}`;
+      const [resguardo] = await conexion.query(
+        `INSERT INTO resguardos
+          (id_asignacion, id_usuario_responsable, tipo_documento, fecha_documento,
+           nombre_colaborador_snapshot, num_colaborador_snapshot, nombre_responsable_snapshot,
+           folio, correo_colaborador, correo_responsable, correo_enviado, estado)
+         VALUES (?, ?, 'asignacion', NOW(), ?, ?, ?, ?, ?, ?, 0, 'generado')`,
+        [asignacion.insertId, req.usuario.id_usuario || null, colaboradores[0].nombre_completo,
+          colaboradores[0].num_colaborador, req.usuario.nombre_completo || req.usuario.correo || null,
+          folio, colaboradores[0].correo || null, req.usuario.correo || null]
+      );
+
+      await conexion.commit();
+      return res.status(201).json({
+        mensaje: "Asignacion y resguardo creados correctamente",
+        id_asignacion: asignacion.insertId,
+        id_resguardo: resguardo.insertId,
+        folio,
+      });
+    } catch (error) {
+      await conexion.rollback();
+      console.error("Error al crear asignacion:", error);
+      return res.status(500).json({ mensaje: "Error al crear la asignacion" });
+    } finally {
+      conexion.release();
+    }
+  }
+);
+
+app.get("/api/asignaciones/:id_asignacion", verificarToken, async (req, res) => {
+  try {
+    const detalle = await consultarAsignacionCompleta(pool, req.params.id_asignacion);
+    return detalle ? res.json(detalle) : res.status(404).json({ mensaje: "Asignacion no encontrada" });
+  } catch (error) {
+    console.error("Error al consultar asignacion:", error);
+    return res.status(500).json({ mensaje: "Error al consultar la asignacion" });
+  }
+});
+
+app.post(
+  "/api/asignaciones/:id_asignacion/devoluciones",
+  verificarToken,
+  autorizarRoles("admin", "capturista"),
+  async (req, res) => {
+    const idAsignacion = Number(req.params.id_asignacion);
+    const detalles = req.body.detalles;
+    const fechaDevolucion = String(req.body.fecha_devolucion || "").trim();
+    if (!Number.isInteger(idAsignacion) || idAsignacion < 1) return res.status(400).json({ mensaje: "La asignacion no es valida" });
+    if (!Array.isArray(detalles) || !detalles.length) return res.status(400).json({ mensaje: "Selecciona al menos un activo para devolver" });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaDevolucion)) return res.status(400).json({ mensaje: "La fecha de devolucion no es valida" });
+
+    const ids = new Set();
+    const normalizados = [];
+    for (const detalle of detalles) {
+      const idDetalle = Number(detalle.id_detalle);
+      if (!Number.isInteger(idDetalle) || idDetalle < 1) return res.status(400).json({ mensaje: "Cada activo debe tener un id_detalle valido" });
+      if (ids.has(idDetalle)) return res.status(400).json({ mensaje: "No puedes devolver el mismo activo dos veces" });
+      ids.add(idDetalle);
+      normalizados.push({
+        id_detalle: idDetalle,
+        estado_fisico_devolucion: textoOpcional(detalle.estado_fisico_devolucion) || "Buen estado",
+        accesorios_devueltos: textoOpcional(detalle.accesorios_devueltos),
+        observaciones_devolucion: textoOpcional(detalle.observaciones_devolucion),
+      });
+    }
+
+    const conexion = await pool.getConnection();
+    try {
+      await conexion.beginTransaction();
+      const [asignaciones] = await conexion.query(
+        `SELECT a.id_asignacion, a.estado, c.nombre_completo, c.num_colaborador, c.correo
+         FROM asignaciones a JOIN colaboradores c ON c.id_colaborador = a.id_colaborador
+         WHERE a.id_asignacion = ? LIMIT 1 FOR UPDATE`, [idAsignacion]
+      );
+      if (!asignaciones.length) { await conexion.rollback(); return res.status(404).json({ mensaje: "Asignacion no encontrada" }); }
+      if (asignaciones[0].estado !== "activa") { await conexion.rollback(); return res.status(409).json({ mensaje: "La asignacion ya no esta activa" }); }
+
+      const marcadores = normalizados.map(() => "?").join(", ");
+      const idsDetalle = normalizados.map((detalle) => detalle.id_detalle);
+      const [detallesActivos] = await conexion.query(
+        `SELECT id_detalle, id_equipo FROM asignacion_detalles
+         WHERE id_asignacion = ? AND id_detalle IN (${marcadores}) AND estado_detalle = 'activo' FOR UPDATE`,
+        [idAsignacion, ...idsDetalle]
+      );
+      if (detallesActivos.length !== normalizados.length) {
+        await conexion.rollback();
+        return res.status(409).json({ mensaje: "Uno o mas activos ya fueron devueltos o no pertenecen a la asignacion" });
+      }
+
+      for (const detalle of normalizados) {
+        await conexion.query(
+          `UPDATE asignacion_detalles SET fecha_devolucion_real = CONCAT(?, ' ', CURTIME()),
+             estado_fisico_devolucion = ?, accesorios_devueltos = ?, observaciones_devolucion = ?,
+             estado_detalle = 'devuelto', fecha_actualizacion = NOW()
+           WHERE id_detalle = ? AND id_asignacion = ? AND estado_detalle = 'activo'`,
+          [fechaDevolucion, detalle.estado_fisico_devolucion, detalle.accesorios_devueltos,
+            detalle.observaciones_devolucion, detalle.id_detalle, idAsignacion]
+        );
+      }
+
+      const idsEquipo = detallesActivos.map((detalle) => detalle.id_equipo);
+      const marcadoresEquipo = idsEquipo.map(() => "?").join(", ");
+      await conexion.query(`UPDATE equipos SET estado = 'disponible', fecha_actualizacion = NOW() WHERE id_equipo IN (${marcadoresEquipo})`, idsEquipo);
+      const [[pendientes]] = await conexion.query("SELECT COUNT(id_detalle) AS total FROM asignacion_detalles WHERE id_asignacion = ? AND estado_detalle = 'activo'", [idAsignacion]);
+      const devolucionTotal = Number(pendientes.total) === 0;
+      await conexion.query("UPDATE asignaciones SET estado = ?, fecha_actualizacion = NOW() WHERE id_asignacion = ?", [devolucionTotal ? "devuelta" : "activa", idAsignacion]);
+
+      const [usuarios] = await conexion.query("SELECT nombre_completo, correo FROM usuarios WHERE id_usuario = ? LIMIT 1", [req.usuario.id_usuario]);
+      const responsable = usuarios[0] || {};
+      const folio = `DEV-${String(idAsignacion).padStart(6, "0")}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+      const [resguardo] = await conexion.query(
+        `INSERT INTO resguardos
+          (id_asignacion, id_usuario_responsable, tipo_documento, fecha_documento,
+           nombre_colaborador_snapshot, num_colaborador_snapshot, nombre_responsable_snapshot,
+           folio, firma_colaborador, firma_responsable, correo_colaborador,
+           correo_responsable, correo_enviado, estado)
+         VALUES (?, ?, 'devolucion', CONCAT(?, ' ', CURTIME()), ?, ?, ?, ?, ?, ?, ?, ?, 0, 'generado')`,
+        [idAsignacion, req.usuario.id_usuario || null, fechaDevolucion, asignaciones[0].nombre_completo,
+          asignaciones[0].num_colaborador, responsable.nombre_completo || req.usuario.correo || null,
+          folio, textoOpcional(req.body.firma_colaborador), textoOpcional(req.body.firma_responsable),
+          asignaciones[0].correo || null, responsable.correo || req.usuario.correo || null]
+      );
+
+      await conexion.commit();
+      return res.status(201).json({
+        mensaje: devolucionTotal ? "Devolucion total registrada correctamente" : "Devolucion parcial registrada correctamente",
+        id_asignacion: idAsignacion, id_resguardo: resguardo.insertId, folio,
+        tipo_devolucion: devolucionTotal ? "total" : "parcial",
+        activos_devueltos: normalizados.length, activos_pendientes: Number(pendientes.total),
+      });
+    } catch (error) {
+      await conexion.rollback();
+      console.error("Error al registrar devolucion:", error);
+      return res.status(500).json({ mensaje: "Error al registrar la devolucion" });
+    } finally { conexion.release(); }
+  }
+);
+app.get("/api/resguardos/:id_resguardo", verificarToken, async (req, res) => {
+  try {
+    const [resguardos] = await pool.query(
+      "SELECT id_asignacion FROM resguardos WHERE id_resguardo = ? LIMIT 1",
+      [req.params.id_resguardo]
+    );
+    if (!resguardos.length) return res.status(404).json({ mensaje: "Resguardo no encontrado" });
+    const detalle = await consultarAsignacionCompleta(pool, resguardos[0].id_asignacion);
+    return res.json(detalle);
+  } catch (error) {
+    console.error("Error al consultar resguardo:", error);
+    return res.status(500).json({ mensaje: "Error al consultar el resguardo" });
+  }
+});
+
+app.put("/api/resguardos/:id_resguardo/firmas", verificarToken, async (req, res) => {
+  const firmaColaborador = textoOpcional(req.body.firma_colaborador);
+  const firmaResponsable = textoOpcional(req.body.firma_responsable);
+  try {
+    const [resultado] = await pool.query(
+      "UPDATE resguardos SET firma_colaborador = ?, firma_responsable = ?, fecha_actualizacion = NOW() WHERE id_resguardo = ?",
+      [firmaColaborador, firmaResponsable, req.params.id_resguardo]
+    );
+    if (!resultado.affectedRows) return res.status(404).json({ mensaje: "Resguardo no encontrado" });
+    return res.json({ mensaje: "Firmas guardadas correctamente" });
+  } catch (error) {
+    console.error("Error al guardar firmas:", error);
+    return res.status(500).json({ mensaje: "Error al guardar las firmas" });
+  }
+});
 const correoColaboradorValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const camposColaborador = "id_colaborador, num_colaborador, nombre_completo, area, departamento, puesto, correo, telefono, extension, foto_key, foto_url, estado, observaciones, activo, fecha_creacion, fecha_actualizacion";
 

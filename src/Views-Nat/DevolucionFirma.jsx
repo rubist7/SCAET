@@ -2,17 +2,20 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Download, Eraser, Mail, PenLine, X } from "lucide-react";
 import DateInput from "./DateInput";
 import { formatDate } from "./dateUtils";
-import { colaboradores, equipos } from "./asignacionData";
 import Signature from "../components/Signature";
 
 const defaultDevolucion = {
-  folio: "RSG-2026-049",
-  fecha: "2026-05-08",
-  colaborador: colaboradores[0],
-  equipo: equipos[1],
+  idAsignacion: null,
+  idResguardo: null,
+  folio: "",
+  fecha: new Date().toISOString().slice(0, 10),
+  colaborador: { id: null, numero: "", nombre: "", area: "", departamento: "", puesto: "", correo: "" },
+  equipo: { id: null, codigo: "", nombre: "", tipo: "", marca: "", modelo: "", serie: "" },
   tipo: "Permanente",
-  estado: "Bueno",
+  estado: "Buen estado / Funcional",
   observaciones: "",
+  responsableEntrega: "-",
+  items: [],
 };
 
 const estadoOptionsByType = {
@@ -21,7 +24,6 @@ const estadoOptionsByType = {
   yubikey: ["Entregada", "Funcional", "Danada", "Extraviada", "No devuelta"],
   mixto: ["Completa", "Parcial", "Con danios", "Incompleta"],
 };
-
 function fallbackItem(data) {
   if (data.tipoResguardo === "tarjeta") {
     return {
@@ -387,11 +389,11 @@ function SignaturePad({ value, onChange, disabled }) {
   );
 }
 
-function AutoSignature() {
+function AutoSignature({ signerName }) {
   return (
     <div className="flex h-20 items-center justify-center rounded-[8px] border border-[#ded6c8] bg-[#eee8dc]">
       <div className="text-center">
-        <p className="font-serif text-2xl text-[#0F83F0]">~Javier Echeverria~</p>
+        <p className="font-serif text-2xl text-[#0F83F0]">~{signerName}~</p>
         <p className="mt-1 text-[10px] font-semibold text-[#b1a58f]">Firma cargada automaticamente.</p>
         <p className="text-[10px] font-semibold text-[#b1a58f]">Se aplica a cada documento.</p>
       </div>
@@ -533,7 +535,7 @@ function GeneratedDevolucionModal({ data, items, signature, onClose }) {
   );
 }
 
-export default function DevolucionFirma({ devolucion, initialSelectedItemKeys, onBack, onGoResguardo }) {
+function DevolucionEditor({ devolucion, initialSelectedItemKeys, onBack, onGoResguardo, onSaved }) {
   const source = useMemo(() => ({ ...defaultDevolucion, ...devolucion }), [devolucion]);
   const canCaptureSignature = useCanCaptureTouchSignature();
   const items = useMemo(() => (source.items?.length ? source.items : [fallbackItem(source)]), [source]);
@@ -547,6 +549,8 @@ export default function DevolucionFirma({ devolucion, initialSelectedItemKeys, o
   const [observaciones, setObservaciones] = useState(source.observaciones || "");
   const [signature, setSignature] = useState("");
   const [generatedOpen, setGeneratedOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [savedResult, setSavedResult] = useState(null);
 
   const data = {
     ...source,
@@ -562,6 +566,37 @@ export default function DevolucionFirma({ devolucion, initialSelectedItemKeys, o
   const typeValue = activeItems.length === 1 ? activeItems[0].tipoLabel : "Seleccion multiple";
   const seriesValue = activeItems.length === 1 ? activeItems[0].serie || activeItems[0].codigo || "-" : "Ver lista de seleccion";
 
+  const handleConfirm = async () => {
+    setSaving(true);
+    try {
+      const response = await fetch(`/api/asignaciones/${source.idAsignacion}/devoluciones`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("scaet-token")}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          fecha_devolucion: fecha,
+          firma_colaborador: signature || null,
+          firma_responsable: null,
+          detalles: activeItems.map((item) => ({
+            id_detalle: item.idDetalle,
+            estado_fisico_devolucion: estado,
+            accesorios_devueltos: "",
+            observaciones_devolucion: observaciones,
+          })),
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.mensaje || "No se pudo guardar la devolucion");
+      setSavedResult(result);
+      setGeneratedOpen(true);
+    } catch (error) {
+      window.alert(error.message);
+    } finally {
+      setSaving(false);
+    }
+  };
   return (
     <div className="min-w-0 space-y-4 overflow-hidden">
       <div>
@@ -617,22 +652,22 @@ export default function DevolucionFirma({ devolucion, initialSelectedItemKeys, o
               <Field label="Firma del colaborador *">
                 <SignaturePad value={signature} onChange={setSignature} disabled={!canCaptureSignature} />
               </Field>
-              <Field label="Javier Echeverria">
+              <Field label={source.responsableEntrega || "Responsable de entrega"}>
                 <div className="mb-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-500">
                   Por defecto
                 </div>
-                <AutoSignature />
+                <AutoSignature signerName={source.responsableEntrega || "Responsable de entrega"} />
               </Field>
             </div>
           </div>
-
           <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <button type="button" onClick={onBack} className="h-10 rounded-[8px] bg-[#eee8dc] px-5 text-xs font-black text-[#6f6584]">
               Cancelar
             </button>
             <button
               type="button"
-              onClick={() => setGeneratedOpen(true)}
+              onClick={handleConfirm}
+              disabled={saving}
               className="h-10 rounded-[8px] bg-[#3A9AF2] px-5 text-xs font-black text-[#FFFFFF] transition hover:bg-[#238BEA]"
             >
               Confirmar y guardar pdf
@@ -641,7 +676,69 @@ export default function DevolucionFirma({ devolucion, initialSelectedItemKeys, o
         </section>
       </div>
 
-      {generatedOpen && <GeneratedDevolucionModal data={data} items={activeItems} signature={signature} onClose={() => setGeneratedOpen(false)} />}
+      {generatedOpen && <GeneratedDevolucionModal data={{ ...data, folio: savedResult?.folio || data.folio }} items={activeItems} signature={signature} onClose={() => { setGeneratedOpen(false); onSaved?.(savedResult); }} />}
     </div>
   );
+}
+function mapAssignmentToDevolucion(payload) {
+  const items = (payload.activos || []).filter((item) => item.estado_detalle === "activo").map((item) => ({
+    key: `detalle-${item.id_detalle}`,
+    id: Number(item.id_equipo),
+    idDetalle: Number(item.id_detalle),
+    tipoResguardo: item.tipo_equipo === "Tarjeta" ? "tarjeta" : item.tipo_equipo === "YubiKey" ? "yubikey" : "equipo",
+    tipoLabel: item.tipo_equipo,
+    codigo: item.codigo_equipo,
+    nombre: item.nombre_equipo,
+    tipoActivo: item.tipo_equipo,
+    marca: item.marca,
+    modelo: item.modelo,
+    serie: item.numero_serie,
+    accesorios: item.accesorios_entregados || "",
+    estadoEntrega: item.estado_fisico_entrega || "Buen estado",
+  }));
+  const first = items[0] || {};
+  return {
+    idAsignacion: Number(payload.asignacion.id_asignacion),
+    idResguardo: payload.resguardo?.id_resguardo || null,
+    folio: payload.resguardo?.folio || "",
+    fecha: new Date().toISOString().slice(0, 10),
+    colaborador: {
+      id: Number(payload.colaborador.id_colaborador),
+      numero: payload.colaborador.num_colaborador,
+      nombre: payload.colaborador.nombre_completo,
+      area: payload.colaborador.area,
+      departamento: payload.colaborador.departamento,
+      puesto: payload.colaborador.puesto,
+      correo: payload.colaborador.correo,
+    },
+    equipo: { id: first.id, codigo: first.codigo, nombre: first.nombre, tipo: first.tipoActivo, marca: first.marca, modelo: first.modelo, serie: first.serie },
+    responsableEntrega: payload.responsable?.nombre_completo || "-",
+    observaciones: "",
+    items,
+  };
+}
+
+export default function DevolucionFirma(props) {
+  const [loaded, setLoaded] = useState(null);
+  const [loadError, setLoadError] = useState("");
+  const idAsignacion = props.devolucion?.idAsignacion;
+
+  useEffect(() => {
+    if (!idAsignacion) return;
+    fetch(`/api/asignaciones/${idAsignacion}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("scaet-token")}` },
+    }).then(async (response) => {
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.mensaje || "No se pudo cargar la asignacion");
+      const mapped = mapAssignmentToDevolucion(payload);
+      if (!mapped.items.length) throw new Error("La asignacion ya no tiene activos pendientes de devolucion");
+      setLoaded(mapped);
+    }).catch((error) => setLoadError(error.message));
+  }, [idAsignacion]);
+
+  if (!loaded) {
+    return <div className="rounded-2xl bg-white p-6 text-sm font-semibold text-gray-500 shadow-sm">{loadError || "Cargando devolucion..."}</div>;
+  }
+
+  return <DevolucionEditor key={idAsignacion} {...props} devolucion={loaded} />;
 }

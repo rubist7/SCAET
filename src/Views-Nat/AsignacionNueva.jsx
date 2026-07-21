@@ -1,8 +1,8 @@
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Check, CreditCard, FileText, KeyRound, Laptop, RotateCcw, Search } from "lucide-react";
 import DateInput from "./DateInput";
 import { formatDate } from "./dateUtils";
-import { colaboradores, equipos, tarjetasComedor, yubikeys } from "./asignacionData";
+import { typeOptions } from "../Views-Rubi/equiposData";
 
 const steps = ["Colaborador", "Activo", "Tipo y fecha", "Confirmar"];
 
@@ -11,12 +11,6 @@ const assetTypes = [
   { value: "tarjeta", label: "Tarjeta comedor", shortLabel: "Tarjeta", icon: CreditCard },
   { value: "yubikey", label: "Yubikey", shortLabel: "Yubikey", icon: KeyRound },
 ];
-
-const assetsByType = {
-  equipo: equipos,
-  tarjeta: tarjetasComedor,
-  yubikey: yubikeys,
-};
 
 function assetLabel(type) {
   return assetTypes.find((option) => option.value === type)?.label || "Activo";
@@ -99,7 +93,7 @@ function SelectableRow({ item, selected, onSelect, title, subtitle }) {
   );
 }
 
-function Step1({ selected, onSelect }) {
+function Step1({ colaboradores, selected, onSelect }) {
   const [search, setSearch] = useState("");
   const normalizedSearch = search.toLowerCase();
   const filtered = colaboradores.filter((colaborador) => {
@@ -155,12 +149,21 @@ function Step1({ selected, onSelect }) {
   );
 }
 
-function Step2({ tipoActivo, setTipoActivo, selected, onSelect }) {
+function Step2({ assets, tipoActivo, setTipoActivo, selected, onSelect, selectedIds }) {
   const [search, setSearch] = useState("");
+  const [equipmentType, setEquipmentType] = useState("all");
   const selectedType = assetTypes.find((option) => option.value === tipoActivo);
-  const filtered = assetsByType[tipoActivo].filter((asset) =>
-    `${asset.nombre} ${asset.codigo} ${asset.serie} ${asset.modelo}`.toLowerCase().includes(search.toLowerCase()),
-  );
+  const filtered = assets.filter((asset) => {
+    const tabMatches = tipoActivo === "tarjeta"
+      ? asset.tipo.toLowerCase() === "tarjeta"
+      : tipoActivo === "yubikey"
+        ? asset.tipo.toLowerCase() === "yubikey"
+        : !["tarjeta", "yubikey"].includes(asset.tipo.toLowerCase());
+    const typeMatches = tipoActivo !== "equipo" || equipmentType === "all" || asset.tipo === equipmentType;
+    const query = `${asset.codigo} ${asset.nombre} ${asset.marca} ${asset.modelo} ${asset.serie} ${asset.tipo}`.toLowerCase();
+
+    return tabMatches && typeMatches && !selectedIds.has(asset.id) && query.includes(search.toLowerCase());
+  });
 
   return (
     <div className="grid gap-5 md:grid-cols-2">
@@ -178,6 +181,7 @@ function Step2({ tipoActivo, setTipoActivo, selected, onSelect }) {
                   setTipoActivo(option.value);
                   onSelect(null);
                   setSearch("");
+                  setEquipmentType("all");
                 }}
                 className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-lg border px-2 text-xs font-semibold transition ${active
                     ? "border-[#3A9AF2] bg-[#3A9AF2] text-[#FFFFFF] shadow-sm"
@@ -193,7 +197,19 @@ function Step2({ tipoActivo, setTipoActivo, selected, onSelect }) {
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
           Busca {selectedType?.label.toLowerCase()}
         </p>
-        <SearchInput placeholder="Buscar nombre, codigo, serie o modelo..." value={search} onChange={setSearch} />
+        <div className="space-y-2">
+          <SearchInput placeholder="Buscar nombre, codigo, marca, modelo, serie o tipo..." value={search} onChange={setSearch} />
+          {tipoActivo === "equipo" && (
+            <select
+              value={equipmentType}
+              onChange={(event) => { setEquipmentType(event.target.value); onSelect(null); }}
+              className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-200"
+            >
+              <option value="all">Todos los tipos</option>
+              {typeOptions.filter((type) => !["Tarjeta", "YubiKey"].includes(type)).map((type) => <option key={type} value={type}>{type}</option>)}
+            </select>
+          )}
+        </div>
         <div className="mt-2 max-h-44 overflow-y-auto">
           {filtered.map((asset) => (
             <SelectableRow
@@ -275,27 +291,32 @@ function Step3({ tipo, setTipo, fechaDev, setFechaDev }) {
   );
 }
 
-function Step4({ colaborador, tipoActivo, activo, tipo, fechaDev }) {
-  const rows = [
-    ["Colaborador", colaborador?.nombre],
-    ["Tipo de resguardo", assetLabel(tipoActivo)],
-    ["Activo", activo ? `${activo.nombre} #${activo.codigo}` : ""],
-    ["Marca / Modelo", activo ? `${activo.marca} ${activo.modelo}` : ""],
-    ["Numero de serie", activo?.serie],
-    ["Tipo de asignacion", tipo],
-    ["Fecha de devolucion", tipo === "Permanente" ? "Permanente" : formatDate(fechaDev) || "-"],
-  ];
-
+function Step4({ colaborador, items }) {
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
       <div className="bg-blue-600 px-4 py-2.5">
         <p className="text-sm font-bold text-white">Resumen de asignacion</p>
       </div>
       <div className="divide-y divide-gray-100 dark:divide-gray-800">
-        {rows.map(([label, value]) => (
+        {[
+          ["Colaborador", colaborador?.nombre],
+          ["Numero", colaborador?.numero],
+          ["Puesto", colaborador?.puesto],
+          ["Departamento / Area", colaborador?.departamento || colaborador?.area],
+        ].map(([label, value]) => (
           <div key={label} className="flex justify-between gap-4 px-4 py-2.5 text-sm">
             <span className="text-gray-500 dark:text-gray-400">{label}</span>
             <span className="text-right font-semibold text-gray-800 dark:text-gray-100">{value || "-"}</span>
+          </div>
+        ))}
+        {items.map((item) => (
+          <div key={item.key} className="px-4 py-3 text-sm">
+            <div className="flex justify-between gap-4">
+              <span className="font-semibold text-gray-800 dark:text-gray-100">{item.nombre} #{item.codigo}</span>
+              <Badge estado={item.tipoAsignacion} />
+            </div>
+            <p className="mt-1 text-xs text-gray-400">{item.tipoActivo} - {item.marca} {item.modelo} - {item.serie || "Sin serie"}</p>
+            <p className="mt-1 text-xs font-semibold text-gray-500 dark:text-gray-300">Devolucion: {item.fechaDev ? formatDate(item.fechaDev) : "Permanente"}</p>
           </div>
         ))}
       </div>
@@ -365,7 +386,7 @@ function ActiveAssignments({ rows, onOpenResguardo, onOpenDevolucion }) {
             </thead>
             <tbody>
               {filteredRows.map((resguardo) => {
-                const rowKey = resguardo.colaborador?.id || resguardo.colaborador?.numero || resguardo.folio;
+                const rowKey = resguardo.idAsignacion || resguardo.folio || resguardo.colaborador?.id || resguardo.colaborador?.numero;
                 const items = resguardo.items || [];
                 const expanded = expandedKey === rowKey;
                 const tipos = [...new Set(items.map((item) => item.tipoLabel))].join(", ");
@@ -450,14 +471,64 @@ function ActiveAssignments({ rows, onOpenResguardo, onOpenDevolucion }) {
   );
 }
 
-export default function NuevaAsignacion({ initialColaborador, initialStep = 0, asignacionesActivas = [], onOpenResguardo, onOpenDevolucion, onCreateResguardo }) {
+export default function NuevaAsignacion({ initialColaborador, initialStep = 0, initialItems = [], onOpenResguardo, onOpenDevolucion, onCreateResguardo }) {
   const [step, setStep] = useState(initialStep);
   const [colaborador, setColaborador] = useState(initialColaborador || null);
   const [tipoActivo, setTipoActivo] = useState("equipo");
   const [activo, setActivo] = useState(null);
   const [tipo, setTipo] = useState("Temporal");
   const [fechaDev, setFechaDev] = useState("");
+  const [colaboradores, setColaboradores] = useState([]);
+  const [assets, setAssets] = useState([]);
+  const [asignacionesActivas, setAsignacionesActivas] = useState([]);
+  const [message, setMessage] = useState("");
   const addingToExistingResguardo = !!initialColaborador;
+  const selectedIds = new Set(initialItems.map((item) => Number(item.id)));
+
+  useEffect(() => {
+    const headers = { Authorization: `Bearer ${localStorage.getItem("scaet-token")}` };
+    Promise.all([
+      fetch("/api/colaboradores?estado=activos", { headers }),
+      fetch("/api/equipos?estado=activos&estado_equipo=disponible", { headers }),
+      fetch("/api/asignaciones/activas", { headers }),
+    ]).then(async (responses) => {
+      const payloads = await Promise.all(responses.map((response) => response.json().then((data) => ({ response, data }))));
+      const failed = payloads.find(({ response }) => !response.ok);
+      if (failed) throw new Error(failed.data.mensaje || "No se pudieron cargar los datos de asignacion");
+
+      setColaboradores((payloads[0].data.colaboradores || []).map((item) => ({
+        id: Number(item.id_colaborador), numero: item.num_colaborador, nombre: item.nombre_completo,
+        area: item.area, departamento: item.departamento, puesto: item.puesto, correo: item.correo,
+      })));
+      setAssets((payloads[1].data.equipos || []).map((item) => ({
+        id: Number(item.id_equipo), codigo: item.codigo_equipo, nombre: item.nombre_equipo,
+        tipo: item.tipo_equipo, marca: item.marca, modelo: item.modelo, serie: item.numero_serie,
+        estado: item.estado, proveedor: item.nombre_proveedor || "-",
+      })));
+      setAsignacionesActivas((payloads[2].data.asignaciones || []).map((assignment) => ({
+        idAsignacion: assignment.id_asignacion,
+        idResguardo: assignment.resguardo?.id_resguardo,
+        folio: assignment.resguardo?.folio,
+        fecha: assignment.fecha_resguardo,
+        tipo: assignment.tipo_asignacion_general === "mixto" ? "Mixto" : `${assignment.tipo_asignacion_general?.[0]?.toUpperCase() || ""}${assignment.tipo_asignacion_general?.slice(1) || ""}`,
+        colaborador: {
+          id: Number(assignment.colaborador.id_colaborador), numero: assignment.colaborador.num_colaborador,
+          nombre: assignment.colaborador.nombre_completo, area: assignment.colaborador.area,
+          departamento: assignment.colaborador.departamento, puesto: assignment.colaborador.puesto,
+          correo: assignment.colaborador.correo,
+        },
+        items: (assignment.activos || []).map((item) => ({
+          key: `detalle-${item.id_detalle}`, id: Number(item.id_equipo), idDetalle: item.id_detalle,
+          tipoResguardo: item.tipo_equipo === "Tarjeta" ? "tarjeta" : item.tipo_equipo === "YubiKey" ? "yubikey" : "equipo",
+          tipoLabel: item.tipo_equipo, codigo: item.codigo_equipo, nombre: item.nombre_equipo,
+          tipoActivo: item.tipo_equipo, marca: item.marca, modelo: item.modelo, serie: item.numero_serie,
+          fechaAsignacion: item.fecha_asignacion,
+          tipoAsignacion: `${item.tipo_asignacion[0].toUpperCase()}${item.tipo_asignacion.slice(1)}`,
+          fechaDev: item.fecha_devolucion_programada || "", estadoEntrega: item.estado_fisico_entrega,
+        })),
+      })));
+    }).catch((error) => setMessage(error.message));
+  }, []);
 
   const canNext = [!!colaborador, !!activo, tipo === "Permanente" || !!fechaDev, true];
 
@@ -470,52 +541,45 @@ export default function NuevaAsignacion({ initialColaborador, initialStep = 0, a
     setFechaDev("");
   };
 
-  const handleConfirm = () => {
-    const today = new Date();
-    const folioDate = today.toISOString().slice(0, 10).replaceAll("-", "");
-    const fechaAsignacion = today.toISOString().slice(0, 10);
-    const item = {
-      key: `${tipoActivo}-${activo.id}`,
-      id: activo.id,
-      tipoResguardo: tipoActivo,
-      tipoLabel: assetLabel(tipoActivo),
-      codigo: activo.codigo,
-      nombre: activo.nombre,
-      tipoActivo: activo.tipo,
-      marca: activo.marca,
-      modelo: activo.modelo,
-      serie: activo.serie,
-      proveedor: activo.proveedor,
-      fechaAsignacion,
-      tipoAsignacion: tipo,
-      fechaDev: tipo === "Permanente" ? "" : fechaDev,
-      estadoEntrega: activo.estadoEntrega || "Nueva / Buen estado",
-    };
+  const currentItem = activo ? {
+    key: `${tipoActivo}-${activo.id}`,
+    id: activo.id,
+    tipoResguardo: tipoActivo,
+    tipoLabel: assetLabel(tipoActivo),
+    codigo: activo.codigo,
+    nombre: activo.nombre,
+    tipoActivo: activo.tipo,
+    marca: activo.marca,
+    modelo: activo.modelo,
+    serie: activo.serie,
+    proveedor: activo.proveedor,
+    fechaAsignacion: new Date().toISOString().slice(0, 10),
+    tipoAsignacion: tipo,
+    fechaDev: tipo === "Permanente" ? "" : fechaDev,
+    estadoEntrega: "Buen estado",
+    accesorios: "",
+    observaciones: "",
+  } : null;
+  const confirmationItems = currentItem ? [...initialItems, currentItem] : initialItems;
 
+  const handleConfirm = () => {
+    if (!currentItem) return;
     onCreateResguardo?.({
-      folio: `RSG-${folioDate}-${tipoActivo.toUpperCase()}-${String(activo.id).padStart(3, "0")}`,
-      fecha: fechaAsignacion,
+      fecha: currentItem.fechaAsignacion,
       colaborador,
-      equipo: tipoActivo === "equipo" ? activo : equipos[0],
-      item,
+      equipo: activo,
+      item: currentItem,
       tipoResguardo: tipoActivo,
       tipo,
-      fechaDev: tipo === "Permanente" ? "" : fechaDev,
+      fechaDev: currentItem.fechaDev,
       numeroEmpleado: colaborador.numero,
       activoInventario: activo.codigo,
-      idTarjeta: tipoActivo === "tarjeta" ? activo.codigo : "",
-      estadoEntrega: tipoActivo === "tarjeta" ? activo.estadoEntrega : "Nueva / Buen estado",
-      departamentoTarjeta: colaborador.departamento,
-      puestoTarjeta: colaborador.puesto,
-      fechaEntregaTarjeta: today.toISOString().slice(0, 10),
-      yubikey: tipoActivo === "yubikey" ? activo.nombre : "YubiKey 5 NFC",
-      serieYubikey: tipoActivo === "yubikey" ? activo.serie : "",
-      modeloYubikey: tipoActivo === "yubikey" ? activo.modelo : "YubiKey 5 NFC",
-      userId: colaborador.nombre.toLowerCase().split(" ").slice(0, 2).join("."),
-      pin: "",
+      accesorios: "",
+      estadoFisico: "Buen estado",
+      ubicacionTrabajo: colaborador.area || colaborador.departamento || "-",
+      responsableEntrega: "Responsable de entrega",
       observaciones: "",
     });
-
     reset();
   };
 
@@ -532,40 +596,23 @@ export default function NuevaAsignacion({ initialColaborador, initialStep = 0, a
         </p>
       </div>
 
+      {message && <p className="rounded-lg bg-red-50 px-4 py-3 text-sm font-semibold text-red-600">{message}</p>}
       <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-[#16131F] sm:p-6">
         <StepIndicator current={step} />
-
         <div className="min-h-[180px]">
-          {step === 0 && <Step1 selected={colaborador} onSelect={setColaborador} />}
-          {step === 1 && <Step2 tipoActivo={tipoActivo} setTipoActivo={setTipoActivo} selected={activo} onSelect={setActivo} />}
-          {step === 2 && <Step3 tipo={tipo} setTipo={setTipo} fechaDev={fechaDev} setFechaDev={setFechaDev} />}
-          {step === 3 && <Step4 colaborador={colaborador} tipoActivo={tipoActivo} activo={activo} tipo={tipo} fechaDev={fechaDev} />}
+          {step === 0 && <Step1 colaboradores={colaboradores} selected={colaborador} onSelect={setColaborador} />}
+          {step === 1 && <Step2 assets={assets} tipoActivo={tipoActivo} setTipoActivo={setTipoActivo} selected={activo} onSelect={setActivo} selectedIds={selectedIds} />}
+          {step === 2 && <Step3 tipo={tipo} setTipo={(value) => { setTipo(value); if (value === "Permanente") setFechaDev(""); }} fechaDev={fechaDev} setFechaDev={setFechaDev} />}
+          {step === 3 && <Step4 colaborador={colaborador} items={confirmationItems} />}
         </div>
-
         <div className="mt-6 flex flex-col-reverse gap-3 border-t border-gray-100 pt-4 dark:border-gray-800 sm:flex-row sm:items-center sm:justify-end">
-          <button
-            type="button"
-            onClick={() => (step === 0 ? reset() : setStep((value) => value - 1))}
-            className="rounded-lg px-4 py-2 text-sm font-semibold text-gray-500 transition hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
-          >
+          <button type="button" onClick={() => (step === 0 ? reset() : setStep((value) => value - 1))} className="rounded-lg px-4 py-2 text-sm font-semibold text-gray-500 transition hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800">
             {step === 0 ? "Cancelar" : "Regresar"}
           </button>
           {step < 3 ? (
-            <button
-              type="button"
-              onClick={() => setStep((value) => value + 1)}
-              disabled={!canNext[step]}
-              className="rounded-lg bg-[#3A9AF2] px-5 py-2 text-sm font-semibold text-[#FFFFFF] shadow-sm transition hover:bg-[#238BEA] disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Continuar
-            </button>
+            <button type="button" onClick={() => setStep((value) => value + 1)} disabled={!canNext[step]} className="rounded-lg bg-[#3A9AF2] px-5 py-2 text-sm font-semibold text-[#FFFFFF] shadow-sm transition hover:bg-[#238BEA] disabled:cursor-not-allowed disabled:opacity-40">Continuar</button>
           ) : (
-            <button
-              type="button"
-              onClick={handleConfirm}
-              className="rounded-lg bg-[#3A9AF2] px-5 py-2 text-sm font-semibold text-[#FFFFFF] shadow-sm transition hover:bg-[#238BEA]">
-              Confirmar y generar resguardo
-            </button>
+            <button type="button" onClick={handleConfirm} className="rounded-lg bg-[#3A9AF2] px-5 py-2 text-sm font-semibold text-[#FFFFFF] shadow-sm transition hover:bg-[#238BEA]">Confirmar y generar resguardo</button>
           )}
         </div>
       </div>

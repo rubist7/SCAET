@@ -1,24 +1,7 @@
 export const equipmentStorageKey = 'scaet_equipments'
 
-export const typeOptions = ['Laptop', 'iPad', 'Tablet', 'Celular', 'Computadora', 'Monitor', 'Impresora', 'Teclado', 'Mouse', 'Otro']
+export const typeOptions = ['Laptop', 'iPad', 'Tablet', 'Celular', 'Computadora', 'Monitor', 'Impresora', 'Teclado', 'Mouse', 'YubiKey', 'Tarjeta', 'Cargador', 'Teléfono', 'Otro']
 
-export const brandOptions = [
-  'Dell',
-  'Lenovo',
-  'HP',
-  'Apple',
-  'Samsung',
-  'Motorola',
-  'Xiaomi',
-  'Huawei',
-  'Acer',
-  'ASUS',
-  'LG',
-  'Logitech',
-  'Epson',
-  'Brother',
-  'Otro',
-]
 
 export const statusOptions = ['Disponible', 'Asignado', 'Mantenimiento', 'Baja']
 
