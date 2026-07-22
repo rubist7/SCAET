@@ -7,7 +7,6 @@ import DevolucionFirma from "./Views-Nat/DevolucionFirma";
 import LogsActividad from "./Views-Nat/LogsActividad";
 import MantenimientoBitacora from "./Views-Nat/MantenimientoBitacora";
 import MantenimientoEquipos from "./Views-Nat/MantenimientoEquipos";
-import { bitacoraInicial } from "./Views-Nat/mantenimientoData";
 import Reportes from "./Views-Nat/Reportes";
 import ResguardoFirma from "./Views-Nat/ResguardoFirma";
 import Login from "./Views-Rubi/Login";
@@ -70,7 +69,6 @@ function NataliaFlow({ initialScreen = "asignacion" }) {
   const [asignacionInicial, setAsignacionInicial] = useState(null);
   const [devolucionInicial, setDevolucionInicial] = useState(null);
   const [maintenanceEquipo, setMaintenanceEquipo] = useState(null);
-  const [maintenanceEntries, setMaintenanceEntries] = useState(bitacoraInicial);
 
   const handleCreateResguardo = (payload) => {
     const colaboradorId = payload.colaborador?.id || payload.colaborador?.numero || "sin-colaborador";
@@ -268,9 +266,6 @@ function NataliaFlow({ initialScreen = "asignacion" }) {
     setScreen("mantenimiento-bitacora");
   };
 
-  const handleAddMaintenanceEntry = (entry) => {
-    setMaintenanceEntries((current) => [entry, ...current]);
-  };
 
   const activeNav =
     screen === "logs"
@@ -324,7 +319,7 @@ function NataliaFlow({ initialScreen = "asignacion" }) {
     }
 
     if (screen === "mantenimiento") {
-      return <MantenimientoEquipos entries={maintenanceEntries} onOpenBitacora={handleOpenBitacora} />;
+      return <MantenimientoEquipos onOpenBitacora={handleOpenBitacora} />;
     }
 
     if (screen === "reportes") {
@@ -343,7 +338,6 @@ function NataliaFlow({ initialScreen = "asignacion" }) {
       <MantenimientoBitacora
         equipo={maintenanceEquipo}
         onBack={() => setScreen("mantenimiento")}
-        onAddEntry={handleAddMaintenanceEntry}
       />
     );
   };
