@@ -29,6 +29,7 @@ function EquipoAlta() {
   const [message, setMessage] = useState('')
   const [photoPreview, setPhotoPreview] = useState('')
   const [photoName, setPhotoName] = useState('')
+  const [hasActiveAssignment, setHasActiveAssignment] = useState(false)
   const cameraInputRef = useRef(null)
   const fileInputRef = useRef(null)
   const selectedProvider = useMemo(() => providers.find((item) => String(item.id_proveedor) === String(form.id_proveedor)), [form.id_proveedor, providers])
@@ -58,7 +59,9 @@ function EquipoAlta() {
       const data = await response.json()
       if (!response.ok) throw new Error(data.mensaje)
       const e = data.equipo
-      setForm({ id_proveedor: e.id_proveedor ?? '', tipo_equipo: e.tipo_equipo, marca: e.marca, modelo: e.modelo, numero_serie: e.numero_serie, fecha_compra: dateValue(e.fecha_compra), garantia_meses: e.garantia_meses ?? '', vence_garantia: dateValue(e.vence_garantia), especificaciones_tecnicas: e.especificaciones_tecnicas ?? '', estado: e.estado })
+      const assigned = Boolean(data.asignacion_actual)
+      setHasActiveAssignment(assigned)
+      setForm({ id_proveedor: e.id_proveedor ?? '', tipo_equipo: e.tipo_equipo, marca: e.marca, modelo: e.modelo, numero_serie: e.numero_serie, fecha_compra: dateValue(e.fecha_compra), garantia_meses: e.garantia_meses ?? '', vence_garantia: dateValue(e.vence_garantia), especificaciones_tecnicas: e.especificaciones_tecnicas ?? '', estado: assigned ? 'asignado' : e.estado })
     }).catch((error) => setMessage(error.message)).finally(() => setLoading(false))
   }, [equipmentId])
 
@@ -115,7 +118,7 @@ function EquipoAlta() {
         <Field label="Marca" name="marca" value={form.marca} onChange={change} required /><Field label="Modelo" name="modelo" value={form.modelo} onChange={change} required />
         <Field label="Número de serie" name="numero_serie" value={form.numero_serie} onChange={change} required /><Field label="Fecha de compra" name="fecha_compra" value={form.fecha_compra} onChange={change} type="date" />
         <Field label="Garantía (meses)" name="garantia_meses" value={form.garantia_meses} onChange={change} type="number" min="0" /><Field label="Vence garantía" name="vence_garantia" value={form.vence_garantia} onChange={change} readOnly />
-        <label><span className="mb-2 block text-[11px] font-extrabold text-[#8d88a2]">Estado</span><select name="estado" value={form.estado} onChange={change} className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold">{statusOptions.map((item) => <option key={item} value={item.toLowerCase()}>{item}</option>)}</select></label>
+        <label><span className="mb-2 block text-[11px] font-extrabold text-[#8d88a2]">Estado</span><select name="estado" value={form.estado} onChange={change} className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold">{statusOptions.filter((item) => !hasActiveAssignment || item.toLowerCase() !== 'disponible').map((item) => <option key={item} value={item.toLowerCase()}>{item}</option>)}</select></label>
         <label className="lg:col-span-2"><span className="mb-2 block text-[11px] font-extrabold text-[#8d88a2]">Especificaciones técnicas</span><textarea name="especificaciones_tecnicas" value={form.especificaciones_tecnicas} onChange={change} rows="4" className="w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] p-4 text-sm font-bold" /></label>
       </div>
       <div className="space-y-3">

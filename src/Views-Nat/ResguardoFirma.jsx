@@ -561,10 +561,26 @@ function GeneratedResguardoModal({ data, signature, onClose }) {
   const downloadPdf = () => {
     const printWindow = window.open("", "_blank", "width=900,height=700");
     if (!printWindow || !documentRef.current) return;
-    printWindow.document.write(`<html><head>${document.head.innerHTML}<title>${data.folio || "Resguardo"}</title></head><body>${documentRef.current.innerHTML}</body></html>`);
+    const printStyles = `
+      @page { size: Letter; margin: 13mm; }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; background: #fff !important; color: #21192c; font-family: Arial, Helvetica, sans-serif; }
+      body { width: 100%; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .scaet-print-document { width: 100%; max-width: 190mm; margin: 0 auto; }
+      .scaet-print-document > div { width: 100%; border-color: #ded6c8 !important; border-radius: 0 !important; box-shadow: none !important; padding: 8mm !important; }
+      table { width: 100% !important; min-width: 0 !important; border-collapse: collapse; table-layout: auto; }
+      thead { display: table-header-group; }
+      tfoot { display: table-footer-group; }
+      tr, img, svg { break-inside: avoid; page-break-inside: avoid; }
+      th, td { vertical-align: top; overflow-wrap: anywhere; }
+      img { max-width: 100%; }
+      button { display: none !important; }
+      @media print { .scaet-print-document { max-width: none; } }
+    `;
+    printWindow.document.write(`<html><head>${document.head.innerHTML}<title>${data.folio || "Documento SCAET"}</title><style>${printStyles}</style></head><body><main class="scaet-print-document">${documentRef.current.innerHTML}</main></body></html>`);
     printWindow.document.close();
     printWindow.focus();
-    window.setTimeout(() => printWindow.print(), 350);
+    window.setTimeout(() => printWindow.print(), 500);
   };
 
   return (

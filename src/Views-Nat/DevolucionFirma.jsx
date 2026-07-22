@@ -447,6 +447,7 @@ function PreviewAssetsList({ items }) {
             </span>
             <span className="break-words text-[#6f6584]">
               {item.tipoLabel} - {item.marca || "-"} {item.modelo || ""} - {item.serie || "Sin serie"}
+              <span className="mt-1 block">Accesorios devueltos: {item.accesoriosDevueltos || "-"}</span>
             </span>
           </div>
         ))}
@@ -471,6 +472,7 @@ function DocumentPreview({ data, items, signature }) {
         <PreviewRow label="Num. colaborador" value={data.colaborador.numero} />
         <PreviewRow label="Area / Depto." value={`${data.colaborador.area} - ${data.colaborador.departamento || "-"}`} />
         <PreviewRow label="Puesto" value={data.colaborador.puesto} />
+        <PreviewRow label="Responsable" value={data.responsableEntrega} />
         <PreviewRow label="Total activos" value={items.length} />
         <PreviewRow label="Fecha devolucion" value={formatDate(data.fecha)} />
         <PreviewRow label="Estado" value={data.estado} />
@@ -497,6 +499,33 @@ function DocumentPreview({ data, items, signature }) {
 }
 
 function GeneratedDevolucionModal({ data, items, signature, onClose }) {
+  const documentRef = useRef(null);
+
+  const downloadPdf = () => {
+    const printWindow = window.open("", "_blank", "width=900,height=700");
+    if (!printWindow || !documentRef.current) return;
+    const printStyles = `
+      @page { size: Letter; margin: 13mm; }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; background: #fff !important; color: #21192c; font-family: Arial, Helvetica, sans-serif; }
+      body { width: 100%; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .scaet-print-document { width: 100%; max-width: 190mm; margin: 0 auto; }
+      .scaet-print-document > div { width: 100%; border-color: #ded6c8 !important; border-radius: 0 !important; box-shadow: none !important; padding: 8mm !important; }
+      table { width: 100% !important; min-width: 0 !important; border-collapse: collapse; table-layout: auto; }
+      thead { display: table-header-group; }
+      tfoot { display: table-footer-group; }
+      tr, img, svg { break-inside: avoid; page-break-inside: avoid; }
+      th, td { vertical-align: top; overflow-wrap: anywhere; }
+      img { max-width: 100%; }
+      button { display: none !important; }
+      @media print { .scaet-print-document { max-width: none; } }
+    `;
+    printWindow.document.write(`<html><head>${document.head.innerHTML}<title>${data.folio || "Documento SCAET"}</title><style>${printStyles}</style></head><body><main class="scaet-print-document">${documentRef.current.innerHTML}</main></body></html>`);
+    printWindow.document.close();
+    printWindow.focus();
+    window.setTimeout(() => printWindow.print(), 500);
+  };
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 px-3 py-4 sm:p-5">
       <div className="mx-auto flex min-h-full w-full max-w-4xl items-start">
@@ -517,13 +546,13 @@ function GeneratedDevolucionModal({ data, items, signature, onClose }) {
           </div>
 
           <div className="p-4 sm:p-5">
-            <DocumentPreview data={data} items={items} signature={signature} />
+            <div ref={documentRef}><DocumentPreview data={data} items={items} signature={signature} /></div>
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               <button type="button" className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#3A9AF2] text-xs font-black text-[#FFFFFF] transition hover:bg-[#238BEA]">
                 <Mail size={14} />
                 Enviar por Gmail
               </button>
-              <button type="button" className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#eee8dc] text-xs font-black text-[#6f6584]">
+              <button type="button" onClick={downloadPdf} className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#eee8dc] text-xs font-black text-[#6f6584]">
                 <Download size={14} />
                 Descargar PDF
               </button>
@@ -694,6 +723,7 @@ function mapAssignmentToDevolucion(payload) {
     modelo: item.modelo,
     serie: item.numero_serie,
     accesorios: item.accesorios_entregados || "",
+    accesoriosDevueltos: item.accesorios_devueltos || "",
     estadoEntrega: item.estado_fisico_entrega || "Buen estado",
   }));
   const first = items[0] || {};

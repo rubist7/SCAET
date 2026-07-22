@@ -1,19 +1,19 @@
 import { Fragment, useEffect, useState } from "react";
-import { Check, CreditCard, FileText, KeyRound, Laptop, RotateCcw, Search } from "lucide-react";
+import { Check, FileText, RotateCcw, Search } from "lucide-react";
 import DateInput from "./DateInput";
 import { formatDate } from "./dateUtils";
 import { typeOptions } from "../Views-Rubi/equiposData";
 
 const steps = ["Colaborador", "Activo", "Tipo y fecha", "Confirmar"];
 
-const assetTypes = [
-  { value: "equipo", label: "Equipo tecnologico", shortLabel: "Equipo", icon: Laptop },
-  { value: "tarjeta", label: "Tarjeta comedor", shortLabel: "Tarjeta", icon: CreditCard },
-  { value: "yubikey", label: "Yubikey", shortLabel: "Yubikey", icon: KeyRound },
-];
+const assetLabels = {
+  equipo: "Equipo tecnologico",
+  tarjeta: "Tarjeta comedor",
+  yubikey: "YubiKey",
+};
 
 function assetLabel(type) {
-  return assetTypes.find((option) => option.value === type)?.label || "Activo";
+  return assetLabels[type] || "Activo";
 }
 
 function StepIndicator({ current }) {
@@ -149,108 +149,52 @@ function Step1({ colaboradores, selected, onSelect }) {
   );
 }
 
-function Step2({ assets, tipoActivo, setTipoActivo, selected, onSelect, selectedIds }) {
+function Step2({ assets, setTipoActivo, selected, onSelect, selectedIds }) {
   const [search, setSearch] = useState("");
   const [equipmentType, setEquipmentType] = useState("all");
-  const selectedType = assetTypes.find((option) => option.value === tipoActivo);
   const filtered = assets.filter((asset) => {
-    const tabMatches = tipoActivo === "tarjeta"
-      ? asset.tipo.toLowerCase() === "tarjeta"
-      : tipoActivo === "yubikey"
-        ? asset.tipo.toLowerCase() === "yubikey"
-        : !["tarjeta", "yubikey"].includes(asset.tipo.toLowerCase());
-    const typeMatches = tipoActivo !== "equipo" || equipmentType === "all" || asset.tipo === equipmentType;
+    const typeMatches = equipmentType === "all" || asset.tipo === equipmentType;
     const query = `${asset.codigo} ${asset.nombre} ${asset.marca} ${asset.modelo} ${asset.serie} ${asset.tipo}`.toLowerCase();
-
-    return tabMatches && typeMatches && !selectedIds.has(asset.id) && query.includes(search.toLowerCase());
+    return typeMatches && !selectedIds.has(asset.id) && query.includes(search.toLowerCase());
   });
+
+  const selectAsset = (asset) => {
+    const normalizedType = asset?.tipo?.toLowerCase();
+    setTipoActivo(normalizedType === "tarjeta" ? "tarjeta" : normalizedType === "yubikey" ? "yubikey" : "equipo");
+    onSelect(asset);
+  };
 
   return (
     <div className="grid gap-5 md:grid-cols-2">
       <div>
-        <div className="mb-4 grid grid-cols-3 gap-2">
-          {assetTypes.map((option) => {
-            const Icon = option.icon;
-            const active = tipoActivo === option.value;
-
-            return (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => {
-                  setTipoActivo(option.value);
-                  onSelect(null);
-                  setSearch("");
-                  setEquipmentType("all");
-                }}
-                className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-lg border px-2 text-xs font-semibold transition ${active
-                    ? "border-[#3A9AF2] bg-[#3A9AF2] text-[#FFFFFF] shadow-sm"
-                    : "border-gray-200 bg-white text-gray-500 hover:border-blue-300 hover:bg-blue-50 dark:border-gray-700 dark:bg-gray-800/40 dark:text-gray-300"
-                  }`}
-              >
-                <Icon size={17} />
-                <span className="text-center leading-tight">{option.shortLabel}</span>
-              </button>
-            );
-          })}
-        </div>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-          Busca {selectedType?.label.toLowerCase()}
-        </p>
         <div className="space-y-2">
           <SearchInput placeholder="Buscar nombre, codigo, marca, modelo, serie o tipo..." value={search} onChange={setSearch} />
-          {tipoActivo === "equipo" && (
-            <select
-              value={equipmentType}
-              onChange={(event) => { setEquipmentType(event.target.value); onSelect(null); }}
-              className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-200"
-            >
-              <option value="all">Todos los tipos</option>
-              {typeOptions.filter((type) => !["Tarjeta", "YubiKey"].includes(type)).map((type) => <option key={type} value={type}>{type}</option>)}
-            </select>
-          )}
+          <select value={equipmentType} onChange={(event) => { setEquipmentType(event.target.value); onSelect(null); }} className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-200">
+            <option value="all">Todos los tipos</option>
+            {typeOptions.map((type) => <option key={type} value={type}>{type}</option>)}
+          </select>
         </div>
         <div className="mt-2 max-h-44 overflow-y-auto">
           {filtered.map((asset) => (
-            <SelectableRow
-              key={`${tipoActivo}-${asset.id}`}
-              item={asset}
-              selected={selected}
-              onSelect={onSelect}
-              title={`${asset.nombre} (#${asset.codigo})`}
-              subtitle={`${asset.marca} ${asset.modelo} - ${asset.serie}`}
-            />
+            <SelectableRow key={asset.id} item={asset} selected={selected} onSelect={selectAsset} title={`${asset.nombre} (#${asset.codigo})`} subtitle={`${asset.marca} ${asset.modelo} - ${asset.serie}`} />
           ))}
-          {filtered.length === 0 && (
-            <div className="rounded-lg border border-dashed border-gray-200 px-3 py-5 text-center text-xs text-gray-400 dark:border-gray-700">
-              Sin resultados para este tipo de activo.
-            </div>
-          )}
+          {filtered.length === 0 && <div className="rounded-lg border border-dashed border-gray-200 px-3 py-5 text-center text-xs text-gray-400 dark:border-gray-700">Sin activos disponibles para los filtros seleccionados.</div>}
         </div>
       </div>
       <div>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-          {selectedType?.shortLabel} seleccionado
-        </p>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Activo seleccionado</p>
         {selected ? (
           <div className="space-y-1.5 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-700 dark:bg-blue-900/20">
-            <p className="text-sm font-bold text-gray-800 dark:text-gray-100">
-              {selected.nombre} #{selected.codigo}
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              {selected.tipo} - {selected.marca} {selected.modelo} - Disponible
-            </p>
+            <p className="text-sm font-bold text-gray-800 dark:text-gray-100">{selected.nombre} #{selected.codigo}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{selected.tipo} - {selected.marca} {selected.modelo} - Disponible</p>
           </div>
         ) : (
-          <div className="rounded-xl border-2 border-dashed border-gray-200 px-4 py-6 text-center text-xs text-gray-400 dark:border-gray-700">
-            Selecciona {selectedType?.label.toLowerCase()}
-          </div>
+          <div className="rounded-xl border-2 border-dashed border-gray-200 px-4 py-6 text-center text-xs text-gray-400 dark:border-gray-700">Selecciona un activo</div>
         )}
       </div>
     </div>
   );
 }
-
 function Step3({ tipo, setTipo, fechaDev, setFechaDev }) {
   return (
     <div className="grid items-start gap-5 md:grid-cols-2">

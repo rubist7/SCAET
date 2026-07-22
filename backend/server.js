@@ -942,6 +942,24 @@ async function obtenerEquipo(clausula, valor) {
   return filas[0];
 }
 
+async function obtenerAsignacionActualEquipo(idEquipo) {
+  const [filas] = await pool.query(
+    `SELECT a.id_asignacion, r.id_resguardo, r.folio,
+      c.id_colaborador, c.nombre_completo, c.num_colaborador,
+      d.tipo_asignacion, d.fecha_asignacion, d.fecha_devolucion_programada,
+      d.estado_detalle
+    FROM asignacion_detalles d
+    JOIN asignaciones a ON a.id_asignacion = d.id_asignacion AND a.estado = 'activa'
+    JOIN colaboradores c ON c.id_colaborador = a.id_colaborador
+    LEFT JOIN resguardos r ON r.id_asignacion = a.id_asignacion AND r.tipo_documento = 'asignacion'
+    WHERE d.id_equipo = ? AND d.estado_detalle = 'activo'
+    ORDER BY d.fecha_asignacion DESC, d.id_detalle DESC
+    LIMIT 1`,
+    [idEquipo]
+  );
+  return filas[0] || null;
+}
+
 app.get("/api/equipos", verificarToken, async (req, res) => {
   const vista = req.query.estado || "activos";
   if (!["activos", "ocultos", "todos"].includes(vista)) return res.status(400).json({ mensaje: "El estado de consulta no es valido" });
@@ -983,7 +1001,12 @@ app.get("/api/equipos/qr/:qr_token", verificarToken, async (req, res) => {
 });
 
 app.get("/api/equipos/:id_equipo", verificarToken, async (req, res) => {
-  try { const equipo = await obtenerEquipo("e.id_equipo = ?", req.params.id_equipo); return equipo ? res.json({ equipo }) : res.status(404).json({ mensaje: "Equipo no encontrado" }); }
+  try {
+    const equipo = await obtenerEquipo("e.id_equipo = ?", req.params.id_equipo);
+    if (!equipo) return res.status(404).json({ mensaje: "Equipo no encontrado" });
+    const asignacionActual = await obtenerAsignacionActualEquipo(equipo.id_equipo);
+    return res.json({ equipo, asignacion_actual: asignacionActual });
+  }
   catch { return res.status(500).json({ mensaje: "Error al consultar equipo" }); }
 });
 
@@ -993,6 +1016,18 @@ app.put("/api/equipos/:id_equipo", verificarToken, autorizarRoles("admin", "capt
   try {
     const [actuales] = await pool.query("SELECT qr_token, qr_url FROM equipos WHERE id_equipo = ? LIMIT 1", [req.params.id_equipo]);
     if (!actuales.length) return res.status(404).json({ mensaje: "Equipo no encontrado" });
+    if (equipo.estado === "disponible") {
+      const [detallesActivos] = await pool.query(
+        `SELECT d.id_detalle
+         FROM asignacion_detalles d
+         WHERE d.id_equipo = ? AND d.estado_detalle = 'activo'
+         LIMIT 1`,
+        [req.params.id_equipo]
+      );
+      if (detallesActivos.length) {
+        return res.status(409).json({ mensaje: "Un equipo con asignacion activa no puede cambiarse manualmente a disponible" });
+      }
+    }
     const qrToken = actuales[0].qr_token || crypto.randomUUID();
     const qrUrl = actuales[0].qr_url || `/equipos/qr/${qrToken}`;
     await pool.query("UPDATE equipos SET id_proveedor = ?, codigo_equipo = COALESCE(NULLIF(?, ''), codigo_equipo), nombre_equipo = ?, tipo_equipo = ?, marca = ?, modelo = ?, numero_serie = ?, fecha_compra = ?, garantia_meses = ?, vence_garantia = ?, especificaciones_tecnicas = ?, estado = ?, qr_token = ?, qr_url = ?, fecha_actualizacion = NOW() WHERE id_equipo = ?", [equipo.id_proveedor, equipo.codigo_equipo, equipo.nombre_equipo, equipo.tipo_equipo, equipo.marca, equipo.modelo, equipo.numero_serie, equipo.fecha_compra, equipo.garantia_meses, equipo.vence_garantia, equipo.especificaciones_tecnicas, equipo.estado, qrToken, qrUrl, req.params.id_equipo]);
@@ -1466,7 +1501,7 @@ function normalizarColaborador(body) {
 
 async function obtenerColaboradorPorId(idColaborador) {
   const [filas] = await pool.query(
-    "SELECT " + camposColaborador + " FROM colaboradores WHERE id_colaborador = ? LIMIT 1",
+    "SELECT " + camposColaborador + ", (SELECT COUNT(*) FROM asignaciones a INNER JOIN asignacion_detalles ad ON ad.id_asignacion = a.id_asignacion WHERE a.id_colaborador = colaboradores.id_colaborador AND a.estado = 'activa' AND ad.estado_detalle = 'activo') AS equipos_asignados FROM colaboradores WHERE id_colaborador = ? LIMIT 1",
     [idColaborador]
   );
   return filas[0];
@@ -1517,7 +1552,7 @@ app.get(
 
     try {
       const [colaboradores] = await pool.query(
-        "SELECT " + camposColaborador + " FROM colaboradores" + condicion +
+        "SELECT " + camposColaborador + ", (SELECT COUNT(*) FROM asignaciones a INNER JOIN asignacion_detalles ad ON ad.id_asignacion = a.id_asignacion WHERE a.id_colaborador = colaboradores.id_colaborador AND a.estado = 'activa' AND ad.estado_detalle = 'activo') AS equipos_asignados FROM colaboradores" + condicion +
           " ORDER BY nombre_completo",
         parametros
       );
