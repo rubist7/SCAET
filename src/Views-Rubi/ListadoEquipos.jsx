@@ -10,17 +10,25 @@ import {
   WarrantyBadge,
 } from './equiposShared'
 import {
-  brandOptions,
   formatDate,
-  getEquipmentByQrValue,
-  loadEquipments,
   normalizeText,
-  saveEquipments,
   statusOptions,
   typeOptions,
 } from './equiposData'
 
 const qrReaderId = 'equipment-qr-reader'
+const apiUrl = '/api'
+const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('scaet-token')}`, 'Content-Type': 'application/json' })
+const mapEquipment = (e) => ({
+  id: String(e.id_equipo), publicId: e.codigo_equipo, title: e.nombre_equipo,
+  type: e.tipo_equipo, brand: e.marca, model: e.modelo, serialNumber: e.numero_serie,
+  provider: e.nombre_proveedor || '-', company: e.empresa || '-', sellerName: e.nombre_vendedor || '-',
+  purchaseDate: e.fecha_compra ? String(e.fecha_compra).slice(0, 10) : '',
+  warrantyMonths: e.garantia_meses, warrantyEnd: e.vence_garantia ? String(e.vence_garantia).slice(0, 10) : '',
+  status: e.estado ? e.estado[0].toUpperCase() + e.estado.slice(1) : 'Disponible',
+  area: '-', specs: e.especificaciones_tecnicas || '-', photoUrl: e.foto_url || '',
+  qrValue: e.qr_url || `/equipos/qr/${e.qr_token}`, qrToken: e.qr_token, active: Number(e.activo) === 1,
+})
 const qrScannerConfig = {
   fps: 10,
   qrbox: { width: 220, height: 220 },
@@ -154,7 +162,7 @@ function stopScanner(scanner, shouldClear = true) {
     })
 }
 
-function EquipmentCard({ equipment, showHidden, onToggleHidden }) {
+function EquipmentCard({ equipment, showHidden, onToggleHidden, canChangeState }) {
   return (
     <article className="rounded-2xl bg-white p-4 shadow-sm">
       <div className="flex min-w-0 items-start justify-between gap-3">
@@ -177,7 +185,7 @@ function EquipmentCard({ equipment, showHidden, onToggleHidden }) {
           <QrCode equipment={equipment} />
         </div>
         <div className="grid w-full grid-cols-[auto_minmax(0,1fr)] items-center gap-2 min-[430px]:w-auto">
-          <button
+          {canChangeState && <button
             type="button"
             onClick={() => onToggleHidden(equipment.id, !showHidden)}
             className="inline-flex h-10 items-center justify-center rounded-xl bg-[#f2ece0] px-3 text-[#5d5870] transition hover:bg-[#e9dfd0]"
@@ -185,7 +193,7 @@ function EquipmentCard({ equipment, showHidden, onToggleHidden }) {
             title={showHidden ? 'Restaurar' : 'Ocultar'}
           >
             <AppIcon name={showHidden ? 'eye' : 'eyeOff'} />
-          </button>
+          </button>}
           <Link
             to={`/equipos/ficha/${equipment.id}`}
             className="inline-flex h-10 items-center justify-center rounded-xl bg-[#f2ece0] px-5 text-sm font-extrabold text-[#5d5870] transition hover:bg-[#e9dfd0]"
@@ -198,7 +206,7 @@ function EquipmentCard({ equipment, showHidden, onToggleHidden }) {
   )
 }
 
-function EquipmentTable({ equipments, showHidden, onToggleHidden }) {
+function EquipmentTable({ equipments, showHidden, onToggleHidden, canChangeState }) {
   return (
     <div className="overflow-x-auto rounded-2xl bg-white shadow-sm">
       <table className="w-full min-w-[1180px] table-fixed text-left">
@@ -237,7 +245,7 @@ function EquipmentTable({ equipments, showHidden, onToggleHidden }) {
               </td>
               <td className="px-5 py-4 text-right">
                 <div className="flex justify-end gap-2">
-                  <button
+                  {canChangeState && <button
                     type="button"
                     onClick={() => onToggleHidden(equipment.id, !showHidden)}
                     className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#f2ece0] text-[#5d5870] transition hover:bg-[#e9dfd0]"
@@ -245,7 +253,7 @@ function EquipmentTable({ equipments, showHidden, onToggleHidden }) {
                     title={showHidden ? 'Restaurar' : 'Ocultar'}
                   >
                     <AppIcon name={showHidden ? 'eye' : 'eyeOff'} />
-                  </button>
+                  </button>}
                   <Link
                     to={`/equipos/ficha/${equipment.id}`}
                     className="inline-flex h-9 items-center justify-center rounded-xl bg-[#f2ece0] px-4 text-xs font-extrabold text-[#5d5870] transition hover:bg-[#e9dfd0]"
@@ -264,7 +272,7 @@ function EquipmentTable({ equipments, showHidden, onToggleHidden }) {
 
 function ListadoEquipos() {
   const navigate = useNavigate()
-  const [equipments, setEquipments] = useState(() => loadEquipments())
+  const [equipments, setEquipments] = useState([])
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('all')
   const [brandFilter, setBrandFilter] = useState('all')
@@ -277,17 +285,25 @@ function ListadoEquipos() {
   const [zoomControl, setZoomControl] = useState(null)
   const [manualQrValue, setManualQrValue] = useState('')
   const scannerRef = useRef(null)
+  const user = useMemo(() => { try { return JSON.parse(localStorage.getItem('scaet-user') || '{}') } catch { return {} } }, [])
+  const canCreate = ['admin', 'capturista'].includes(user.rol)
+  const canChangeState = user.rol === 'admin'
+
+  const loadEquipmentList = useCallback(async () => {
+    const response = await fetch(`${apiUrl}/equipos?estado=${showHidden ? 'ocultos' : 'activos'}`, { headers: authHeaders() })
+    const data = await response.json()
+    if (!response.ok) throw new Error(data.mensaje || 'No se pudieron cargar los equipos')
+    setEquipments((data.equipos || []).map(mapEquipment))
+  }, [showHidden])
+
+  useEffect(() => { loadEquipmentList().catch((error) => setScannerError(error.message)) }, [loadEquipmentList])
 
   const navigateFromQrValue = useCallback((qrValue) => {
-    const equipment = getEquipmentByQrValue(qrValue)
-
-    if (!equipment) {
-      setScannerError('No encontre un equipo local para ese QR.')
-      return
-    }
-
-    setScannerOpen(false)
-    navigate(`/equipos/ficha/${equipment.id}`)
+    const token = qrValue.split('/').filter(Boolean).at(-1)
+    fetch(`${apiUrl}/equipos/qr/${encodeURIComponent(token)}`, { headers: authHeaders() }).then(async (response) => {
+      const data = await response.json(); if (!response.ok) throw new Error(data.mensaje || 'QR no reconocido')
+      setScannerOpen(false); navigate(`/equipos/ficha/${data.equipo.id_equipo}`)
+    }).catch((error) => setScannerError(error.message))
   }, [navigate])
 
   useEffect(() => {
@@ -389,23 +405,28 @@ function ListadoEquipos() {
     navigateFromQrValue(manualQrValue.trim())
   }
 
-  const visibleEquipments = useMemo(() => (
-    equipments.filter((equipment) => Boolean(equipment.hidden) === showHidden)
-  ), [equipments, showHidden])
+  const visibleEquipments = equipments
+  const hiddenEquipmentsCount = showHidden ? equipments.length : 0
+  const brandOptions = useMemo(() => {
+    const brandsByName = new Map()
 
-  const hiddenEquipmentsCount = equipments.filter((equipment) => equipment.hidden).length
+    visibleEquipments.forEach((equipment) => {
+      const brand = equipment.brand?.trim()
 
-  const handleToggleHidden = (equipmentId, shouldHide) => {
-    setEquipments((currentEquipments) => {
-      const nextEquipments = currentEquipments.map((equipment) => (
-        equipment.id === equipmentId
-          ? { ...equipment, hidden: shouldHide, hiddenAt: shouldHide ? new Date().toISOString() : '' }
-          : equipment
-      ))
-
-      saveEquipments(nextEquipments)
-      return nextEquipments
+      if (brand) {
+        brandsByName.set(brand.toLocaleLowerCase('es'), brand)
+      }
     })
+
+    return [...brandsByName.values()].sort((first, second) => first.localeCompare(second, 'es', { sensitivity: 'base' }))
+  }, [visibleEquipments])
+
+  const handleToggleHidden = async (equipmentId, shouldHide) => {
+    try {
+      const response = await fetch(`${apiUrl}/equipos/${equipmentId}/estado`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify({ activo: shouldHide ? 0 : 1 }) })
+      const data = await response.json(); if (!response.ok) throw new Error(data.mensaje)
+      await loadEquipmentList()
+    } catch (error) { setScannerError(error.message) }
   }
 
   const filteredEquipments = useMemo(() => {
@@ -470,13 +491,13 @@ function ListadoEquipos() {
               <AppIcon name="scan" />
               Escanear QR
             </button>
-            <Link
+            {canCreate && <Link
               to="/equipos/alta"
               className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#3A9AF2] px-5 text-sm font-extrabold text-[#FFFFFF] shadow-sm transition hover:bg-[#238BEA]"
             >
               <AppIcon name="plus" />
               Dar de alta
-            </Link>
+            </Link>}
           </div>
         </section>
 
@@ -559,6 +580,7 @@ function ListadoEquipos() {
                     equipment={equipment}
                     showHidden={showHidden}
                     onToggleHidden={handleToggleHidden}
+                    canChangeState={canChangeState}
                   />
                 ))}
               </div>
@@ -568,6 +590,7 @@ function ListadoEquipos() {
                   equipments={filteredEquipments}
                   showHidden={showHidden}
                   onToggleHidden={handleToggleHidden}
+                  canChangeState={canChangeState}
                 />
               </div>
             )

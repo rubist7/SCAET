@@ -7,7 +7,6 @@ import DevolucionFirma from "./Views-Nat/DevolucionFirma";
 import LogsActividad from "./Views-Nat/LogsActividad";
 import MantenimientoBitacora from "./Views-Nat/MantenimientoBitacora";
 import MantenimientoEquipos from "./Views-Nat/MantenimientoEquipos";
-import { bitacoraInicial } from "./Views-Nat/mantenimientoData";
 import Reportes from "./Views-Nat/Reportes";
 import ResguardoFirma from "./Views-Nat/ResguardoFirma";
 import Login from "./Views-Rubi/Login";
@@ -70,7 +69,6 @@ function NataliaFlow({ initialScreen = "asignacion" }) {
   const [asignacionInicial, setAsignacionInicial] = useState(null);
   const [devolucionInicial, setDevolucionInicial] = useState(null);
   const [maintenanceEquipo, setMaintenanceEquipo] = useState(null);
-  const [maintenanceEntries, setMaintenanceEntries] = useState(bitacoraInicial);
 
   const handleCreateResguardo = (payload) => {
     const colaboradorId = payload.colaborador?.id || payload.colaborador?.numero || "sin-colaborador";
@@ -143,17 +141,75 @@ function NataliaFlow({ initialScreen = "asignacion" }) {
   };
 
   const handleOpenResguardoActivo = (nextResguardo) => {
-    setResguardo(nextResguardo);
+    setResguardo({ idResguardo: nextResguardo.idResguardo, persisted: true });
     setDevolucionInicial(null);
     setScreen("resguardo");
   };
 
-  const handleOpenDevolucionActivo = (nextResguardo, itemKeys) => {
-    setResguardo(nextResguardo);
-    setDevolucionInicial({ selectedItemKeys: itemKeys || nextResguardo.items?.map((item) => item.key) });
-    setScreen("devolucion");
+  const handleOpenDevolucionActivo = async (nextResguardo, itemKeys) => {
+    try {
+      let idAsignacion = nextResguardo?.idAsignacion;
+      let idResguardo = nextResguardo?.idResguardo || resguardo?.idResguardo;
+      if (!idAsignacion && idResguardo) {
+        const response = await fetch(`/api/resguardos/${idResguardo}`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("scaet-token")}` },
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.mensaje || "No se pudo abrir la devolucion");
+        idAsignacion = payload.asignacion.id_asignacion;
+      }
+      if (!idAsignacion) throw new Error("No se encontro la asignacion para devolver");
+      if (nextResguardo?.idResguardo) setResguardo({ idResguardo: nextResguardo.idResguardo, persisted: true });
+      setDevolucionInicial({
+        idAsignacion,
+        idResguardo,
+        selectedItemKeys: itemKeys || nextResguardo?.items?.map((item) => item.key) || [],
+      });
+      setScreen("devolucion");
+    } catch (error) {
+      window.alert(error.message);
+    }
   };
 
+  const handleDevolucionSaved = () => {
+    setDevolucionInicial(null);
+    setResguardo(null);
+    setScreen("asignacion");
+  };
+
+  const handleGenerateResguardo = async (data) => {
+    const response = await fetch("/api/asignaciones", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("scaet-token")}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        id_colaborador: data.colaborador.id,
+        observaciones_generales: data.observaciones || "",
+        activos: data.items.map((item) => ({
+          id_equipo: item.id,
+          tipo_asignacion: item.tipoAsignacion.toLowerCase(),
+          fecha_devolucion_programada: item.fechaDev || null,
+          accesorios_entregados: item.accesorios || "",
+          estado_fisico_entrega: item.estadoEntrega || "Buen estado",
+          observaciones: item.observaciones || "",
+        })),
+      }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.mensaje || "No se pudo generar el resguardo");
+    setResguardosPorColaborador({});
+    setAsignacionInicial(null);
+    return result;
+  };
+
+  const handleBackFromResguardo = () => {
+    setResguardo(null);
+    setResguardosPorColaborador({});
+    setAsignacionInicial(null);
+    setScreen("asignacion");
+  };
   const handleRemoveResguardoItem = (itemKey) => {
     if (!resguardo) return;
 
@@ -210,9 +266,6 @@ function NataliaFlow({ initialScreen = "asignacion" }) {
     setScreen("mantenimiento-bitacora");
   };
 
-  const handleAddMaintenanceEntry = (entry) => {
-    setMaintenanceEntries((current) => [entry, ...current]);
-  };
 
   const activeNav =
     screen === "logs"
@@ -231,6 +284,7 @@ function NataliaFlow({ initialScreen = "asignacion" }) {
         <NuevaAsignacion
           initialColaborador={asignacionInicial?.colaborador}
           initialStep={asignacionInicial?.step}
+          initialItems={resguardo?.items || []}
           asignacionesActivas={asignacionesActivas}
           onOpenResguardo={handleOpenResguardoActivo}
           onOpenDevolucion={handleOpenDevolucionActivo}
@@ -243,10 +297,11 @@ function NataliaFlow({ initialScreen = "asignacion" }) {
       return (
         <ResguardoFirma
           resguardo={resguardo}
-          onBack={() => setScreen("asignacion")}
-          onGoDevolucion={() => setScreen("devolucion")}
-          onAddItem={handleAddResguardoItem}
-          onRemoveItem={handleRemoveResguardoItem}
+          onBack={handleBackFromResguardo}
+          onGoDevolucion={handleOpenDevolucionActivo}
+          onAddItem={resguardo?.persisted ? undefined : handleAddResguardoItem}
+          onRemoveItem={resguardo?.persisted ? undefined : handleRemoveResguardoItem}
+          onGenerate={handleGenerateResguardo}
         />
       );
     }
@@ -254,16 +309,17 @@ function NataliaFlow({ initialScreen = "asignacion" }) {
     if (screen === "devolucion") {
       return (
         <DevolucionFirma
-          devolucion={resguardo}
+          devolucion={devolucionInicial}
           initialSelectedItemKeys={devolucionInicial?.selectedItemKeys}
-          onBack={() => setScreen("asignacion")}
+          onBack={handleDevolucionSaved}
           onGoResguardo={() => setScreen("resguardo")}
+          onSaved={handleDevolucionSaved}
         />
       );
     }
 
     if (screen === "mantenimiento") {
-      return <MantenimientoEquipos entries={maintenanceEntries} onOpenBitacora={handleOpenBitacora} />;
+      return <MantenimientoEquipos onOpenBitacora={handleOpenBitacora} />;
     }
 
     if (screen === "reportes") {
@@ -282,7 +338,6 @@ function NataliaFlow({ initialScreen = "asignacion" }) {
       <MantenimientoBitacora
         equipo={maintenanceEquipo}
         onBack={() => setScreen("mantenimiento")}
-        onAddEntry={handleAddMaintenanceEntry}
       />
     );
   };
@@ -309,6 +364,7 @@ export default function App() {
         <Route path="/equipos/alta/:equipmentId" element={<AppLayoutRoute><EquipoAlta /></AppLayoutRoute>} />
         <Route path="/equipos/editar/:equipmentId" element={<AppLayoutRoute><EquipoAlta /></AppLayoutRoute>} />
         <Route path="/equipos/ficha/:equipmentId" element={<AppLayoutRoute><EquipoFichaTecnica /></AppLayoutRoute>} />
+        <Route path="/equipos/qr/:qrToken" element={<AppLayoutRoute><EquipoFichaTecnica /></AppLayoutRoute>} />
         <Route path="/configuracion" element={<AppLayoutRoute><Configuracion /></AppLayoutRoute>} />
         <Route path="/asignacion" element={<NataliaFlow initialScreen="asignacion" />} />
         <Route path="/asignacion/mantenimiento" element={<NataliaFlow initialScreen="mantenimiento" />} />

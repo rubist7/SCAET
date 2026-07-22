@@ -44,6 +44,9 @@ export function EquipmentPhoto({ equipment, size = 'md' }) {
     desktop: 'monitor',
     computadora: 'monitor',
     monitor: 'monitor',
+    yubikey: 'yubikey',
+    telefono:'telefono',
+    tarjeta:'tarjeta',
   }[equipment.photoKind ?? equipment.type?.toLowerCase()] ?? 'monitor'
 
   return (

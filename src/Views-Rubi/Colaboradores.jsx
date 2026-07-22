@@ -13,7 +13,7 @@ function mapCollaborator(item) {
     fullName: item.nombre_completo ?? '', area: item.area ?? '',
     department: item.departamento ?? '', position: item.puesto ?? '',
     email: item.correo ?? '', phone: item.telefono ?? '', extension: item.extension ?? '',
-    equipmentCount: '0', status: item.estado === 'inactivo' ? 'Inactivo' : 'Activo',
+    equipmentCount: String(item.equipos_asignados ?? 0), status: item.estado === 'inactivo' ? 'Inactivo' : 'Activo',
     notes: item.observaciones ?? '', photoUrl: item.foto_url ?? '', photoName: '',
     hidden: Number(item.activo) !== 1,
   }
@@ -721,7 +721,7 @@ function Colaboradores() {
                         label="Equipos asignados"
                         name="equipmentCount"
                         value={form.equipmentCount}
-                        onChange={handleInputChange}
+                        readOnly
                         placeholder="0"
                         type="number"
                         min="0"
