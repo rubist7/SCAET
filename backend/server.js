@@ -4,6 +4,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const pool = require("./config/db");
+const crearRouterMantenimientos = require("./routes/mantenimientos.routes");
 require("dotenv").config();
 
 const app = express();
@@ -1685,6 +1686,11 @@ app.put(
       return res.status(500).json({ mensaje: "Error al actualizar colaborador" });
     }
   }
+);
+
+app.use(
+  "/api/mantenimientos",
+  crearRouterMantenimientos({ verificarToken, autorizarRoles })
 );
 
 const PORT = process.env.PORT || 3000;
