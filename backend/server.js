@@ -1014,13 +1014,20 @@ app.get("/api/equipos/:id_equipo", verificarToken, async (req, res) => {
 app.put("/api/equipos/:id_equipo", verificarToken, autorizarRoles("admin", "capturista"), async (req, res) => {
   const { equipo, error } = normalizarEquipo(req.body);
   if (error) return res.status(400).json({ mensaje: error });
+  if (Object.prototype.hasOwnProperty.call(req.body, "estado") && equipo.estado === "asignado") {
+    return res.status(400).json({ mensaje: "El estado asignado solo puede establecerse desde el flujo de Asignacion" });
+  }
   try {
-    const [actuales] = await pool.query("SELECT qr_token, qr_url FROM equipos WHERE id_equipo = ? LIMIT 1", [req.params.id_equipo]);
+    const [actuales] = await pool.query("SELECT qr_token, qr_url, estado FROM equipos WHERE id_equipo = ? LIMIT 1", [req.params.id_equipo]);
     if (!actuales.length) return res.status(404).json({ mensaje: "Equipo no encontrado" });
+    if (!Object.prototype.hasOwnProperty.call(req.body, "estado")) equipo.estado = actuales[0].estado;
     if (equipo.estado === "disponible") {
       const [detallesActivos] = await pool.query(
         `SELECT d.id_detalle
          FROM asignacion_detalles d
+         JOIN asignaciones a
+           ON a.id_asignacion = d.id_asignacion
+          AND a.estado = 'activa'
          WHERE d.id_equipo = ? AND d.estado_detalle = 'activo'
          LIMIT 1`,
         [req.params.id_equipo]
