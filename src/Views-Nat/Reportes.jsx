@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { BarChart3, Eye, EyeOff, FileArchive, Pencil, X } from "lucide-react";
 
 const FIELD_OPTIONS = ["Tag", "Tipo", "Marca", "Modelo", "Serie", "Estado", "Gar.Tipo", "Gar.Fin", "Ubicacion", "Costo", "Asignado", "Proveedor"];
+const RESGUARDO_FIELDS = ["Tipo de documento", "Colaborador", "N\u00famero de colaborador", "Fecha", "Equipo", "Identificador", "Cantidad de equipos", "Tipo de asignaci\u00f3n", "Estado"];
 const SOURCE_CONFIG = {
   Inventario: { filters: ["Todos", "Asignado", "Disponible", "Mantenimiento", "Ocultos / Bajas"] },
   Resguardos: { filters: ["Todos", "Asignaci\u00f3n", "Devoluci\u00f3n"] },
@@ -107,6 +108,27 @@ function mapMantenimiento(item) {
   };
 }
 
+function mapResguardo(item) {
+  const equipos = Array.isArray(item.equipos) ? item.equipos : [];
+  const primerEquipo = equipos[0];
+  const equiposAdicionales = Math.max(equipos.length - 1, 0);
+  return {
+    id: String(item.id_resguardo),
+    "Tipo de documento": item.tipo_documento || "-",
+    Colaborador: item.nombre_colaborador_snapshot || "-",
+    "N\u00famero de colaborador": item.num_colaborador_snapshot || "-",
+    Fecha: fechaCorta(item.fecha_documento),
+    Equipo: (primerEquipo?.nombre_equipo || "-") + (equiposAdicionales ? ` + ${equiposAdicionales} m\u00e1s` : ""),
+    Identificador: primerEquipo?.codigo_equipo || "-",
+    "Cantidad de equipos": Number(item.cantidad_equipos || 0),
+    "Tipo de asignaci\u00f3n": item.tipo_asignacion || "-",
+    Estado: item.estado || "-",
+    _title: "Detalle del resguardo",
+    _tipoDocumento: item.tipo_documento,
+    _equipos: equipos,
+    _source: "Resguardos",
+  };
+}
 async function apiRequest(path, options = {}) {
   const response = await fetch("/api" + path, {
     ...options,
@@ -139,7 +161,7 @@ function DetailModal({ record, onClose }) {
       <div className="max-h-[calc(100dvh-2rem)] w-full overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl dark:border-gray-800 dark:bg-[#16131F]">
         <div className="flex items-start justify-between gap-3 border-b border-gray-100 p-4 dark:border-gray-800 sm:p-5">
           <div><p className="text-[10px] font-black uppercase tracking-[0.24em] text-blue-300">Detalle del registro</p>
-            <h2 className="mt-2 text-lg font-black text-[#21192c] dark:text-white">{record.Tag}</h2></div>
+            <h2 className="mt-2 text-lg font-black text-[#21192c] dark:text-white">{record._title || record.Tag}</h2></div>
           <button type="button" onClick={onClose}
             className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-blue-600"
             aria-label="Cerrar detalle"><X size={18} /></button>
@@ -151,6 +173,19 @@ function DetailModal({ record, onClose }) {
               <ReportValue value={value} />
             </div>)}
           </div>
+          {record._source === "Resguardos" ? <div className="mt-4">
+            <p className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-[#9e95aa]">Equipos</p>
+            <div className="space-y-2">
+              {record._equipos.map((equipo) => <div key={equipo.id_detalle}
+                className="rounded-[10px] border border-gray-100 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/40">
+                <p className="text-sm font-black text-[#21192c] dark:text-white">{equipo.nombre_equipo || "Equipo"}</p>
+                <p className="mt-1 text-xs text-[#6f6584] dark:text-gray-300">{equipo.codigo_equipo || "Sin identificador"}</p>
+                <p className="mt-2 text-xs text-[#887e96]">{[equipo.tipo_equipo, equipo.marca, equipo.modelo].filter(Boolean).join(" · ") || "-"}</p>
+                <p className="mt-1 text-xs text-[#887e96]">Serie: {equipo.numero_serie || "-"} · {equipo.tipo_asignacion || "-"}</p>
+              </div>)}
+              {!record._equipos.length ? <p className="text-sm text-[#9e95aa]">No hay equipos asociados.</p> : null}
+            </div>
+          </div> : null}
         </div>
       </div>
     </div>
@@ -173,16 +208,17 @@ export default function Reportes() {
     setLoading(true);
     setMessage("");
     try {
-      const [equiposData, proveedoresData, mantenimientoData] = await Promise.all([
+      const [equiposData, proveedoresData, mantenimientoData, resguardosData] = await Promise.all([
         apiRequest("/equipos?estado=todos"),
         apiRequest("/proveedores?estado=todos"),
         apiRequest("/mantenimientos"),
+        apiRequest("/resguardos"),
       ]);
       setRowsBySource({
         Inventario: (equiposData.equipos || []).map(mapEquipo),
         Proveedores: (proveedoresData.proveedores || []).map(mapProveedor),
         Mantenimiento: (mantenimientoData.mantenimientos || []).map(mapMantenimiento),
-        Resguardos: [],
+        Resguardos: (resguardosData.resguardos || []).map(mapResguardo),
       });
     } catch (error) {
       setMessage(error.message);
@@ -198,14 +234,21 @@ export default function Reportes() {
 
   const rows = useMemo(() => {
     const sourceRows = rowsBySource[source] || [];
-    if (filter === "Todos") return sourceRows;
     if (source === "Inventario") {
       if (filter === "Ocultos / Bajas") return sourceRows.filter((row) => !row._activo || row._estado === "baja");
-      return sourceRows.filter((row) => row.Estado === filter);
+      if (filter === "Todos") return sourceRows.filter((row) => row._activo && row._estado !== "baja");
+      const expected = { Asignado: "asignado", Disponible: "disponible", Mantenimiento: "mantenimiento" }[filter];
+      return sourceRows.filter((row) => row._activo && row._estado === expected);
     }
     if (source === "Proveedores") {
-      return sourceRows.filter((row) => filter === "Activos" ? row._activo : !row._activo);
+      return sourceRows.filter((row) => filter === "Ocultos" ? !row._activo : row._activo);
     }
+    if (source === "Resguardos") {
+      if (filter === "Todos") return sourceRows;
+      const expected = { "Asignación": "asignacion", "Devolución": "devolucion" }[filter];
+      return sourceRows.filter((row) => row._tipoDocumento === expected);
+    }
+    if (filter === "Todos") return sourceRows;
     if (source === "Mantenimiento") {
       const expected = { "En proceso": "en_proceso", Resueltos: "resuelto", Cancelados: "cancelado" }[filter];
       return sourceRows.filter((row) => row._estado === expected);
@@ -215,8 +258,9 @@ export default function Reportes() {
 
   const toggleField = (field) => setActiveFields((current) =>
     current.includes(field) ? current.filter((item) => item !== field) : [...current, field]);
-  const selectedColumns = activeFields.length ? activeFields : ["Tag", "Tipo", "Marca", "Modelo", "Estado"];
-  const allFieldsSelected = activeFields.length === FIELD_OPTIONS.length;
+  const fieldOptions = source === "Resguardos" ? RESGUARDO_FIELDS : FIELD_OPTIONS;
+  const selectedColumns = activeFields.length ? activeFields : source === "Resguardos" ? RESGUARDO_FIELDS : ["Tag", "Tipo", "Marca", "Modelo", "Estado"];
+  const allFieldsSelected = activeFields.length === fieldOptions.length;
 
   const handleEdit = (row) => {
     if (source === "Inventario") navigate("/equipos/editar/" + row.id, { state: { returnTo: "/asignacion/reportes", returnLabel: "Reportes" } });
@@ -244,14 +288,12 @@ export default function Reportes() {
     }
   };
 
-  const pendingResguardos = source === "Resguardos";
-
   return <div className="space-y-4">
     <section className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-[#16131F] sm:p-5">
       <p className="text-[11px] font-black uppercase tracking-[0.26em] text-blue-200">{"Generador din\u00e1mico de consultas"}</p>
       <h2 className="mt-3 text-lg font-black text-[#21192c] dark:text-white sm:text-xl">Reportes</h2>
       <div className="mt-4 grid gap-3 md:grid-cols-2">
-        <PillSelect label="Fuente" value={source} onChange={(value) => { setSource(value); setFilter("Todos"); }}
+        <PillSelect label="Fuente" value={source} onChange={(value) => { setSource(value); setFilter("Todos"); setActiveFields([]); }}
           options={Object.keys(SOURCE_CONFIG)} />
         <PillSelect label="Filtro" value={filter} onChange={setFilter} options={SOURCE_CONFIG[source].filters} />
       </div>
@@ -260,12 +302,12 @@ export default function Reportes() {
           <p className="text-[10px] font-black uppercase tracking-[0.24em] text-blue-300">Campos</p>
           <label className="inline-flex w-fit items-center gap-2 rounded-[8px] border border-gray-100 bg-gray-50 px-3 py-2 text-xs font-bold text-[#6f6584]">
             <input type="checkbox" checked={allFieldsSelected}
-              onChange={() => setActiveFields(allFieldsSelected ? [] : FIELD_OPTIONS)}
+              onChange={() => setActiveFields(allFieldsSelected ? [] : fieldOptions)}
               className="h-4 w-4 accent-blue-600" />Seleccionar todos
           </label>
         </div>
         <div className="flex flex-wrap gap-2">
-          {FIELD_OPTIONS.map((field) => {
+          {fieldOptions.map((field) => {
             const active = activeFields.includes(field);
             return <button key={field} type="button" onClick={() => toggleField(field)}
               className={"h-9 rounded-full border px-4 text-xs font-black transition " + (active
@@ -293,9 +335,7 @@ export default function Reportes() {
 
     <section className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-[#16131F] sm:p-5">
       <p className="mb-3 text-[11px] font-black uppercase tracking-[0.26em] text-blue-300">Resultados</p>
-      {pendingResguardos ? <div className="rounded-[8px] border border-dashed border-[#ded6c8] px-4 py-10 text-center text-sm font-semibold text-[#9e95aa]">
-        {"Reporte de resguardos pendiente de conexi\u00f3n."}
-      </div> : loading ? <div className="px-4 py-10 text-center text-sm font-semibold text-[#9e95aa]">Cargando datos...</div> :
+      {loading ? <div className="px-4 py-10 text-center text-sm font-semibold text-[#9e95aa]">Cargando datos...</div> :
       <div className="space-y-2">
         {rows.map((row) => <article key={source + "-" + row.id}
           className="rounded-2xl border border-gray-100 bg-gray-50 p-4 transition hover:border-blue-200 hover:bg-blue-50/30 dark:border-gray-700 dark:bg-gray-800/40">
@@ -311,7 +351,7 @@ export default function Reportes() {
                 className="inline-flex h-8 items-center gap-1 rounded-[8px] bg-blue-50 px-3 text-xs font-black text-blue-600">
                 <Eye size={13} />Ver
               </button>
-              {source !== "Mantenimiento" ? <button type="button" onClick={() => handleEdit(row)}
+              {!["Mantenimiento", "Resguardos"].includes(source) ? <button type="button" onClick={() => handleEdit(row)}
                 className="inline-flex h-8 items-center gap-1 rounded-[8px] bg-blue-50 px-3 text-xs font-black text-blue-600">
                 <Pencil size={13} />Editar
               </button> : null}

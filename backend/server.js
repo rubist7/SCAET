@@ -1445,6 +1445,57 @@ app.post(
     } finally { conexion.release(); }
   }
 );
+app.get("/api/resguardos", verificarToken, async (req, res) => {
+  try {
+    const [resguardos] = await pool.query(
+      `SELECT r.id_resguardo, r.id_asignacion, r.tipo_documento,
+        r.nombre_colaborador_snapshot, r.num_colaborador_snapshot,
+        r.fecha_documento, r.estado
+      FROM resguardos r
+      JOIN asignaciones a ON a.id_asignacion = r.id_asignacion
+      ORDER BY r.fecha_documento DESC, r.id_resguardo DESC`
+    );
+    if (!resguardos.length) return res.json({ resguardos: [] });
+
+    const idsAsignacion = [...new Set(resguardos.map((item) => item.id_asignacion))];
+    const marcadores = idsAsignacion.map(() => "?").join(", ");
+    const [detalles] = await pool.query(
+      `SELECT d.id_asignacion, d.id_detalle,
+        COALESCE(NULLIF(d.codigo_equipo_snapshot, ''), e.codigo_equipo) AS codigo_equipo,
+        COALESCE(NULLIF(d.nombre_equipo_snapshot, ''), e.nombre_equipo) AS nombre_equipo,
+        COALESCE(NULLIF(d.tipo_equipo_snapshot, ''), e.tipo_equipo) AS tipo_equipo,
+        COALESCE(NULLIF(d.marca_snapshot, ''), e.marca) AS marca,
+        COALESCE(NULLIF(d.modelo_snapshot, ''), e.modelo) AS modelo,
+        COALESCE(NULLIF(d.numero_serie_snapshot, ''), e.numero_serie) AS numero_serie,
+        d.tipo_asignacion
+      FROM asignacion_detalles d
+      LEFT JOIN equipos e ON e.id_equipo = d.id_equipo
+      WHERE d.id_asignacion IN (${marcadores})
+      ORDER BY d.id_asignacion, d.id_detalle`,
+      idsAsignacion
+    );
+    const equiposPorAsignacion = new Map();
+    for (const detalle of detalles) {
+      if (!equiposPorAsignacion.has(detalle.id_asignacion)) equiposPorAsignacion.set(detalle.id_asignacion, []);
+      equiposPorAsignacion.get(detalle.id_asignacion).push(detalle);
+    }
+    return res.json({
+      resguardos: resguardos.map((item) => {
+        const equipos = equiposPorAsignacion.get(item.id_asignacion) || [];
+        const tipos = [...new Set(equipos.map((equipo) => equipo.tipo_asignacion).filter(Boolean))];
+        return {
+          ...item,
+          cantidad_equipos: equipos.length,
+          tipo_asignacion: tipos.length > 1 ? "mixto" : tipos[0] || null,
+          equipos,
+        };
+      }),
+    });
+  } catch (error) {
+    console.error("Error al listar resguardos:", error);
+    return res.status(500).json({ mensaje: "Error al listar los resguardos" });
+  }
+});
 app.get("/api/resguardos/:id_resguardo", verificarToken, async (req, res) => {
   try {
     const [resguardos] = await pool.query(

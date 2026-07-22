@@ -10,7 +10,7 @@ const cardStyles = [
   { key: "asignado", label: "Asignados", color: "text-emerald-400", bubble: "bg-emerald-100" },
   { key: "disponible", label: "Disponibles", color: "text-blue-400", bubble: "bg-blue-100" },
   { key: "mantenimiento", label: "Mantenimiento", color: "text-amber-400", bubble: "bg-amber-100" },
-  { key: "baja", label: "Bajas", color: "text-rose-400", bubble: "bg-rose-100" },
+  { key: "baja", label: "Bajas / Ocultos", color: "text-rose-400", bubble: "bg-rose-100" },
 ];
 
 function fechaCorta(value) {
@@ -64,10 +64,10 @@ function Dashboard() {
 
   const resumen = useMemo(() => ({
     total: equipos.length,
-    asignado: equipos.filter((equipo) => equipo.estado === "asignado").length,
-    disponible: equipos.filter((equipo) => equipo.estado === "disponible").length,
-    mantenimiento: equipos.filter((equipo) => equipo.estado === "mantenimiento").length,
-    baja: equipos.filter((equipo) => equipo.estado === "baja").length,
+    asignado: equipos.filter((equipo) => Number(equipo.activo) === 1 && equipo.estado === "asignado").length,
+    disponible: equipos.filter((equipo) => Number(equipo.activo) === 1 && equipo.estado === "disponible").length,
+    mantenimiento: equipos.filter((equipo) => Number(equipo.activo) === 1 && equipo.estado === "mantenimiento").length,
+    baja: equipos.filter((equipo) => Number(equipo.activo) === 0 || equipo.estado === "baja").length,
   }), [equipos]);
 
   const ultimosEquipos = useMemo(() => [...equipos]
