@@ -5,6 +5,7 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const pool = require("./config/db");
 const crearRouterMantenimientos = require("./routes/mantenimientos.routes");
+const crearRouterLogsActividad = require("./routes/logsActividad.routes");
 require("dotenv").config();
 
 const app = express();
@@ -1751,6 +1752,10 @@ app.use(
   crearRouterMantenimientos({ verificarToken, autorizarRoles })
 );
 
+app.use(
+  "/api/logs-actividad",
+  crearRouterLogsActividad({ pool, verificarToken, autorizarRoles })
+);
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, "0.0.0.0", () => {
