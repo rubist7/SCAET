@@ -824,6 +824,13 @@ app.post(
 
       const proveedorCreado = await obtenerProveedorPorId(resultado.insertId);
 
+      void registrarLogActividad({
+        usuario: req.usuario, accion: "Alta", modulo: "Proveedores", entidad: "proveedores",
+        idEntidad: resultado.insertId,
+        descripcion: `Alta de proveedor: ${proveedorCreado.nombre_proveedor}`, req,
+        detalles: { id: resultado.insertId, nombre: proveedorCreado.nombre_proveedor },
+      });
+
       return res.status(201).json({
         mensaje: "Proveedor creado correctamente",
         proveedor: proveedorCreado,
@@ -862,6 +869,13 @@ app.put(
       }
 
       const proveedorActualizado = await obtenerProveedorPorId(req.params.id_proveedor);
+
+      void registrarLogActividad({
+        usuario: req.usuario, accion: "Edicion", modulo: "Proveedores", entidad: "proveedores",
+        idEntidad: req.params.id_proveedor,
+        descripcion: `Proveedor ${activoNormalizado ? "restaurado" : "ocultado"}: ${proveedorActualizado.nombre_proveedor}`, req,
+        detalles: { id: req.params.id_proveedor, nombre: proveedorActualizado.nombre_proveedor, activo: activoNormalizado },
+      });
 
       return res.json({
         mensaje: activoNormalizado === 1
@@ -911,6 +925,13 @@ app.put(
       }
 
       const proveedorActualizado = await obtenerProveedorPorId(req.params.id_proveedor);
+
+      void registrarLogActividad({
+        usuario: req.usuario, accion: "Edicion", modulo: "Proveedores", entidad: "proveedores",
+        idEntidad: req.params.id_proveedor,
+        descripcion: `Edición de proveedor: ${proveedorActualizado.nombre_proveedor}`, req,
+        detalles: { id: req.params.id_proveedor, nombre: proveedorActualizado.nombre_proveedor },
+      });
 
       return res.json({
         mensaje: "Proveedor actualizado correctamente",
@@ -994,6 +1015,11 @@ app.post("/api/equipos", verificarToken, autorizarRoles("admin", "capturista"), 
     const qrToken = crypto.randomUUID();
     const qrUrl = `/equipos/qr/${qrToken}`;
     const [resultado] = await pool.query("INSERT INTO equipos (id_proveedor, codigo_equipo, nombre_equipo, tipo_equipo, marca, modelo, numero_serie, fecha_compra, garantia_meses, vence_garantia, especificaciones_tecnicas, foto_key, foto_url, qr_token, qr_url, estado, activo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, 1)", [equipo.id_proveedor, equipo.codigo_equipo, equipo.nombre_equipo, equipo.tipo_equipo, equipo.marca, equipo.modelo, equipo.numero_serie, equipo.fecha_compra, equipo.garantia_meses, equipo.vence_garantia, equipo.especificaciones_tecnicas, qrToken, qrUrl, equipo.estado]);
+    void registrarLogActividad({
+      usuario: req.usuario, accion: "Alta", modulo: "Equipos", entidad: "equipos",
+      idEntidad: resultado.insertId, descripcion: `Alta de equipo: ${equipo.nombre_equipo} (${equipo.codigo_equipo})`, req,
+      detalles: { id: resultado.insertId, nombre: equipo.nombre_equipo, codigo: equipo.codigo_equipo },
+    });
     return res.status(201).json({ mensaje: "Equipo creado correctamente", equipo: await obtenerEquipo("e.id_equipo = ?", resultado.insertId) });
   } catch (err) {
     if (err.code === "ER_DUP_ENTRY") return res.status(409).json({ mensaje: err.message.toLowerCase().includes("serie") ? "El numero de serie ya esta registrado" : "El codigo del equipo ya esta registrado" });
@@ -1004,7 +1030,13 @@ app.post("/api/equipos", verificarToken, autorizarRoles("admin", "capturista"), 
 app.put("/api/equipos/:id_equipo/estado", verificarToken, autorizarRoles("admin"), async (req, res) => {
   const activo = Number(req.body.activo);
   if (![0, 1].includes(activo)) return res.status(400).json({ mensaje: "El estado activo no es valido" });
-  try { const [r] = await pool.query("UPDATE equipos SET activo = ?, fecha_actualizacion = NOW() WHERE id_equipo = ?", [activo, req.params.id_equipo]); if (!r.affectedRows) return res.status(404).json({ mensaje: "Equipo no encontrado" }); return res.json({ mensaje: activo ? "Equipo activado correctamente" : "Equipo ocultado correctamente", equipo: await obtenerEquipo("e.id_equipo = ?", req.params.id_equipo) }); }
+  try { const [r] = await pool.query("UPDATE equipos SET activo = ?, fecha_actualizacion = NOW() WHERE id_equipo = ?", [activo, req.params.id_equipo]); if (!r.affectedRows) return res.status(404).json({ mensaje: "Equipo no encontrado" });
+    void registrarLogActividad({
+      usuario: req.usuario, accion: "Edicion", modulo: "Equipos", entidad: "equipos",
+      idEntidad: req.params.id_equipo, descripcion: `Equipo ${activo ? "restaurado" : "ocultado"}: ID ${req.params.id_equipo}`, req,
+      detalles: { id: req.params.id_equipo, activo },
+    });
+    return res.json({ mensaje: activo ? "Equipo activado correctamente" : "Equipo ocultado correctamente", equipo: await obtenerEquipo("e.id_equipo = ?", req.params.id_equipo) }); }
   catch (error) { console.error("Error al cambiar estado del equipo:", error); return res.status(500).json({ mensaje: "Error al cambiar estado del equipo" }); }
 });
 
@@ -1051,6 +1083,11 @@ app.put("/api/equipos/:id_equipo", verificarToken, autorizarRoles("admin", "capt
     const qrToken = actuales[0].qr_token || crypto.randomUUID();
     const qrUrl = actuales[0].qr_url || `/equipos/qr/${qrToken}`;
     await pool.query("UPDATE equipos SET id_proveedor = ?, codigo_equipo = COALESCE(NULLIF(?, ''), codigo_equipo), nombre_equipo = ?, tipo_equipo = ?, marca = ?, modelo = ?, numero_serie = ?, fecha_compra = ?, garantia_meses = ?, vence_garantia = ?, especificaciones_tecnicas = ?, estado = ?, qr_token = ?, qr_url = ?, fecha_actualizacion = NOW() WHERE id_equipo = ?", [equipo.id_proveedor, equipo.codigo_equipo, equipo.nombre_equipo, equipo.tipo_equipo, equipo.marca, equipo.modelo, equipo.numero_serie, equipo.fecha_compra, equipo.garantia_meses, equipo.vence_garantia, equipo.especificaciones_tecnicas, equipo.estado, qrToken, qrUrl, req.params.id_equipo]);
+    void registrarLogActividad({
+      usuario: req.usuario, accion: "Edicion", modulo: "Equipos", entidad: "equipos",
+      idEntidad: req.params.id_equipo, descripcion: `Edición de equipo: ${equipo.nombre_equipo} (${equipo.codigo_equipo})`, req,
+      detalles: { id: req.params.id_equipo, nombre: equipo.nombre_equipo, codigo: equipo.codigo_equipo },
+    });
     return res.json({ mensaje: "Equipo actualizado correctamente", equipo: await obtenerEquipo("e.id_equipo = ?", req.params.id_equipo) });
   } catch (err) { if (err.code === "ER_DUP_ENTRY") return res.status(409).json({ mensaje: "El numero de serie o codigo ya esta registrado en otro equipo" }); return res.status(500).json({ mensaje: "Error al editar equipo" }); }
 });
@@ -1665,6 +1702,13 @@ app.post(
         ]
       );
 
+      void registrarLogActividad({
+        usuario: req.usuario, accion: "Alta", modulo: "Colaboradores", entidad: "colaboradores",
+        idEntidad: resultado.insertId,
+        descripcion: `Alta de colaborador: ${colaborador.nombre_completo}`, req,
+        detalles: { id: resultado.insertId, nombre: colaborador.nombre_completo },
+      });
+
       return res.status(201).json({
         mensaje: "Colaborador creado correctamente",
         colaborador: await obtenerColaboradorPorId(resultado.insertId),
@@ -1697,6 +1741,14 @@ app.put(
       if (resultado.affectedRows === 0) {
         return res.status(404).json({ mensaje: "Colaborador no encontrado" });
       }
+
+      void registrarLogActividad({
+        usuario: req.usuario, accion: "Edicion", modulo: "Colaboradores", entidad: "colaboradores",
+        idEntidad: req.params.id_colaborador,
+        descripcion: `Colaborador ${activo ? "restaurado" : "ocultado"}: ID ${req.params.id_colaborador}`, req,
+        detalles: { id: req.params.id_colaborador, activo },
+      });
+
       return res.json({
         mensaje: activo ? "Colaborador activado correctamente" : "Colaborador ocultado correctamente",
         colaborador: await obtenerColaboradorPorId(req.params.id_colaborador),
@@ -1744,6 +1796,14 @@ app.put(
       if (resultado.affectedRows === 0) {
         return res.status(404).json({ mensaje: "Colaborador no encontrado" });
       }
+
+      void registrarLogActividad({
+        usuario: req.usuario, accion: "Edicion", modulo: "Colaboradores", entidad: "colaboradores",
+        idEntidad: req.params.id_colaborador,
+        descripcion: `Edición de colaborador: ${colaborador.nombre_completo}`, req,
+        detalles: { id: req.params.id_colaborador, nombre: colaborador.nombre_completo },
+      });
+
       return res.json({
         mensaje: "Colaborador actualizado correctamente",
         colaborador: await obtenerColaboradorPorId(req.params.id_colaborador),
