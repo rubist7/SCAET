@@ -1370,6 +1370,14 @@ app.post(
       );
 
       await conexion.commit();
+      void registrarLogActividad({
+        usuario: req.usuario, accion: "Asignacion", modulo: "Asignaciones", entidad: "asignaciones",
+        idEntidad: asignacion.insertId,
+        descripcion: `Asignación registrada para: ${colaboradores[0].nombre_completo}`, req,
+        detalles: { id_asignacion: asignacion.insertId, id_colaborador: idColaborador,
+          nombre_colaborador: colaboradores[0].nombre_completo, cantidad_equipos: normalizados.length,
+          tipo_asignacion: [...new Set(normalizados.map((item) => item.tipo_asignacion))].join(", ") },
+      });
       return res.status(201).json({
         mensaje: "Asignacion y resguardo creados correctamente",
         id_asignacion: asignacion.insertId,
@@ -1481,6 +1489,13 @@ app.post(
       );
 
       await conexion.commit();
+      void registrarLogActividad({
+        usuario: req.usuario, accion: "Asignacion", modulo: "Devoluciones", entidad: "asignaciones",
+        idEntidad: idAsignacion,
+        descripcion: `Devolución ${devolucionTotal ? "total" : "parcial"} registrada para: ${asignaciones[0].nombre_completo}`, req,
+        detalles: { id_asignacion: idAsignacion, nombre_colaborador: asignaciones[0].nombre_completo,
+          cantidad_devuelta: normalizados.length, tipo_devolucion: devolucionTotal ? "total" : "parcial" },
+      });
       return res.status(201).json({
         mensaje: devolucionTotal ? "Devolucion total registrada correctamente" : "Devolucion parcial registrada correctamente",
         id_asignacion: idAsignacion, id_resguardo: resguardo.insertId, folio,
