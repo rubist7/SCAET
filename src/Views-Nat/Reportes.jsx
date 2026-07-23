@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { BarChart3, Eye, EyeOff, FileArchive, Pencil, X } from "lucide-react";
+import { Eye, EyeOff, FileArchive, Pencil, X } from "lucide-react";
 
 const FIELD_OPTIONS = ["Tag", "Tipo", "Marca", "Modelo", "Serie", "Estado", "Gar.Tipo", "Gar.Fin", "Ubicacion", "Costo", "Asignado", "Proveedor"];
 const RESGUARDO_FIELDS = ["Tipo de documento", "Colaborador", "N\u00famero de colaborador", "Fecha", "Equipo", "Identificador", "Cantidad de equipos", "Tipo de asignaci\u00f3n", "Estado"];
@@ -45,6 +45,21 @@ function moneda(value) {
     style: "currency",
     currency: "MXN",
   }).format(Number(value || 0));
+}
+
+function escapeHtml(value) {
+  return String(value ?? "-")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function exportFileName(source) {
+  const safeSource = String(source || "reporte").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+  const date = new Date().toISOString().slice(0, 10);
+  return `reporte_${safeSource || "reporte"}_${date}.xls`;
 }
 
 function mapEquipo(item) {
@@ -198,7 +213,6 @@ export default function Reportes() {
   const [filter, setFilter] = useState("Todos");
   const [rowsBySource, setRowsBySource] = useState({ Inventario: [], Proveedores: [], Mantenimiento: [], Resguardos: [] });
   const [activeFields, setActiveFields] = useState([]);
-  const [auditMode, setAuditMode] = useState(false);
   const [detailRecord, setDetailRecord] = useState(null);
   const [loading, setLoading] = useState(true);
   const [changingId, setChangingId] = useState(null);
@@ -261,6 +275,30 @@ export default function Reportes() {
   const fieldOptions = source === "Resguardos" ? RESGUARDO_FIELDS : FIELD_OPTIONS;
   const selectedColumns = activeFields.length ? activeFields : source === "Resguardos" ? RESGUARDO_FIELDS : ["Tag", "Tipo", "Marca", "Modelo", "Estado"];
   const allFieldsSelected = activeFields.length === fieldOptions.length;
+  const exportTitle = `Reporte de ${source}`;
+  const exportSubtitle = `Filtro: ${filter} · Registros: ${rows.length}`;
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleExcelExport = () => {
+    const tableRows = rows.map((row) => `<tr>${selectedColumns.map((column) =>
+      `<td>${escapeHtml(row[column])}</td>`).join("")}</tr>`).join("");
+    const headerRow = selectedColumns.map((column) => `<th>${escapeHtml(column)}</th>`).join("");
+    const html = `<!doctype html><html><head><meta charset="utf-8" />
+      <style>body{font-family:Arial,sans-serif;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #d9d9d9;padding:8px;text-align:left;}th{background:#eaf4ff;font-weight:700;}h1{font-size:20px;margin-bottom:4px;}p{margin-top:0;color:#555;}</style>
+      </head><body><h1>${escapeHtml(exportTitle)}</h1><p>${escapeHtml(exportSubtitle)}</p><table><thead><tr>${headerRow}</tr></thead><tbody>${tableRows}</tbody></table></body></html>`;
+    const blob = new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = exportFileName(source);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
 
   const handleEdit = (row) => {
     if (source === "Inventario") navigate("/equipos/editar/" + row.id, { state: { returnTo: "/asignacion/reportes", returnLabel: "Reportes" } });
@@ -289,7 +327,37 @@ export default function Reportes() {
   };
 
   return <div className="space-y-4">
-    <section className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-[#16131F] sm:p-5">
+    <style>{`
+      .reportes-printable { display: none; }
+      @page {
+        size: letter landscape;
+        margin: 12mm;
+      }
+      @media print {
+        body * { visibility: hidden; }
+        .reportes-screen { display: none !important; }
+        .reportes-printable, .reportes-printable * { visibility: visible; }
+        .reportes-printable { display: block; position: static; width: 100%; color: #111827; background: #ffffff; font-family: Arial, sans-serif; }
+        .reportes-printable table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 9px; line-height: 1.25; }
+        .reportes-printable th, .reportes-printable td { border: 1px solid #d1d5db; padding: 3px 4px; text-align: left; vertical-align: top; overflow-wrap: anywhere; word-break: break-word; white-space: normal; }
+        .reportes-printable th { background: #eaf4ff; font-weight: 700; }
+        .reportes-printable h1 { margin: 0 0 3px; font-size: 16px; }
+        .reportes-printable p { margin: 0 0 8px; color: #4b5563; font-size: 10px; }
+      }
+    `}</style>
+    <div className="reportes-printable" aria-hidden="true">
+      <h1>{exportTitle}</h1>
+      <p>{exportSubtitle}</p>
+      <table>
+        <thead><tr>{selectedColumns.map((column) => <th key={column}>{column}</th>)}</tr></thead>
+        <tbody>
+          {rows.map((row) => <tr key={source + "-print-" + row.id}>
+            {selectedColumns.map((column) => <td key={column}>{row[column] ?? "-"}</td>)}
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+    <section className="reportes-screen rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-[#16131F] sm:p-5">
       <p className="text-[11px] font-black uppercase tracking-[0.26em] text-blue-200">{"Generador din\u00e1mico de consultas"}</p>
       <h2 className="mt-3 text-lg font-black text-[#21192c] dark:text-white sm:text-xl">Reportes</h2>
       <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -319,21 +387,21 @@ export default function Reportes() {
       {message ? <p className="mt-4 rounded-[8px] bg-red-50 p-3 text-sm font-bold text-red-500">{message}</p> : null}
     </section>
 
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="reportes-screen flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <p className="font-mono text-xs font-bold text-[#887e96]">{rows.length} reg.</p>
-      <div className="flex gap-2">
-        <button type="button" onClick={() => window.alert("Exportaci\u00f3n pendiente de conectar")}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-cyan-600 px-4 text-xs font-black text-white">
-          <FileArchive size={15} />Exportar
+      <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={handlePrint}
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-blue-600 px-4 text-xs font-black text-white">
+          <FileArchive size={15} />PDF imprimible
         </button>
-        <button type="button" onClick={() => setAuditMode((value) => !value)}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-emerald-50 px-4 text-xs font-black text-emerald-600">
-          <BarChart3 size={15} />{"An\u00e1lisis"}
+        <button type="button" onClick={handleExcelExport}
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-cyan-600 px-4 text-xs font-black text-white">
+          <FileArchive size={15} />Exportar Excel (.xls)
         </button>
       </div>
     </div>
 
-    <section className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-[#16131F] sm:p-5">
+    <section className="reportes-screen rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-[#16131F] sm:p-5">
       <p className="mb-3 text-[11px] font-black uppercase tracking-[0.26em] text-blue-300">Resultados</p>
       {loading ? <div className="px-4 py-10 text-center text-sm font-semibold text-[#9e95aa]">Cargando datos...</div> :
       <div className="space-y-2">
@@ -368,8 +436,7 @@ export default function Reportes() {
           No hay registros para este filtro.
         </div> : null}
       </div>}
-      {auditMode ? <p className="mt-4 rounded-[8px] bg-emerald-50 p-3 text-xs font-normal text-emerald-700">{"An\u00e1lisis adicional activo."}</p> : null}
     </section>
-    <DetailModal record={detailRecord} onClose={() => setDetailRecord(null)} />
+    <div className="reportes-screen"><DetailModal record={detailRecord} onClose={() => setDetailRecord(null)} /></div>
   </div>;
 }
