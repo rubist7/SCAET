@@ -209,40 +209,73 @@ export default function LogsActividad() {
     };
   }, [accion, fecha, usuario]);
 
-  const userOptions = [
-    { value: "Todos los usuarios", label: "Todos los usuarios" },
-    ...usuarios.map((item) => {
-      const name =
-        item.nombre || item.nombre_completo || item.usuario || item.username || item.email || "";
-      const value = item.id || item._id || item.usuario_id || name;
+  const userOptions = useMemo(
+    () => [
+      { value: "Todos los usuarios", label: "Todos los usuarios", name: "" },
+      ...usuarios.map((item) => {
+        const name =
+          item.nombre || item.nombre_completo || item.usuario || item.username || item.email || "";
+        const value = item.id_usuario || item.id || item._id || item.usuario_id || name;
 
-      return {
-        value: String(value),
-        label: `${normalizeRole(item.rol)}: ${name}`,
-      };
-    }),
-  ];
+        return {
+          value: String(value),
+          label: `${normalizeRole(item.rol)}: ${name}`,
+          name: String(name),
+        };
+      }),
+    ],
+    [usuarios],
+  );
+
+  const searchableLogs = useMemo(
+    () =>
+      logs.map((log) => ({
+        log,
+        text: [
+          log.usuario,
+          log.rol,
+          log.accion,
+          log.modulo,
+          log.detalle,
+          log.fecha,
+          log.fecha ? formatDate(log.fecha) : "",
+          log.hora,
+        ]
+          .join(" ")
+          .toLowerCase(),
+      })),
+    [logs],
+  );
 
   const visibleLogs = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return logs;
+    const selectedUser = userOptions.find((option) => option.value === usuario);
+    const selectedUserName = selectedUser?.name.trim().toLowerCase() || "";
 
-    return logs.filter((log) =>
-      [
-        log.usuario,
-        log.rol,
-        log.accion,
-        log.modulo,
-        log.detalle,
-        log.fecha,
-        log.fecha ? formatDate(log.fecha) : "",
-        log.hora,
-      ]
-        .join(" ")
-        .toLowerCase()
-        .includes(term),
-    );
-  }, [logs, search]);
+    return searchableLogs
+      .filter(({ log, text }) => {
+        if (fecha && log.fecha !== fecha) return false;
+        if (
+          accion !== "Todas las acciones" &&
+          String(log.accion).toLowerCase() !== accion.toLowerCase()
+        ) {
+          return false;
+        }
+
+        if (usuario !== "Todos los usuarios") {
+          const logUserId =
+            log.id_usuario ?? log.usuario_id ?? log.idUsuario ?? log.usuario?.id_usuario;
+          const matchesId = logUserId != null && String(logUserId) === usuario;
+          const matchesName =
+            selectedUserName && String(log.usuario).trim().toLowerCase() === selectedUserName;
+
+          if (!matchesId && !matchesName) return false;
+        }
+
+        return !term || text.includes(term);
+      })
+      .map(({ log }) => log);
+  }, [accion, fecha, search, searchableLogs, userOptions, usuario]);
 
   const handleExportarLogs = () => {
     if (!visibleLogs.length) {
