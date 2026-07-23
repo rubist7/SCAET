@@ -1,65 +1,75 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDown, Download, KeyRound, LogIn, PenLine, Plus, Wrench } from "lucide-react";
 import DateInput from "./DateInput";
 import { formatDate } from "./dateUtils";
 
-const logs = [
-  {
-    id: 1,
-    tipo: "Alta de equipo",
-    detalle: "Samsung Tab A8 (#007)",
-    usuario: "Ing. Garcia",
-    fecha: "2026-05-08",
-    hora: "08:16 am",
-    accion: "Alta",
-    icon: Plus,
-    iconStyle: "bg-emerald-100 text-emerald-500",
-  },
-  {
-    id: 2,
-    tipo: "Asignacion",
-    detalle: "Dell XPS 15 -> Ana Lopez Garcia (Recepcion)",
-    usuario: "Nat.Rubi",
-    fecha: "2026-05-07",
-    hora: "11:24 am",
-    accion: "Asignacion",
-    icon: KeyRound,
-    iconStyle: "bg-blue-100 text-blue-600",
-  },
-  {
-    id: 3,
-    tipo: "Entrada de mantenimiento",
-    detalle: "HP EliteDesk - Falla de disco duro",
-    usuario: "Rosario",
-    fecha: "2026-05-06",
-    hora: "09:06 am",
-    accion: "Mantenimiento",
-    icon: Wrench,
-    iconStyle: "bg-amber-100 text-amber-500",
-  },
-  {
-    id: 4,
-    tipo: "Inicio de sesion",
-    detalle: "Ing. Ramirez",
-    usuario: "Ing. Ramirez",
-    fecha: "2026-05-05",
-    hora: "08:02 pm",
-    accion: "Sesion",
-    icon: LogIn,
-    iconStyle: "bg-blue-100 text-blue-500",
-  },
-  {
-    id: 5,
-    tipo: "Edicion de proveedor",
-    detalle: "TechSolutions SA - calificacion actualizada",
-    usuario: "Garcia",
-    fecha: "2026-05-05",
-    hora: "11:20 am",
-    accion: "Edicion",
-    icon: PenLine,
-    iconStyle: "bg-blue-100 text-blue-600",
-  },
-];
+const actionStyles = {
+  Alta: { icon: Plus, iconStyle: "bg-emerald-100 text-emerald-500" },
+  Asignacion: { icon: KeyRound, iconStyle: "bg-blue-100 text-blue-600" },
+  Mantenimiento: { icon: Wrench, iconStyle: "bg-amber-100 text-amber-500" },
+  Sesion: { icon: LogIn, iconStyle: "bg-blue-100 text-blue-500" },
+  Edicion: { icon: PenLine, iconStyle: "bg-blue-100 text-blue-600" },
+};
+
+const normalizeRole = (role = "") => {
+  const normalizedRole = role.toString().trim().toLowerCase();
+
+  if (normalizedRole === "admin" || normalizedRole === "administrador") return "Administrador";
+  if (normalizedRole === "capturista") return "Capturista";
+  if (normalizedRole === "usuario") return "Usuario";
+  return role || "Usuario";
+};
+
+const getResponseList = (data, keys) => {
+  if (Array.isArray(data)) return data;
+
+  for (const key of keys) {
+    if (Array.isArray(data?.[key])) return data[key];
+  }
+
+  return [];
+};
+
+const normalizeLog = (log, index) => {
+  const accion = log.accion || log.tipo_accion || log.tipo || "";
+  const style =
+    Object.entries(actionStyles).find(([key]) =>
+      accion.toString().toLowerCase().includes(key.toLowerCase()),
+    )?.[1] || actionStyles.Edicion;
+  const rawDate = log.fecha || log.created_at || log.createdAt || log.fecha_hora || "";
+  const parsedDate = rawDate ? new Date(rawDate) : null;
+  const fecha =
+    log.fecha?.toString().slice(0, 10) ||
+    (parsedDate && !Number.isNaN(parsedDate.getTime())
+      ? `${parsedDate.getFullYear()}-${String(parsedDate.getMonth() + 1).padStart(2, "0")}-${String(
+          parsedDate.getDate(),
+        ).padStart(2, "0")}`
+      : "");
+  const hora =
+    log.hora ||
+    (parsedDate && !Number.isNaN(parsedDate.getTime())
+      ? parsedDate.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })
+      : "");
+
+  return {
+    ...log,
+    id: log.id || log._id || `${fecha}-${index}`,
+    tipo: log.tipo || log.tipo_accion || accion || "Actividad",
+    detalle: log.detalle || log.descripcion || log.mensaje || "",
+    usuario:
+      log.nombre_usuario ||
+      log.usuario_nombre ||
+      log.usuario?.nombre ||
+      log.usuario?.nombre_completo ||
+      log.usuario ||
+      "Usuario",
+    rol: normalizeRole(log.rol || log.usuario_rol || log.usuario?.rol),
+    fecha,
+    hora,
+    accion,
+    ...style,
+  };
+};
 
 function SoftSelect({ value, onChange, options }) {
   return (
@@ -69,9 +79,16 @@ function SoftSelect({ value, onChange, options }) {
         onChange={(event) => onChange(event.target.value)}
         className="h-10 w-full appearance-none rounded-full border border-[#ded6c8] bg-[#eee8dc] px-4 pr-9 text-xs font-black text-[#3c3445] outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 sm:min-w-44"
       >
-        {options.map((option) => (
-          <option key={option}>{option}</option>
-        ))}
+        {options.map((option) => {
+          const optionValue = typeof option === "object" ? option.value : option;
+          const optionLabel = typeof option === "object" ? option.label : option;
+
+          return (
+            <option key={optionValue} value={optionValue}>
+              {optionLabel}
+            </option>
+          );
+        })}
       </select>
       <ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#6f6584]" />
     </div>
@@ -103,7 +120,7 @@ function LogRow({ log }) {
           {log.tipo}: <span className="font-black text-[#21192c]">{log.detalle}</span>
         </p>
         <p className="mt-1 text-[11px] font-bold text-[#b1a58f]">
-          {log.usuario} / {formatDate(log.fecha)} - {log.hora}
+          {log.rol}: {log.usuario} / {formatDate(log.fecha)} - {log.hora}
         </p>
       </div>
     </article>
@@ -111,21 +128,73 @@ function LogRow({ log }) {
 }
 
 export default function LogsActividad() {
-  const [fecha, setFecha] = useState("2026-05-08");
+  const [logs, setLogs] = useState([]);
+  const [usuarios, setUsuarios] = useState([]);
+  const [fecha, setFecha] = useState("");
   const [accion, setAccion] = useState("Todas las acciones");
   const [usuario, setUsuario] = useState("Todos los usuarios");
 
-  const filteredLogs = useMemo(
-    () =>
-      logs.filter((log) => {
-        const matchesAccion = accion === "Todas las acciones" || log.accion === accion;
-        const matchesUsuario = usuario === "Todos los usuarios" || log.usuario === usuario;
-        const matchesFecha = !fecha || log.fecha === fecha;
+  useEffect(() => {
+    const controller = new AbortController();
+    const token = localStorage.getItem("scaet-token");
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-        return matchesAccion && matchesUsuario && matchesFecha;
-      }),
-    [accion, fecha, usuario],
-  );
+    fetch("/api/logs-actividad/usuarios", { headers, signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error("No fue posible cargar los usuarios");
+        return response.json();
+      })
+      .then((data) => setUsuarios(getResponseList(data, ["usuarios", "data"])))
+      .catch((error) => {
+        if (error.name !== "AbortError") setUsuarios([]);
+      });
+
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const token = localStorage.getItem("scaet-token");
+    const params = new URLSearchParams();
+
+    if (fecha) params.set("fecha", fecha);
+    if (accion !== "Todas las acciones") params.set("accion", accion);
+    if (usuario !== "Todos los usuarios") params.set("usuario", usuario);
+
+    const query = params.toString();
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+    fetch(`/api/logs-actividad${query ? `?${query}` : ""}`, {
+      headers,
+      signal: controller.signal,
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error("No fue posible cargar la actividad");
+        return response.json();
+      })
+      .then((data) =>
+        setLogs(getResponseList(data, ["logs", "actividad", "data"]).map(normalizeLog)),
+      )
+      .catch((error) => {
+        if (error.name !== "AbortError") setLogs([]);
+      });
+
+    return () => controller.abort();
+  }, [accion, fecha, usuario]);
+
+  const userOptions = [
+    { value: "Todos los usuarios", label: "Todos los usuarios" },
+    ...usuarios.map((item) => {
+      const name =
+        item.nombre || item.nombre_completo || item.usuario || item.username || item.email || "";
+      const value = item.id || item._id || item.usuario_id || name;
+
+      return {
+        value: String(value),
+        label: `${normalizeRole(item.rol)}: ${name}`,
+      };
+    }),
+  ];
 
   return (
     <div className="space-y-4">
@@ -144,7 +213,7 @@ export default function LogsActividad() {
               <SoftSelect
                 value={usuario}
                 onChange={setUsuario}
-                options={["Todos los usuarios", "Ing. Echeverria", "Ing. Sanchez", "nat", "rubi"]}
+                options={userOptions}
               />
             </div>
           </div>
@@ -158,11 +227,11 @@ export default function LogsActividad() {
         </div>
 
         <div className="mt-5 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-[#f0ebe3]">
-          {filteredLogs.length ? (
-            filteredLogs.map((log) => <LogRow key={log.id} log={log} />)
+          {logs.length ? (
+            logs.map((log) => <LogRow key={log.id} log={log} />)
           ) : (
             <div className="px-4 py-10 text-center text-sm font-semibold text-[#9e95aa]">
-              No hay actividad para los filtros seleccionados.
+              No hay actividad registrada
             </div>
           )}
         </div>
