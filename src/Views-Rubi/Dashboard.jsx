@@ -70,6 +70,23 @@ function Dashboard() {
     baja: equipos.filter((equipo) => Number(equipo.activo) === 0 || equipo.estado === "baja").length,
   }), [equipos]);
 
+  const areaPorEquipoAsignado = useMemo(() => {
+    const areas = new Map();
+    asignaciones.forEach((asignacion) => {
+      const areaReal = asignacion.colaborador?.area || asignacion.colaborador?.departamento || "";
+      if (!areaReal) return;
+      (asignacion.activos || []).forEach((activo) => {
+        if (activo.id_equipo) areas.set(Number(activo.id_equipo), areaReal);
+      });
+    });
+    return areas;
+  }, [asignaciones]);
+
+  const areaActualAsignada = (equipo) => {
+    if (equipo.estado !== "asignado") return "-";
+    return areaPorEquipoAsignado.get(Number(equipo.id_equipo)) || "-";
+  };
+
   const ultimosEquipos = useMemo(() => [...equipos]
     .sort((a, b) => {
       const first = new Date(a.fecha_creacion || 0).getTime();
@@ -124,7 +141,7 @@ function Dashboard() {
             <div><p className="font-extrabold text-[#201d31]">{equipo.nombre_equipo || equipo.codigo_equipo}</p>
               <p className="text-xs font-bold text-[#8d88a2]">{equipo.codigo_equipo}</p></div>
             <p className="font-bold text-[#5d5870]">{equipo.marca || "-"} / {equipo.modelo || "-"}</p>
-            <p className="font-bold text-[#8d88a2]">-</p>
+            <p className="font-bold text-[#8d88a2]">{areaActualAsignada(equipo)}</p>
             <p className="font-extrabold capitalize text-blue-500">{equipo.estado || "-"}</p>
           </div>)}
         </div> : <div className="flex min-h-28 items-center justify-center px-5 py-8 text-center">
