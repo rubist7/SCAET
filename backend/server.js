@@ -6,6 +6,7 @@ const crypto = require("crypto");
 const pool = require("./config/db");
 const crearRouterMantenimientos = require("./routes/mantenimientos.routes");
 const crearRouterLogsActividad = require("./routes/logsActividad.routes");
+const { registrarLogActividad } = require("./utils/logsActividad");
 require("dotenv").config();
 
 const app = express();
@@ -141,6 +142,16 @@ app.post("/api/login", async (req, res) => {
     if (!contrasenaCorrecta) {
       return res.status(401).json({ mensaje: "Correo, usuario o contraseña incorrectos" });
     }
+
+    void registrarLogActividad({
+      usuario,
+      accion: "Sesion",
+      modulo: "Login",
+      entidad: "usuarios",
+      idEntidad: usuario.id_usuario,
+      descripcion: "Inicio de sesión",
+      req,
+    });
 
     const token = jwt.sign(
       {
