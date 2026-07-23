@@ -30,13 +30,22 @@ const getResponseList = (data, keys) => {
   return [];
 };
 
+const escapeHtml = (value) =>
+  String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+
 const normalizeLog = (log, index) => {
   const accion = log.accion || log.tipo_accion || log.tipo || "";
   const style =
     Object.entries(actionStyles).find(([key]) =>
       accion.toString().toLowerCase().includes(key.toLowerCase()),
     )?.[1] || actionStyles.Edicion;
-  const rawDate = log.fecha || log.created_at || log.createdAt || log.fecha_hora || "";
+  const rawDate =
+    log.fecha_creacion || log.fecha || log.created_at || log.createdAt || log.fecha_hora || "";
   const parsedDate = rawDate ? new Date(rawDate) : null;
   const fecha =
     log.fecha?.toString().slice(0, 10) ||
@@ -120,7 +129,8 @@ function LogRow({ log }) {
           {log.tipo}: <span className="font-black text-[#21192c]">{log.detalle}</span>
         </p>
         <p className="mt-1 text-[11px] font-bold text-[#b1a58f]">
-          {log.rol}: {log.usuario} / {formatDate(log.fecha)} - {log.hora}
+          {log.rol}: {log.usuario} /{" "}
+          {log.fecha ? `${formatDate(log.fecha)} - ${log.hora || "-"}` : "-"}
         </p>
       </div>
     </article>
@@ -153,8 +163,12 @@ export default function LogsActividad() {
   }, []);
 
   useEffect(() => {
-    const controller = new AbortController();
     const token = localStorage.getItem("scaet-token");
+    if (!token) {
+      setLogs([]);
+      return undefined;
+    }
+
     const params = new URLSearchParams();
 
     if (fecha) params.set("fecha", fecha);
@@ -162,24 +176,36 @@ export default function LogsActividad() {
     if (usuario !== "Todos los usuarios") params.set("usuario", usuario);
 
     const query = params.toString();
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const headers = { Authorization: `Bearer ${token}` };
+    let controller;
 
-    fetch(`/api/logs-actividad${query ? `?${query}` : ""}`, {
-      headers,
-      signal: controller.signal,
-    })
-      .then((response) => {
-        if (!response.ok) throw new Error("No fue posible cargar la actividad");
-        return response.json();
+    const cargarLogs = () => {
+      controller?.abort();
+      controller = new AbortController();
+
+      fetch(`/api/logs-actividad${query ? `?${query}` : ""}`, {
+        headers,
+        signal: controller.signal,
       })
-      .then((data) =>
-        setLogs(getResponseList(data, ["logs", "actividad", "data"]).map(normalizeLog)),
-      )
-      .catch((error) => {
-        if (error.name !== "AbortError") setLogs([]);
-      });
+        .then((response) => {
+          if (!response.ok) throw new Error("No fue posible cargar la actividad");
+          return response.json();
+        })
+        .then((data) =>
+          setLogs(getResponseList(data, ["logs", "actividad", "data"]).map(normalizeLog)),
+        )
+        .catch((error) => {
+          if (error.name !== "AbortError") setLogs([]);
+        });
+    };
 
-    return () => controller.abort();
+    cargarLogs();
+    const interval = setInterval(cargarLogs, 10000);
+
+    return () => {
+      clearInterval(interval);
+      controller?.abort();
+    };
   }, [accion, fecha, usuario]);
 
   const userOptions = [
@@ -195,6 +221,73 @@ export default function LogsActividad() {
       };
     }),
   ];
+
+  const handleExportarLogs = () => {
+    if (!logs.length) {
+      alert("No hay logs para exportar");
+      return;
+    }
+
+    const ahora = new Date();
+    const fechaArchivo = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, "0")}-${String(
+      ahora.getDate(),
+    ).padStart(2, "0")}`;
+    const usuarioSeleccionado =
+      userOptions.find((option) => option.value === usuario)?.label || usuario;
+    const filas = logs
+      .map(
+        (log, index) => `
+          <tr style="background:${index % 2 === 0 ? "#ffffff" : "#f7f4ee"};">
+            <td style="border:1px solid #c8c1b5;padding:7px;text-align:center;">${escapeHtml(log.fecha ? formatDate(log.fecha) : "-")}</td>
+            <td style="border:1px solid #c8c1b5;padding:7px;text-align:center;">${escapeHtml(log.hora || "-")}</td>
+            <td style="border:1px solid #c8c1b5;padding:7px;mso-number-format:'\\@';">${escapeHtml(log.usuario)}</td>
+            <td style="border:1px solid #c8c1b5;padding:7px;">${escapeHtml(log.rol)}</td>
+            <td style="border:1px solid #c8c1b5;padding:7px;">${escapeHtml(log.accion)}</td>
+            <td style="border:1px solid #c8c1b5;padding:7px;">${escapeHtml(log.modulo)}</td>
+            <td style="border:1px solid #c8c1b5;padding:7px;white-space:normal;vertical-align:top;mso-number-format:'\\@';">${escapeHtml(log.detalle)}</td>
+          </tr>`,
+      )
+      .join("");
+    const html = `<!DOCTYPE html>
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">
+        <head><meta charset="UTF-8"></head>
+        <body>
+          <table style="border-collapse:collapse;font-family:Arial,sans-serif;color:#21192c;">
+            <colgroup>
+              <col style="width:110px"><col style="width:85px"><col style="width:190px">
+              <col style="width:115px"><col style="width:120px"><col style="width:140px">
+              <col style="width:420px">
+            </colgroup>
+            <tr><th colspan="7" style="background:#3c3445;color:#fff;font-size:20px;padding:14px;text-align:center;">SCAET - Logs de actividad</th></tr>
+            <tr><td colspan="7" style="padding:8px 10px;"><strong>Fecha de exportación:</strong> ${escapeHtml(ahora.toLocaleString("es-MX"))}</td></tr>
+            <tr><td colspan="7" style="padding:4px 10px;"><strong>Filtros aplicados</strong></td></tr>
+            <tr><td colspan="7" style="padding:4px 10px;">Fecha: ${escapeHtml(fecha ? formatDate(fecha) : "Todas")} | Acción: ${escapeHtml(accion)} | Usuario: ${escapeHtml(usuarioSeleccionado)}</td></tr>
+            <tr><td colspan="7" style="padding:4px 10px 12px;"><strong>Total de registros:</strong> ${logs.length}</td></tr>
+            <tr>
+              ${["Fecha", "Hora", "Usuario", "Rol", "Acción", "Módulo", "Descripción"]
+                .map(
+                  (titulo) =>
+                    `<th style="border:1px solid #9e95aa;background:#6f6584;color:#fff;font-weight:bold;padding:8px;text-align:center;">${titulo}</th>`,
+                )
+                .join("")}
+            </tr>
+            ${filas}
+          </table>
+        </body>
+      </html>`;
+    const blob = new Blob(["\ufeff", html], {
+      type: "application/vnd.ms-excel;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const enlace = document.createElement("a");
+
+    enlace.href = url;
+    enlace.download = `logs_actividad_${fechaArchivo}.xls`;
+    document.body.appendChild(enlace);
+    enlace.click();
+    enlace.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  };
 
   return (
     <div className="space-y-4">
@@ -219,6 +312,7 @@ export default function LogsActividad() {
           </div>
           <button
             type="button"
+            onClick={handleExportarLogs}
             className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-[8px] bg-[#eee8dc] px-4 text-xs font-black text-[#6f6584] transition hover:bg-[#e4dccf] sm:w-auto"
           >
             <Download size={14} />
