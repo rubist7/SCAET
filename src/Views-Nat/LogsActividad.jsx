@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { ChevronDown, Download, KeyRound, LogIn, PenLine, Plus, Wrench } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ChevronDown, FileSpreadsheet, KeyRound, LogIn, PenLine, Plus, Search, Wrench } from "lucide-react";
 import DateInput from "./DateInput";
 import { formatDate } from "./dateUtils";
 
@@ -143,6 +143,7 @@ export default function LogsActividad() {
   const [fecha, setFecha] = useState("");
   const [accion, setAccion] = useState("Todas las acciones");
   const [usuario, setUsuario] = useState("Todos los usuarios");
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -222,8 +223,29 @@ export default function LogsActividad() {
     }),
   ];
 
+  const visibleLogs = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return logs;
+
+    return logs.filter((log) =>
+      [
+        log.usuario,
+        log.rol,
+        log.accion,
+        log.modulo,
+        log.detalle,
+        log.fecha,
+        log.fecha ? formatDate(log.fecha) : "",
+        log.hora,
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(term),
+    );
+  }, [logs, search]);
+
   const handleExportarLogs = () => {
-    if (!logs.length) {
+    if (!visibleLogs.length) {
       alert("No hay logs para exportar");
       return;
     }
@@ -234,7 +256,7 @@ export default function LogsActividad() {
     ).padStart(2, "0")}`;
     const usuarioSeleccionado =
       userOptions.find((option) => option.value === usuario)?.label || usuario;
-    const filas = logs
+    const filas = visibleLogs
       .map(
         (log, index) => `
           <tr style="background:${index % 2 === 0 ? "#ffffff" : "#f7f4ee"};">
@@ -262,7 +284,7 @@ export default function LogsActividad() {
             <tr><td colspan="7" style="padding:8px 10px;"><strong>Fecha de exportación:</strong> ${escapeHtml(ahora.toLocaleString("es-MX"))}</td></tr>
             <tr><td colspan="7" style="padding:4px 10px;"><strong>Filtros aplicados</strong></td></tr>
             <tr><td colspan="7" style="padding:4px 10px;">Fecha: ${escapeHtml(fecha ? formatDate(fecha) : "Todas")} | Acción: ${escapeHtml(accion)} | Usuario: ${escapeHtml(usuarioSeleccionado)}</td></tr>
-            <tr><td colspan="7" style="padding:4px 10px 12px;"><strong>Total de registros:</strong> ${logs.length}</td></tr>
+            <tr><td colspan="7" style="padding:4px 10px 12px;"><strong>Total de registros:</strong> ${visibleLogs.length}</td></tr>
             <tr>
               ${["Fecha", "Hora", "Usuario", "Rol", "Acción", "Módulo", "Descripción"]
                 .map(
@@ -295,8 +317,20 @@ export default function LogsActividad() {
       <section className="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <h2 className="text-lg font-black text-[#21192c] sm:text-xl">Registro de actividad</h2>
+            <h2 className="text-lg font-black text-[#21192c] sm:text-xl">Auditoría del sistema</h2>
+            <p className="mt-1 text-sm font-semibold text-[#9e95aa]">
+              Consulta y exporta los registros de actividad generados dentro del sistema.
+            </p>
             <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+              <div className="relative w-full sm:min-w-56 sm:flex-1">
+                <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8f879b]" />
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Buscar en los registros..."
+                  className="h-10 w-full rounded-full border border-[#ded6c8] bg-[#eee8dc] pl-11 pr-4 text-sm font-semibold text-[#3c3445] outline-none transition placeholder:text-[#9b927f] focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                />
+              </div>
               <DateFilter value={fecha} onChange={setFecha} />
               <SoftSelect
                 value={accion}
@@ -315,14 +349,14 @@ export default function LogsActividad() {
             onClick={handleExportarLogs}
             className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-[8px] bg-[#eee8dc] px-4 text-xs font-black text-[#6f6584] transition hover:bg-[#e4dccf] sm:w-auto"
           >
-            <Download size={14} />
-            Exportar
+            <FileSpreadsheet size={14} />
+            Exportar Excel
           </button>
         </div>
 
         <div className="mt-5 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-[#f0ebe3]">
-          {logs.length ? (
-            logs.map((log) => <LogRow key={log.id} log={log} />)
+          {visibleLogs.length ? (
+            visibleLogs.map((log) => <LogRow key={log.id} log={log} />)
           ) : (
             <div className="px-4 py-10 text-center text-sm font-semibold text-[#9e95aa]">
               No hay actividad registrada
