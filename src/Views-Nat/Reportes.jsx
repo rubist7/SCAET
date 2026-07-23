@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { BarChart3, Eye, EyeOff, FileArchive, Pencil, X } from "lucide-react";
+import { Eye, EyeOff, FileArchive, Pencil, X } from "lucide-react";
 
 const FIELD_OPTIONS = ["Tag", "Tipo", "Marca", "Modelo", "Serie", "Estado", "Gar.Tipo", "Gar.Fin", "Ubicacion", "Costo", "Asignado", "Proveedor"];
 const RESGUARDO_FIELDS = ["Tipo de documento", "Colaborador", "N\u00famero de colaborador", "Fecha", "Equipo", "Identificador", "Cantidad de equipos", "Tipo de asignaci\u00f3n", "Estado"];
@@ -394,10 +394,6 @@ export default function Reportes() {
         <button type="button" onClick={handleExcelExport}
           className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-cyan-600 px-4 text-xs font-black text-white">
           <FileArchive size={15} />Exportar Excel (.xls)
-        </button>
-        <button type="button" onClick={() => setAuditMode((value) => !value)}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-emerald-50 px-4 text-xs font-black text-emerald-600">
-          <BarChart3 size={15} />{"An\u00e1lisis"}
         </button>
       </div>
     </div>
