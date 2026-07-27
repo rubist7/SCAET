@@ -1,5 +1,6 @@
 const express = require("express");
 const pool = require("../config/db");
+const { registrarLogActividad } = require("../utils/logsActividad");
 
 const TIPOS_VALIDOS = ["falla", "correctivo", "preventivo"];
 const ESTADOS_VALIDOS = ["en_proceso", "resuelto", "cancelado"];
@@ -419,6 +420,15 @@ module.exports = function crearRouterMantenimientos({
           [resultado.insertId]
         );
 
+        void registrarLogActividad({
+          usuario: req.usuario, accion: "Mantenimiento", modulo: "Mantenimiento",
+          entidad: "mantenimientos", idEntidad: resultado.insertId,
+          descripcion: `Registro de mantenimiento: ${creados[0].nombre_equipo || creados[0].codigo_equipo}`, req,
+          detalles: { id_mantenimiento: resultado.insertId, id_equipo: creados[0].id_equipo,
+            codigo_equipo: creados[0].codigo_equipo, nombre_equipo: creados[0].nombre_equipo,
+            estado_mantenimiento: creados[0].estado_mantenimiento, tipo_mantenimiento: creados[0].tipo_mantenimiento },
+        });
+
         return res.status(201).json({
           mensaje: "Mantenimiento registrado correctamente",
           mantenimiento: creados[0],
@@ -585,6 +595,17 @@ module.exports = function crearRouterMantenimientos({
           "WHERE m.id_mantenimiento=?",
           [idMantenimiento]
         );
+
+        void registrarLogActividad({
+          usuario: req.usuario, accion: "Mantenimiento", modulo: "Mantenimiento",
+          entidad: "mantenimientos", idEntidad: idMantenimiento,
+          descripcion: `${actualizados[0].estado_mantenimiento === "resuelto" ? "Mantenimiento resuelto" :
+            actualizados[0].estado_mantenimiento === "cancelado" ? "Mantenimiento cancelado" :
+            "Mantenimiento actualizado"}: ${actualizados[0].nombre_equipo || actualizados[0].codigo_equipo}`, req,
+          detalles: { id_mantenimiento: idMantenimiento, id_equipo: actualizados[0].id_equipo,
+            codigo_equipo: actualizados[0].codigo_equipo, nombre_equipo: actualizados[0].nombre_equipo,
+            estado_mantenimiento: actualizados[0].estado_mantenimiento, tipo_mantenimiento: actualizados[0].tipo_mantenimiento },
+        });
 
         return res.json({
           mensaje: "Mantenimiento actualizado correctamente",

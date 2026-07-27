@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import {
-  Activity,
   Boxes,
   ClipboardList,
   FileText,
@@ -31,8 +30,7 @@ const navItems = [
 ];
 
 const systemItems = [
-  { label: "Logs", icon: Boxes },
-  { label: "Auditoria", icon: Activity },
+  { label: "Logs", displayLabel: "Auditoría del sistema", icon: Boxes },
 ];
 
 const routesByLabel = {
@@ -56,7 +54,7 @@ const headerTitles = {
   Asignacion: "Inventario de equipos",
   Mantenimiento: "Mantenimiento de equipos",
   Reportes: "Reportes",
-  Logs: "Logs de actividad",
+  Logs: "Auditoría del sistema",
   Auditoria: "Auditoria",
   Configuracion: "Configuracion de cuenta",
 };
@@ -106,7 +104,7 @@ function NavList({ title, items, activeNav, onNavigate }) {
     <div className="px-4">
       {title && <p className="mb-2 px-2 text-[10px] font-black uppercase tracking-[0.24em] text-[#c7bfcd]">{title}</p>}
       <div className="space-y-1">
-        {items.map(({ label, icon: Icon }) => {
+        {items.map(({ label, displayLabel, icon: Icon }) => {
           const active = label === activeNav;
 
           return (
@@ -118,7 +116,7 @@ function NavList({ title, items, activeNav, onNavigate }) {
                 }`}
             >
               <Icon size={17} />
-              {label}
+              {displayLabel || label}
             </button>
           );
         })}
