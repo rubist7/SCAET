@@ -232,6 +232,8 @@ export default function Layout({ children, activeNav, onNavigate }) {
 
   const headerTitle = headerTitles[activeNav] ?? "Inventario de equipos";
   const visibleSystemItems = profile.roleKey === "admin" ? systemItems : [];
+  const notificationRole = String(profile.roleKey || profile.role || "").trim().toLowerCase();
+  const canViewNotifications = ["admin", "administrador", "capturista"].includes(notificationRole);
 
   return (
     <div className="h-screen h-dvh overflow-hidden bg-[#f4f1ec] text-[#241d2f]">
@@ -269,7 +271,7 @@ export default function Layout({ children, activeNav, onNavigate }) {
               </p>
             </div>
             <div className="flex min-w-0 shrink-0 items-center gap-2 sm:gap-3">
-              <NotificationCenter onNavigate={handleNotificationNavigate} />
+              {canViewNotifications && <NotificationCenter currentUser={profile} onNavigate={handleNotificationNavigate} />}
               <button
                 type="button"
                 onClick={() => setDarkMode((current) => !current)}
