@@ -948,7 +948,7 @@ function ResguardoEditor({ resguardo, onBack, onGoDevolucion, onAddItem, onRemov
                 />
               </Field>
               <Field label={responsableEntrega}>
-                <div className="mb-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-500">Por defecto</div>
+                <div className="mb-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-500 dark:bg-amber-400/15 dark:text-amber-300">Por defecto</div>
                 <AutoSignature signerName={responsableEntrega} />
               </Field>
             </div>

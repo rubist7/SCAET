@@ -116,13 +116,15 @@ export function statusClass(status) {
 
 export function warrantyClass(warrantyEnd) {
   if (!warrantyEnd || warrantyEnd === '-') {
-    return 'bg-[#f2ece0] text-[#8d88a2]'
+    return 'bg-[#f2ece0] text-[#8d88a2] dark:bg-[#f4efe6]/10 dark:text-[#c9bdd5]'
   }
 
   const today = new Date()
   const end = new Date(`${warrantyEnd}T00:00:00`)
 
-  return end >= today ? 'bg-emerald-50 text-emerald-500' : 'bg-amber-50 text-amber-500'
+  return end >= today
+    ? 'bg-emerald-50 text-emerald-500 dark:bg-emerald-400/15 dark:text-emerald-300'
+    : 'bg-amber-50 text-amber-500 dark:bg-amber-400/15 dark:text-amber-300'
 }
 
 export function warrantyLabel(warrantyMonths) {

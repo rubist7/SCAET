@@ -718,7 +718,7 @@ function DevolucionEditor({ devolucion, initialSelectedItemKeys, onBack, onGoRes
                 <SignaturePad value={signature} onChange={setSignature} disabled={!canCaptureSignature} />
               </Field>
               <Field label={source.responsableEntrega || "Responsable de entrega"}>
-                <div className="mb-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-500">
+                <div className="mb-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-500 dark:bg-amber-400/15 dark:text-amber-300">
                   Por defecto
                 </div>
                 <AutoSignature signerName={source.responsableEntrega || "Responsable de entrega"} />

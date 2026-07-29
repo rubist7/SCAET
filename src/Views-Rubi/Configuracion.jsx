@@ -76,7 +76,7 @@ function SettingsField({
           autoComplete={autoComplete}
           required={required}
           readOnly={readOnly}
-          className={`h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition placeholder:text-[#9b95ac] focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100 ${hasPasswordToggle ? 'pr-11' : ''}`}
+          className={`h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition placeholder:text-[#9b95ac] focus:border-blue-300 focus:bg-white focus:ring-2 focus:ring-blue-100 ${hasPasswordToggle ? 'pr-11' : ''}`}
         />
         {hasPasswordToggle && (
           <button
@@ -678,7 +678,7 @@ function Configuracion() {
                       name="role"
                       value={userForm.role}
                       onChange={handleUserFormChange}
-                      className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
+                      className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-2 focus:ring-blue-100"
                     >
                       {Object.entries(roleLabels).map(([value, label]) => (
                         <option key={value} value={value}>{label}</option>
@@ -867,7 +867,7 @@ function Configuracion() {
                           setRoleForm(event.target.value)
                           setManagementStatus({ type: '', text: '' })
                         }}
-                        className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
+                        className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-2 focus:ring-blue-100"
                       >
                         {Object.entries(roleLabels).map(([value, label]) => (
                           <option key={value} value={value}>{label}</option>
@@ -942,7 +942,7 @@ function Configuracion() {
                         setManagementStatus({ type: '', text: '' })
                       }}
                       required
-                      className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
+                      className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-2 focus:ring-blue-100"
                     >
                       <option value="">Selecciona un usuario</option>
                       {resettableUsers.map((user) => (
