@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import BackButton from '../components/BackButton'
 import { AppIcon } from '../components/Sidebar'
 import { calculateWarrantyEnd, statusOptions, typeOptions } from './equiposData'
 import { EquipmentShell, Field, QrCode } from './equiposShared'
@@ -21,6 +22,7 @@ function EquipoAlta() {
   const location = useLocation()
   const { equipmentId } = useParams()
   const [form, setForm] = useState(emptyForm)
+  const [initialForm, setInitialForm] = useState(emptyForm)
   const [providers, setProviders] = useState([])
   const [providerForm, setProviderForm] = useState(emptyProvider)
   const [showProviderForm, setShowProviderForm] = useState(false)
@@ -61,7 +63,9 @@ function EquipoAlta() {
       const e = data.equipo
       const assigned = Boolean(data.asignacion_actual)
       setHasActiveAssignment(assigned)
-      setForm({ id_proveedor: e.id_proveedor ?? '', tipo_equipo: e.tipo_equipo, marca: e.marca, modelo: e.modelo, numero_serie: e.numero_serie, fecha_compra: dateValue(e.fecha_compra), garantia_meses: e.garantia_meses ?? '', vence_garantia: dateValue(e.vence_garantia), especificaciones_tecnicas: e.especificaciones_tecnicas ?? '', estado: e.estado })
+      const loadedForm = { id_proveedor: e.id_proveedor ?? '', tipo_equipo: e.tipo_equipo, marca: e.marca, modelo: e.modelo, numero_serie: e.numero_serie, fecha_compra: dateValue(e.fecha_compra), garantia_meses: e.garantia_meses ?? '', vence_garantia: dateValue(e.vence_garantia), especificaciones_tecnicas: e.especificaciones_tecnicas ?? '', estado: e.estado }
+      setForm(loadedForm)
+      setInitialForm(loadedForm)
     }).catch((error) => setMessage(error.message)).finally(() => setLoading(false))
   }, [equipmentId])
 
@@ -108,8 +112,13 @@ function EquipoAlta() {
     } catch (error) { setMessage(error.message) } finally { setSaving(false) }
   }
 
+  const returnTo = location.state?.returnTo || '/equipos'
+  const returnLabel = location.state?.returnLabel ? `Volver a ${location.state.returnLabel}` : 'Volver a equipos'
+  const hasUnsavedChanges = JSON.stringify(form) !== JSON.stringify(initialForm) || Boolean(photoName)
+
   if (loading) return <EquipmentShell><p className="p-8 text-sm font-bold text-[#8d88a2]">Cargando equipo...</p></EquipmentShell>
   return <EquipmentShell><div className="space-y-6 px-4 py-7 sm:px-6 lg:px-8">
+    <BackButton onBack={() => navigate(returnTo)} hasUnsavedChanges={hasUnsavedChanges} label={returnLabel} />
     <h1 className="text-2xl font-extrabold text-[#201d31] sm:text-3xl">{equipmentId ? 'Editar equipo' : 'Alta de equipo'}</h1>
     {message && <p className="rounded-xl bg-blue-50 px-4 py-3 text-sm font-bold text-blue-600">{message}</p>}
     <section className="rounded-2xl bg-white p-4 shadow-sm sm:p-6"><form onSubmit={submit} className="space-y-6">
@@ -134,7 +143,7 @@ function EquipoAlta() {
         <p className="text-xs font-bold text-[#9b95ac]">Vista previa local. La fotografía todavía no se envía ni se guarda en el servidor.</p>
       </div>
       <div className="rounded-2xl bg-[#f2ece0] p-4"><div className="flex items-center gap-3"><QrCode /><p className="text-sm font-extrabold">El QR se genera automáticamente al guardar.</p></div></div>
-      <div className="flex justify-end gap-3"><button type="button" onClick={() => navigate('/equipos')} className="h-11 rounded-xl bg-[#f2ece0] px-8 font-extrabold">Cancelar</button><button disabled={saving} className="h-11 rounded-xl bg-[#3A9AF2] px-8 font-extrabold text-white disabled:opacity-60">{saving ? 'Guardando...' : 'Guardar equipo y generar QR'}</button></div>
+      <div className="flex justify-end gap-3"><button disabled={saving} className="h-11 rounded-xl bg-[#3A9AF2] px-8 font-extrabold text-white disabled:opacity-60">{saving ? 'Guardando...' : 'Guardar equipo y generar QR'}</button></div>
     </form></section>
     {showProviderForm && <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#201d31]/40 p-4"><form onSubmit={saveProvider} className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"><div className="flex justify-between border-b border-[#f0edf6] pb-4"><div><p className="text-[10px] font-extrabold uppercase tracking-[0.28em] text-blue-300">Formulario</p><h2 className="mt-1 text-xl font-extrabold">Nuevo proveedor</h2></div><button type="button" onClick={() => setShowProviderForm(false)} className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f2ece0]"><AppIcon name="x" /></button></div><div className="mt-5 grid gap-4 sm:grid-cols-2">{[['nombre_proveedor','Nombre del proveedor'],['empresa','Empresa'],['nombre_vendedor','Nombre del vendedor'],['rfc_empresa','RFC de la empresa'],['telefono','Teléfono'],['correo','Gmail / Correo de contacto'],['direccion','Dirección']].map(([name,label]) => <Field key={name} label={label} name={name} value={providerForm[name]} onChange={(e) => setProviderForm((p) => ({ ...p, [name]: e.target.value }))} required={name === 'nombre_proveedor' || name === 'empresa'} />)}<fieldset className="sm:col-span-2"><legend className="mb-2 text-[11px] font-extrabold text-[#8d88a2]">Calificación</legend><div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{ratingOptions.map((option) => <button key={option.value} type="button" onClick={() => setProviderForm((p) => ({ ...p, calificacion: option.value }))} className={`rounded-xl border px-3 py-2 text-left transition ${providerForm.calificacion === option.value ? 'border-amber-300 bg-amber-50 ring-2 ring-amber-100' : 'border-[#e2d9c9] bg-[#f2ece0]'}`}><span className="block text-sm text-amber-400">{'★'.repeat(option.stars)}</span><span className="text-[10px] font-extrabold text-[#6f6a85]">{option.label}</span></button>)}</div></fieldset><label className="sm:col-span-2"><span className="mb-2 block text-[11px] font-extrabold text-[#8d88a2]">Observaciones</span><textarea name="observaciones" value={providerForm.observaciones} onChange={(e) => setProviderForm((p) => ({ ...p, observaciones: e.target.value }))} placeholder="Notas adicionales" rows="5" className="min-h-32 w-full resize-y rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 py-3 text-sm font-bold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100" /></label></div><div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => setShowProviderForm(false)} className="rounded-xl bg-[#f2ece0] px-6 py-3 font-bold">Cancelar</button><button disabled={saving} className="rounded-xl bg-[#3A9AF2] px-6 py-3 font-bold text-white disabled:opacity-60">{saving ? 'Guardando...' : 'Guardar proveedor'}</button></div></form></div>}
   </div></EquipmentShell>

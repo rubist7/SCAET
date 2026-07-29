@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, Eraser, FileText, Mail, PenLine, Plus, Send, Trash2, X } from "lucide-react";
 import DateInput from "./DateInput";
 import { formatDate } from "./dateUtils";
+import BackButton from "../components/BackButton";
 import Signature from "../components/Signature";
 
 const RESGUARDO_OPTIONS = [
@@ -761,7 +762,7 @@ function ConditionalFields({ data, setters }) {
   );
 }
 
-function ResguardoEditor({ resguardo, onBack, onGoDevolucion, onAddItem, onRemoveItem, onGenerate }) {
+function ResguardoEditor({ resguardo, onBack, onGoDevolucion, onAddItem, onRemoveItem, onGenerate, backLabel = "Volver a asignaciones" }) {
   const source = useMemo(() => ({ ...defaultResguardo, ...resguardo }), [resguardo]);
   const canCaptureSignature = useCanCaptureTouchSignature();
   const tipoResguardo = source.tipoResguardo;
@@ -828,6 +829,17 @@ function ResguardoEditor({ resguardo, onBack, onGoDevolucion, onAddItem, onRemov
     ...editableSource,
     items: source.items?.length ? source.items : [normalizeResguardoItem(editableSource)],
   };
+  const editableFields = [
+    "tipo", "fechaDev", "observaciones", "numeroEmpleado", "activoInventario",
+    "accesorios", "estadoFisico", "ubicacionTrabajo", "responsableEntrega",
+    "idTarjeta", "cantidad", "departamentoTarjeta", "puestoTarjeta",
+    "fechaEntregaTarjeta", "motivoTarjeta", "yubikey", "serieYubikey",
+    "modeloYubikey", "userId", "pin", "correoAsociado", "sistemasAutorizados",
+    "ligasSeguridad", "ligasTrabajo",
+  ];
+  const hasUnsavedChanges = editableFields.some(
+    (field) => String(editableSource[field] ?? "") !== String(source[field] ?? ""),
+  ) || signature !== (source.firmaColaborador || "");
 
   const setters = {
     setTipo,
@@ -880,6 +892,7 @@ function ResguardoEditor({ resguardo, onBack, onGoDevolucion, onAddItem, onRemov
   };
   return (
     <div className="min-w-0 space-y-4 overflow-hidden">
+      <BackButton onBack={onBack} hasUnsavedChanges={hasUnsavedChanges} label={backLabel} />
       <h1 className="text-sm font-bold text-blue-300">Resguardo - Firma Digital</h1>
 
       <div className="grid min-w-0 gap-4">
@@ -943,7 +956,6 @@ function ResguardoEditor({ resguardo, onBack, onGoDevolucion, onAddItem, onRemov
 
           {message && <p className="mt-4 rounded-[8px] bg-red-50 px-4 py-3 text-xs font-bold text-red-600">{message}</p>}
           <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <button type="button" onClick={onBack} className="h-10 rounded-[8px] bg-[#eee8dc] px-5 text-xs font-black text-[#6f6584]">Cancelar</button>
             <button
               type="button"
               onClick={handleGenerate}

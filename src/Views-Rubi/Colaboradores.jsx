@@ -372,10 +372,11 @@ function Colaboradores() {
                     setExpandedCollaboratorId(null)
                     setAreaFilter('all')
                   }}
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#f2ece0] px-5 text-sm font-extrabold text-[#5d5870] shadow-sm transition hover:bg-[#e9dfd0]"
+                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center self-end rounded-xl border border-[#e2d9c9] bg-[#fbf7ef] text-[#6f6584] shadow-sm transition hover:bg-[#f2ece0] sm:self-auto dark:border-[#30273b] dark:bg-[#241c2d] dark:text-[#c9bdd5] dark:hover:border-[#493a59] dark:hover:bg-[#2c2236]"
+                  aria-label={showHidden ? 'Ver colaboradores activos' : 'Ver colaboradores ocultos'}
+                  title={showHidden ? 'Ver colaboradores activos' : 'Ver colaboradores ocultos'}
                 >
                   <AppIcon name={showHidden ? 'eye' : 'eyeOff'} />
-                  {showHidden ? 'Activos' : 'Ocultos'}
                 </button>
                 <button
                   type="button"

@@ -455,9 +455,10 @@ export default function Reportes() {
               </button> : null}
               {["Inventario", "Proveedores"].includes(source) ? <button type="button"
                 disabled={changingId === row.id} onClick={() => handleVisibility(row)}
-                className="inline-flex h-8 items-center gap-1 rounded-[8px] bg-[#eee8dc] px-3 text-xs font-black text-[#6f6584] disabled:opacity-60">
+                className="inline-flex h-8 w-8 items-center justify-center rounded-[8px] bg-[#eee8dc] text-[#6f6584] disabled:opacity-60"
+                aria-label={row._activo ? "Ocultar" : "Restaurar"}
+                title={row._activo ? "Ocultar" : "Restaurar"}>
                 {row._activo ? <EyeOff size={13} /> : <Eye size={13} />}
-                {row._activo ? "Ocultar" : "Restaurar"}
               </button> : null}
             </div>
           </div>

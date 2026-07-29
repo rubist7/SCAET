@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Download, Eraser, FileText, Mail, PenLine, X } from "lucide-react";
 import DateInput from "./DateInput";
 import { formatDate } from "./dateUtils";
+import BackButton from "../components/BackButton";
 import Signature from "../components/Signature";
 
 const defaultDevolucion = {
@@ -596,7 +597,8 @@ function DevolucionEditor({ devolucion, initialSelectedItemKeys, onBack, onGoRes
   const source = useMemo(() => ({ ...defaultDevolucion, ...devolucion }), [devolucion]);
   const canCaptureSignature = useCanCaptureTouchSignature();
   const items = useMemo(() => (source.items?.length ? source.items : [fallbackItem(source)]), [source]);
-  const [selectedItemKeys, setSelectedItemKeys] = useState(initialSelectedItemKeys?.length ? initialSelectedItemKeys : [items[items.length - 1]?.key]);
+  const initialKeys = initialSelectedItemKeys?.length ? initialSelectedItemKeys : [items[items.length - 1]?.key];
+  const [selectedItemKeys, setSelectedItemKeys] = useState(initialKeys);
   const selectedItems = items.filter((item) => selectedItemKeys.includes(item.key));
   const activeItems = selectedItems.length ? selectedItems : [items[0]];
   const estadoOptions = estadoOptionsForItems(activeItems);
@@ -615,6 +617,11 @@ function DevolucionEditor({ devolucion, initialSelectedItemKeys, onBack, onGoRes
     estado,
     observaciones,
   };
+  const hasUnsavedChanges = fecha !== source.fecha
+    || estado !== (source.estado || estadoOptions[0])
+    || observaciones !== (source.observaciones || "")
+    || Boolean(signature)
+    || JSON.stringify([...selectedItemKeys].sort()) !== JSON.stringify([...initialKeys].sort());
 
   const collaboratorValue = `${data.colaborador.nombre} - ${data.colaborador.numero}`;
   const assetValue = activeItems.length === 1
@@ -656,6 +663,7 @@ function DevolucionEditor({ devolucion, initialSelectedItemKeys, onBack, onGoRes
   };
   return (
     <div className="min-w-0 space-y-4 overflow-hidden">
+      <BackButton onBack={onBack} hasUnsavedChanges={hasUnsavedChanges} label="Volver a asignaciones" />
       <div>
         <h1 className="mt-1 text-sm font-bold text-blue-300">Resguardo - Firma Digital</h1>
       </div>
@@ -718,9 +726,6 @@ function DevolucionEditor({ devolucion, initialSelectedItemKeys, onBack, onGoRes
             </div>
           </div>
           <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <button type="button" onClick={onBack} className="h-10 rounded-[8px] bg-[#eee8dc] px-5 text-xs font-black text-[#6f6584]">
-              Cancelar
-            </button>
             <button
               type="button"
               onClick={handleConfirm}

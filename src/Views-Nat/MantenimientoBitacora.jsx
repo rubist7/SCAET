@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, EyeOff } from "lucide-react";
 import DateInput from "./DateInput";
 import { formatCurrency } from "./currency";
 import { formatDate, todayIsoDate } from "./dateUtils";
+import BackButton from "../components/BackButton";
 
 const authHeaders = (json = false) => ({
   Authorization: "Bearer " + localStorage.getItem("scaet-token"),
@@ -33,11 +34,33 @@ const estadoVisual = {
   cancelado: "Cancelado",
 };
 
+const estadoHistorial = {
+  en_proceso: {
+    label: "En proceso",
+    className: "bg-amber-100 text-amber-600 dark:bg-amber-400/15 dark:text-amber-300",
+  },
+  resuelto: {
+    label: "Resuelto",
+    className: "bg-emerald-100 text-emerald-600 dark:bg-emerald-400/15 dark:text-emerald-300",
+  },
+  cancelado: {
+    label: "Cancelado",
+    className: "bg-red-100 text-red-500 dark:bg-red-400/15 dark:text-red-300",
+  },
+};
+
 const equipoEstadoVisual = {
   disponible: "Disponible",
   asignado: "Asignado",
   mantenimiento: "Mantenimiento",
   baja: "Baja",
+};
+
+const equipoEstadoClasses = {
+  disponible: "bg-blue-100 text-blue-600 dark:bg-blue-400/15 dark:text-blue-300",
+  asignado: "bg-emerald-100 text-emerald-600 dark:bg-emerald-400/15 dark:text-emerald-300",
+  mantenimiento: "bg-amber-100 text-amber-600 dark:bg-amber-400/15 dark:text-amber-300",
+  baja: "bg-red-100 text-red-500 dark:bg-red-400/15 dark:text-red-300",
 };
 
 function Field({ label, children }) {
@@ -85,15 +108,32 @@ function SoftSelect({ value, onChange, options }) {
 }
 
 function MaintenanceList({ records }) {
+  const [showResolved, setShowResolved] = useState(false);
+
   if (!records.length) {
     return <div className="mt-4 rounded-[8px] border border-dashed border-[#ded6c8] px-4 py-8 text-center text-sm font-semibold text-[#9e95aa]">
       Este equipo aún no tiene mantenimientos registrados.
     </div>;
   }
 
+  const resolvedRecords = records.filter((item) => item.estado_mantenimiento === "resuelto");
+  const activeRecords = records.filter((item) => item.estado_mantenimiento !== "resuelto");
+  const displayedRecords = showResolved ? resolvedRecords : activeRecords;
+
   return <div className="mt-5 space-y-3">
-    <p className="text-[11px] font-black uppercase tracking-[0.26em] text-blue-200">Entradas guardadas</p>
-    {records.map((item) => <article key={item.id_mantenimiento} className="rounded-[8px] border border-[#eee8f6] bg-[#fbfaf8] p-4">
+    <div className="flex items-center justify-between gap-3">
+      <p className="text-[11px] font-black uppercase tracking-[0.26em] text-blue-200">
+        {showResolved ? "Mantenimientos resueltos" : "Entradas guardadas"}
+      </p>
+      {resolvedRecords.length ? <button type="button" onClick={() => setShowResolved((current) => !current)}
+        className="inline-flex h-8 items-center gap-2 rounded-[8px] bg-[#eee8dc] px-3 text-xs font-black text-[#6f6584] transition hover:bg-[#e4dccd] dark:bg-[#f4efe6]/10 dark:text-[#ddd4e7] dark:hover:bg-[#f4efe6]/15"
+        aria-label={showResolved ? "Ver entradas activas" : "Ver mantenimientos resueltos"}
+        title={showResolved ? "Ver entradas activas" : "Ver mantenimientos resueltos"}>
+        <EyeOff size={14} />
+        <span>{showResolved ? activeRecords.length : resolvedRecords.length}</span>
+      </button> : null}
+    </div>
+    {displayedRecords.map((item) => <article key={item.id_mantenimiento} className="rounded-[8px] border border-[#eee8f6] bg-[#fbfaf8] p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
@@ -114,6 +154,9 @@ function MaintenanceList({ records }) {
         </div>
       </div>
     </article>)}
+    {!displayedRecords.length ? <div className="rounded-[8px] border border-dashed border-[#ded6c8] px-4 py-8 text-center text-sm font-semibold text-[#9e95aa]">
+      {showResolved ? "No hay mantenimientos resueltos." : "No hay mantenimientos activos para este equipo."}
+    </div> : null}
   </div>;
 }
 
@@ -133,18 +176,25 @@ function UserHistoryCard({ record }) {
         <p className="mt-2 text-[11px] font-black uppercase tracking-[0.12em] text-blue-300">{inicio} - {fin}</p>
       </div>
       <div className="shrink-0 sm:text-right">
-        <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-[11px] font-black text-blue-600">
+        <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-[11px] font-black text-blue-600 dark:bg-blue-400/15 dark:text-blue-300">
           {record.estado_asignacion === "asignado" ? "Asignado" : "Devuelto"}
         </span>
         <p className="mt-2 text-sm font-black text-[#21192c]">{formatCurrency(total)}</p>
       </div>
     </div>
     <div className="mt-3 space-y-2">
-      {mantenimientos.map((item) => <div key={item.id_mantenimiento} className="rounded-[8px] border border-[#eee8f6] bg-[#fbfaf8] p-3">
+      {mantenimientos.map((item) => {
+        const status = estadoHistorial[item.estado_mantenimiento] || {
+          label: item.estado_mantenimiento || "Sin estado",
+          className: "bg-blue-100 text-blue-600 dark:bg-blue-400/15 dark:text-blue-300",
+        };
+
+        return <div key={item.id_mantenimiento} className="rounded-[8px] border border-[#eee8f6] bg-[#fbfaf8] p-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-full bg-[#eee8dc] px-2.5 py-0.5 text-[10px] font-black text-[#6f6584]">{tipoVisual[item.tipo_mantenimiento] || item.tipo_mantenimiento}</span>
+              <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-black ${status.className}`}>{status.label}</span>
               <span className="text-[11px] font-bold text-blue-300">{formatDate(item.fecha_mantenimiento ? String(item.fecha_mantenimiento).slice(0, 10) : "")}</span>
             </div>
             <p className="mt-2 text-xs font-semibold text-[#6f6584]">{item.descripcion}</p>
@@ -152,7 +202,8 @@ function UserHistoryCard({ record }) {
           </div>
           <p className="shrink-0 text-sm font-black text-[#21192c]">{formatCurrency(Number(item.costo || 0))}</p>
         </div>
-      </div>)}
+      </div>;
+      })}
       {!mantenimientos.length ? <p className="text-xs font-semibold text-[#9e95aa]">Sin mantenimientos relacionados.</p> : null}
     </div>
   </article>;
@@ -192,6 +243,10 @@ export default function MantenimientoBitacora({ equipo, onBack }) {
   const [estado, setEstado] = useState("En proceso");
   const [costo, setCosto] = useState(0);
   const [proveedor, setProveedor] = useState("");
+  const [formBaseline, setFormBaseline] = useState(() => JSON.stringify({
+    fecha: todayIsoDate(), tipo: "Falla reportada", descripcion: "", tecnico: "",
+    estado: "En proceso", costo: 0, proveedor: "",
+  }));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -254,6 +309,9 @@ export default function MantenimientoBitacora({ equipo, onBack }) {
       setTecnico("");
       setCosto(0);
       setProveedor("");
+      setFormBaseline(JSON.stringify({
+        fecha, tipo, descripcion: "", tecnico: "", estado, costo: 0, proveedor: "",
+      }));
       await cargarBitacora();
     } catch (saveError) {
       setError(saveError.message);
@@ -264,6 +322,11 @@ export default function MantenimientoBitacora({ equipo, onBack }) {
 
   const selected = data.equipo || equipo || {};
   const estadoActual = equipoEstadoVisual[selected.estado] || selected.estado || "-";
+  const estadoActualClasses = equipoEstadoClasses[selected.estado]
+    || "bg-blue-100 text-blue-600 dark:bg-blue-400/15 dark:text-blue-300";
+  const hasUnsavedChanges = JSON.stringify({
+    fecha, tipo, descripcion, tecnico, estado, costo, proveedor,
+  }) !== formBaseline;
 
   return <div className="space-y-4">
     <section className="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
@@ -274,12 +337,17 @@ export default function MantenimientoBitacora({ equipo, onBack }) {
           </p>
           <h2 className="mt-3 flex flex-col gap-2 text-lg font-black text-[#21192c] sm:block sm:text-xl">
             {selected.nombre_equipo || selected.nombre || "Equipo"}
-            <span className="w-fit rounded-full bg-amber-100 px-3 py-1 align-middle text-xs font-black text-amber-600 sm:ml-3">{estadoActual}</span>
+            <span className={`w-fit rounded-full px-3 py-1 align-middle text-xs font-black sm:ml-3 ${estadoActualClasses}`}>{estadoActual}</span>
           </h2>
         </div>
       </div>
 
-      <button type="button" onClick={onBack} className="mt-3 text-xs font-black text-blue-600 hover:underline">Volver a seleccionar equipo</button>
+      <BackButton
+        onBack={onBack}
+        hasUnsavedChanges={hasUnsavedChanges}
+        label="Volver a seleccionar equipo"
+        className="mt-3"
+      />
       {error ? <p className="mt-3 text-sm font-semibold text-red-500">{error}</p> : null}
 
       <div className="mt-4 flex overflow-x-auto border-b border-blue-500">

@@ -435,12 +435,11 @@ function Proveedores() {
                 <button
                   type="button"
                   onClick={handleToggleHiddenProviders}
-                  className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-[#e2d9c9] bg-[#fbf7ef] px-3 text-xs font-extrabold text-[#6f6584] shadow-sm transition hover:bg-[#f2ece0] dark:border-[#30273b] dark:bg-[#241c2d] dark:text-[#c9bdd5] dark:hover:border-[#493a59] dark:hover:bg-[#2c2236]"
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] border border-[#e2d9c9] bg-[#fbf7ef] text-[#6f6584] shadow-sm transition hover:bg-[#f2ece0] dark:border-[#30273b] dark:bg-[#241c2d] dark:text-[#c9bdd5] dark:hover:border-[#493a59] dark:hover:bg-[#2c2236]"
                   aria-label={showHiddenProviders ? 'Ver proveedores activos' : 'Ver proveedores ocultos'}
                   title={showHiddenProviders ? 'Ver proveedores activos' : 'Ver proveedores ocultos'}
                 >
                   <AppIcon name={showHiddenProviders ? 'eye' : 'eyeOff'} />
-                  {showHiddenProviders ? 'Activos' : 'Ocultos'}
                 </button>
               </div>
 

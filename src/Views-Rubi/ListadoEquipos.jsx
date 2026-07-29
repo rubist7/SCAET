@@ -279,6 +279,7 @@ function ListadoEquipos() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [viewMode, setViewMode] = useState('cards')
   const [showHidden, setShowHidden] = useState(false)
+  const [hiddenEquipmentsCount, setHiddenEquipmentsCount] = useState(0)
   const [scannerOpen, setScannerOpen] = useState(false)
   const [scannerError, setScannerError] = useState('')
   const [cameraMode, setCameraMode] = useState('back')
@@ -290,10 +291,17 @@ function ListadoEquipos() {
   const canChangeState = user.rol === 'admin'
 
   const loadEquipmentList = useCallback(async () => {
-    const response = await fetch(`${apiUrl}/equipos?estado=${showHidden ? 'ocultos' : 'activos'}`, { headers: authHeaders() })
-    const data = await response.json()
-    if (!response.ok) throw new Error(data.mensaje || 'No se pudieron cargar los equipos')
-    setEquipments((data.equipos || []).map(mapEquipment))
+    const [activeResponse, hiddenResponse] = await Promise.all([
+      fetch(`${apiUrl}/equipos?estado=activos`, { headers: authHeaders() }),
+      fetch(`${apiUrl}/equipos?estado=ocultos`, { headers: authHeaders() }),
+    ])
+    const [activeData, hiddenData] = await Promise.all([activeResponse.json(), hiddenResponse.json()])
+    if (!activeResponse.ok) throw new Error(activeData.mensaje || 'No se pudieron cargar los equipos')
+    if (!hiddenResponse.ok) throw new Error(hiddenData.mensaje || 'No se pudieron cargar los equipos ocultos')
+    const activeEquipments = activeData.equipos || []
+    const hiddenEquipments = hiddenData.equipos || []
+    setEquipments((showHidden ? hiddenEquipments : activeEquipments).map(mapEquipment))
+    setHiddenEquipmentsCount(hiddenEquipments.length)
   }, [showHidden])
 
   useEffect(() => { loadEquipmentList().catch((error) => setScannerError(error.message)) }, [loadEquipmentList])
@@ -406,7 +414,6 @@ function ListadoEquipos() {
   }
 
   const visibleEquipments = equipments
-  const hiddenEquipmentsCount = showHidden ? equipments.length : 0
   const brandOptions = useMemo(() => {
     const brandsByName = new Map()
 
@@ -468,14 +475,16 @@ function ListadoEquipos() {
             </p>
           </div>
 
-          <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-3 xl:w-auto">
+          <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto xl:justify-end">
             <button
               type="button"
               onClick={() => setShowHidden((currentValue) => !currentValue)}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#f2ece0] px-5 text-sm font-extrabold text-[#5d5870] shadow-sm transition hover:bg-[#e9dfd0]"
+              className="inline-flex h-11 min-w-16 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-[#f2ece0] px-3 text-xs font-extrabold text-[#5d5870] shadow-sm transition hover:bg-[#e9dfd0]"
+              aria-label={showHidden ? 'Ver equipos visibles' : 'Ver equipos ocultos'}
+              title={showHidden ? 'Ver equipos visibles' : 'Ver equipos ocultos'}
             >
               <AppIcon name={showHidden ? 'eye' : 'eyeOff'} />
-              {showHidden ? 'Ver visibles' : `Ocultos (${hiddenEquipmentsCount})`}
+              <span>({hiddenEquipmentsCount})</span>
             </button>
             <button
               type="button"

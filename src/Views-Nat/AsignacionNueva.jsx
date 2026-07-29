@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useState } from "react";
 import { Check, FileText, RotateCcw, Search } from "lucide-react";
+import BackButton from "../components/BackButton";
 import DateInput from "./DateInput";
 import { formatDate, formatIsoDate } from "./dateUtils";
 import { typeOptions } from "../Views-Rubi/equiposData";
@@ -421,7 +422,7 @@ function ActiveAssignments({ rows, onOpenResguardo, onOpenDevolucion }) {
   );
 }
 
-export default function NuevaAsignacion({ initialColaborador, initialStep = 0, initialItems = [], onOpenResguardo, onOpenDevolucion, onCreateResguardo }) {
+export default function NuevaAsignacion({ initialColaborador, initialStep = 0, initialItems = [], onOpenResguardo, onOpenDevolucion, onCreateResguardo, onBack }) {
   const [step, setStep] = useState(initialStep);
   const [colaborador, setColaborador] = useState(initialColaborador || null);
   const [tipoActivo, setTipoActivo] = useState("equipo");
@@ -511,6 +512,11 @@ export default function NuevaAsignacion({ initialColaborador, initialStep = 0, i
     observaciones: "",
   } : null;
   const confirmationItems = currentItem ? [...initialItems, currentItem] : initialItems;
+  const hasUnsavedChanges = step !== initialStep
+    || colaborador?.id !== initialColaborador?.id
+    || Boolean(activo)
+    || tipo !== "Temporal"
+    || Boolean(fechaDev);
 
   const handleConfirm = () => {
     if (!currentItem) return;
@@ -535,6 +541,9 @@ export default function NuevaAsignacion({ initialColaborador, initialStep = 0, i
 
   return (
     <div className="mx-auto min-w-0 max-w-4xl space-y-6">
+      {addingToExistingResguardo && (
+        <BackButton onBack={onBack} hasUnsavedChanges={hasUnsavedChanges} label="Volver al resguardo" />
+      )}
       <div>
         <h1 className="text-xl font-black tracking-tight text-gray-900 dark:text-white">
           {addingToExistingResguardo ? "Agregar activo al resguardo" : "Nueva asignacion"}
@@ -556,9 +565,11 @@ export default function NuevaAsignacion({ initialColaborador, initialStep = 0, i
           {step === 3 && <Step4 colaborador={colaborador} items={confirmationItems} />}
         </div>
         <div className="mt-6 flex flex-col-reverse gap-3 border-t border-gray-100 pt-4 dark:border-gray-800 sm:flex-row sm:items-center sm:justify-end">
-          <button type="button" onClick={() => (step === 0 ? reset() : setStep((value) => value - 1))} className="rounded-lg px-4 py-2 text-sm font-semibold text-gray-500 transition hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800">
-            {step === 0 ? "Cancelar" : "Regresar"}
-          </button>
+          {!(addingToExistingResguardo && step === 0) && (
+            <button type="button" onClick={() => (step === 0 ? reset() : setStep((value) => value - 1))} className="rounded-lg px-4 py-2 text-sm font-semibold text-gray-500 transition hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800">
+              {step === 0 ? "Cancelar" : "Regresar"}
+            </button>
+          )}
           {step < 3 ? (
             <button type="button" onClick={() => setStep((value) => value + 1)} disabled={!canNext[step]} className="rounded-lg bg-[#3A9AF2] px-5 py-2 text-sm font-semibold text-[#FFFFFF] shadow-sm transition hover:bg-[#238BEA] disabled:cursor-not-allowed disabled:opacity-40">Continuar</button>
           ) : (
