@@ -241,6 +241,8 @@ function SignaturePad({ value, onChange, disabled }) {
   const canvasRef = useRef(null);
   const drawingRef = useRef(false);
   const lastPointRef = useRef(null);
+  const startPointRef = useRef(null);
+  const hasMovedRef = useRef(false);
   const [hasPendingSignature, setHasPendingSignature] = useState(false);
 
   useEffect(() => {
@@ -285,12 +287,15 @@ function SignaturePad({ value, onChange, disabled }) {
   const handlePointerDown = (event) => {
     if (disabled) return;
 
+    event.preventDefault();
     const canvas = canvasRef.current;
     const context = canvas.getContext("2d");
     const point = getPoint(event);
 
     drawingRef.current = true;
     lastPointRef.current = point;
+    startPointRef.current = point;
+    hasMovedRef.current = false;
     setHasPendingSignature(true);
     context.beginPath();
     context.arc(point.x, point.y, 1.15, 0, Math.PI * 2);
@@ -302,11 +307,15 @@ function SignaturePad({ value, onChange, disabled }) {
   const handlePointerMove = (event) => {
     if (disabled || !drawingRef.current) return;
 
+    event.preventDefault();
     const canvas = canvasRef.current;
     const context = canvas.getContext("2d");
     const nextPoint = getPoint(event);
     const lastPoint = lastPointRef.current;
 
+    if (Math.hypot(nextPoint.x - startPointRef.current.x, nextPoint.y - startPointRef.current.y) >= 1) {
+      hasMovedRef.current = true;
+    }
     context.beginPath();
     context.moveTo(lastPoint.x, lastPoint.y);
     context.lineTo(nextPoint.x, nextPoint.y);
@@ -317,9 +326,24 @@ function SignaturePad({ value, onChange, disabled }) {
   const handlePointerUp = (event) => {
     if (disabled || !drawingRef.current) return;
 
+    event.preventDefault();
+    const canvas = canvasRef.current;
+
+    if (!hasMovedRef.current && startPointRef.current) {
+      const context = canvas.getContext("2d");
+      context.beginPath();
+      context.arc(startPointRef.current.x, startPointRef.current.y, 2.3, 0, Math.PI * 2);
+      context.fillStyle = "#21192c";
+      context.fill();
+    }
+
     drawingRef.current = false;
     lastPointRef.current = null;
-    canvasRef.current.releasePointerCapture?.(event.pointerId);
+    startPointRef.current = null;
+    hasMovedRef.current = false;
+    if (canvas.hasPointerCapture?.(event.pointerId)) {
+      canvas.releasePointerCapture(event.pointerId);
+    }
   };
 
   const handleClear = () => {
@@ -342,7 +366,7 @@ function SignaturePad({ value, onChange, disabled }) {
             <span className="text-[10px] font-semibold tracking-wide text-[#b9ad9b]">Activa vista movil para probarla</span>
           </div>
         )}
-        {!disabled && !value && (
+        {!disabled && !value && !hasPendingSignature && (
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1 text-blue-400">
             <PenLine size={20} />
             <span className="text-xs font-semibold">Firma aqui</span>
@@ -357,7 +381,6 @@ function SignaturePad({ value, onChange, disabled }) {
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
-          onPointerLeave={handlePointerUp}
         />
       </div>
       <div className="mt-2 grid grid-cols-2 gap-2">
