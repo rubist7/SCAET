@@ -87,7 +87,7 @@ export function Field({ label, name, value, onChange, placeholder, type = 'text'
         placeholder={placeholder}
         required={required}
         readOnly={readOnly}
-        className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100 read-only:text-[#8d88a2]"
+        className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-2 focus:ring-blue-100 read-only:text-[#8d88a2]"
       />
     </label>
   )

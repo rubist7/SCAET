@@ -118,7 +118,7 @@ function Field({ label, name, value, onChange, placeholder, type = 'text', requi
         onChange={onChange}
         placeholder={placeholder}
         required={required}
-        className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
+        className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-2 focus:ring-blue-100"
       />
     </label>
   )
@@ -372,16 +372,17 @@ function Colaboradores() {
                     setExpandedCollaboratorId(null)
                     setAreaFilter('all')
                   }}
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#f2ece0] px-5 text-sm font-extrabold text-[#5d5870] shadow-sm transition hover:bg-[#e9dfd0]"
+                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center self-end rounded-xl border border-[#e2d9c9] bg-[#fbf7ef] text-[#6f6584] shadow-sm transition hover:bg-[#f2ece0] sm:self-auto dark:border-[#30273b] dark:bg-[#241c2d] dark:text-[#c9bdd5] dark:hover:border-[#493a59] dark:hover:bg-[#2c2236]"
+                  aria-label={showHidden ? 'Ver colaboradores activos' : 'Ver colaboradores ocultos'}
+                  title={showHidden ? 'Ver colaboradores activos' : 'Ver colaboradores ocultos'}
                 >
                   <AppIcon name={showHidden ? 'eye' : 'eyeOff'} />
-                  {showHidden ? 'Activos' : 'Ocultos'}
                 </button>
                 <button
                   type="button"
                   onClick={handleNewCollaborator}
                   style={{ display: canManage ? undefined : 'none' }}
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#3A9AF2] px-5 text-sm font-extrabold text-[#FFFFFF] shadow-sm transition hover:bg-[#238BEA] focus:outline-none focus:ring-4 focus:ring-blue-100"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#3A9AF2] px-5 text-sm font-extrabold text-[#FFFFFF] shadow-sm transition hover:bg-[#238BEA] focus:outline-none focus:ring-2 focus:ring-blue-100"
                 >
                   <AppIcon name="plus" />
                   Nuevo colaborador
@@ -401,14 +402,14 @@ function Colaboradores() {
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     placeholder="Buscar por nombre o numero..."
-                    className="h-12 w-full rounded-2xl border border-[#e8dfd0] bg-[#f2ece0] pl-11 pr-4 text-sm font-bold text-[#2a263a] outline-none transition placeholder:text-[#9b95ac] focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
+                    className="h-12 w-full rounded-2xl border border-[#e8dfd0] bg-[#f2ece0] pl-11 pr-4 text-sm font-bold text-[#2a263a] outline-none transition placeholder:text-[#9b95ac] focus:border-blue-300 focus:bg-white focus:ring-2 focus:ring-blue-100"
                   />
                 </label>
 
                 <select
                   value={areaFilter}
                   onChange={(event) => setAreaFilter(event.target.value)}
-                  className="h-12 w-full rounded-2xl border border-[#e8dfd0] bg-[#f2ece0] px-4 text-sm font-extrabold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
+                  className="h-12 w-full rounded-2xl border border-[#e8dfd0] bg-[#f2ece0] px-4 text-sm font-extrabold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-2 focus:ring-blue-100"
                 >
                   <option value="all">Todas las areas</option>
                   {areaOptions.map((area) => (
@@ -733,7 +734,7 @@ function Colaboradores() {
                           name="status"
                           value={form.status}
                           onChange={handleInputChange}
-                          className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
+                          className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-2 focus:ring-blue-100"
                         >
                           {statusOptions.map((option) => (
                             <option key={option} value={option}>{option}</option>
@@ -749,7 +750,7 @@ function Colaboradores() {
                           onChange={handleInputChange}
                           placeholder="Notas adicionales"
                           rows="3"
-                          className="min-h-24 w-full resize-y rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 py-3 text-sm font-bold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100"
+                          className="min-h-24 w-full resize-y rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 py-3 text-sm font-bold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-2 focus:ring-blue-100"
                         />
                       </label>
                     </div>
@@ -765,7 +766,7 @@ function Colaboradores() {
                     </button>
                     <button
                       type="submit"
-                      className="h-11 rounded-xl bg-[#3A9AF2] px-8 text-sm font-extrabold text-[#FFFFFF] transition hover:bg-[#238BEA] focus:outline-none focus:ring-4 focus:ring-blue-100"
+                      className="h-11 rounded-xl bg-[#3A9AF2] px-8 text-sm font-extrabold text-[#FFFFFF] transition hover:bg-[#238BEA] focus:outline-none focus:ring-2 focus:ring-blue-100"
                     >
                       {isEditing ? 'Guardar cambios' : 'Guardar colaborador'}
                     </button>

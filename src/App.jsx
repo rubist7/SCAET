@@ -162,6 +162,11 @@ function NataliaFlow({ initialScreen = "asignacion" }) {
     navigate(natRoutes.Asignacion);
   };
 
+  const handleBackFromAddAssignment = () => {
+    setAsignacionInicial(null);
+    setScreen("resguardo");
+  };
+
   const handleOpenResguardoActivo = (nextResguardo) => {
     setResguardo({
       ...nextResguardo,
@@ -344,6 +349,7 @@ function NataliaFlow({ initialScreen = "asignacion" }) {
           onOpenResguardo={handleOpenResguardoActivo}
           onOpenDevolucion={handleOpenDevolucionActivo}
           onCreateResguardo={handleCreateResguardo}
+          onBack={asignacionInicial ? handleBackFromAddAssignment : undefined}
         />
       );
     }

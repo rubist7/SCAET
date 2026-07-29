@@ -45,9 +45,9 @@ const maintenanceStatusStyles = {
 };
 
 const categoriaStyles = {
-  Falla: "border-red-400 bg-red-50 text-red-500",
-  Preventivo: "border-emerald-400 bg-emerald-50 text-emerald-600",
-  Correctivo: "border-blue-400 bg-blue-50 text-blue-600",
+  Falla: "border-red-400 bg-red-50 text-red-500 dark:bg-red-400/15 dark:text-red-300",
+  Preventivo: "border-emerald-400 bg-emerald-50 text-emerald-600 dark:bg-emerald-400/15 dark:text-emerald-300",
+  Correctivo: "border-blue-400 bg-blue-50 text-blue-600 dark:bg-blue-400/15 dark:text-blue-300",
 };
 
 function mapEquipo(equipo) {
