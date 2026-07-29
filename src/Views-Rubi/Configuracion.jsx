@@ -699,8 +699,8 @@ function Configuracion() {
               </form>
             )}
             {profile.roleKey === 'admin' && (
-              <section className="space-y-5 rounded-2xl bg-white p-5 shadow-sm">
-                <div className="border-b border-[#f1edf5] pb-4">
+              <section className="space-y-5 rounded-2xl bg-white p-5 shadow-sm dark:bg-[#16131F]">
+                <div className="border-b border-[#f1edf5] pb-4 dark:border-[#30273b]">
                   <h2 className="text-base font-extrabold text-[#201d31]">Gestión de usuarios</h2>
                   <p className="mt-1 text-xs font-bold text-[#8d88a2]">
                     Busca un usuario y elige una acción para editar datos, cambiar rol o restablecer contraseña.
@@ -718,7 +718,7 @@ function Configuracion() {
                   <button
                     type="button"
                     onClick={handleToggleHiddenUsers}
-                    className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-[#e2d9c9] bg-[#fbf7ef] px-3 text-xs font-extrabold text-[#5d5870] shadow-sm transition hover:bg-[#f2ece0] hover:text-[#2a263a]"
+                    className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-[#e2d9c9] bg-[#fbf7ef] px-3 text-xs font-extrabold text-[#5d5870] shadow-sm transition hover:bg-[#f2ece0] hover:text-[#2a263a] dark:border-[#30273b] dark:bg-[#241c2d] dark:text-[#c9bdd5] dark:hover:border-[#493a59] dark:hover:bg-[#2c2236]"
                     aria-label={showHiddenUsers ? 'Ver usuarios activos' : 'Ver usuarios ocultos'}
                     title={showHiddenUsers ? 'Ver usuarios activos' : 'Ver usuarios ocultos'}
                   >
@@ -733,9 +733,9 @@ function Configuracion() {
                     <p className="mt-1 text-xs font-bold text-[#8d88a2]">{userListDescription}</p>
                   </div>
 
-                  <div className="overflow-x-auto rounded-xl border border-[#f1edf5]">
+                  <div className="overflow-x-auto rounded-xl border border-[#f1edf5] dark:border-[#30273b]">
                     <table className="min-w-full text-left text-sm">
-                      <thead className="bg-[#f7f4ec] text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#8d88a2]">
+                      <thead className="bg-[#f7f4ec] text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#8d88a2] dark:bg-[#241c2d] dark:text-[#c9bdd5]">
                         <tr>
                           <th className="px-4 py-3">Nombre completo</th>
                           <th className="px-4 py-3">Nombre de usuario</th>
@@ -745,7 +745,7 @@ function Configuracion() {
                           <th className="px-4 py-3">Acciones</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-[#f1edf5]">
+                      <tbody className="divide-y divide-[#f1edf5] dark:divide-[#30273b]">
                         {filteredUsers.map((user) => (
                           <tr key={user.id_usuario} className="align-top">
                             <td className="px-4 py-3 font-extrabold text-[#201d31]">{user.nombre_completo}</td>
@@ -760,21 +760,21 @@ function Configuracion() {
                                 <button
                                   type="button"
                                   onClick={() => handleSelectedUserAction(user, 'edit')}
-                                  className="inline-flex h-9 items-center justify-center rounded-xl bg-[#f2ece0] px-3 text-xs font-extrabold text-[#2a263a] transition hover:bg-[#e9dfd0]"
+                                  className="inline-flex h-9 items-center justify-center rounded-xl bg-[#f2ece0] px-3 text-xs font-extrabold text-[#2a263a] transition hover:bg-[#e9dfd0] dark:border dark:border-[#30273b] dark:bg-[#241c2d] dark:text-[#c9bdd5] dark:hover:bg-[#2c2236]"
                                 >
                                   Editar datos
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => handleSelectedUserAction(user, 'role')}
-                                  className="inline-flex h-9 items-center justify-center rounded-xl bg-[#f2ece0] px-3 text-xs font-extrabold text-[#2a263a] transition hover:bg-[#e9dfd0]"
+                                  className="inline-flex h-9 items-center justify-center rounded-xl bg-[#f2ece0] px-3 text-xs font-extrabold text-[#2a263a] transition hover:bg-[#e9dfd0] dark:border dark:border-[#30273b] dark:bg-[#241c2d] dark:text-[#c9bdd5] dark:hover:bg-[#2c2236]"
                                 >
                                   Cambiar rol
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => handleSelectedUserAction(user, 'reset')}
-                                  className="inline-flex h-9 items-center justify-center rounded-xl bg-[#f2ece0] px-3 text-xs font-extrabold text-[#2a263a] transition hover:bg-[#e9dfd0]"
+                                  className="inline-flex h-9 items-center justify-center rounded-xl bg-[#f2ece0] px-3 text-xs font-extrabold text-[#2a263a] transition hover:bg-[#e9dfd0] dark:border dark:border-[#30273b] dark:bg-[#241c2d] dark:text-[#c9bdd5] dark:hover:bg-[#2c2236]"
                                 >
                                   Restablecer contraseña
                                 </button>
@@ -783,7 +783,7 @@ function Configuracion() {
                                     type="button"
                                     onClick={() => handleUserStateChange(user, 0)}
                                     disabled={String(user.id_usuario) === String(profile.id)}
-                                    className="inline-flex h-9 items-center justify-center rounded-xl bg-[#f2ece0] px-3 text-xs font-extrabold text-[#2a263a] transition hover:bg-[#e9dfd0] disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="inline-flex h-9 items-center justify-center rounded-xl bg-[#f2ece0] px-3 text-xs font-extrabold text-[#2a263a] transition hover:bg-[#e9dfd0] disabled:cursor-not-allowed disabled:opacity-50 dark:border dark:border-[#30273b] dark:bg-[#241c2d] dark:text-[#c9bdd5] dark:hover:bg-[#2c2236]"
                                   >
                                     Ocultar
                                   </button>
@@ -791,7 +791,7 @@ function Configuracion() {
                                   <button
                                     type="button"
                                     onClick={() => handleUserStateChange(user, 1)}
-                                    className="inline-flex h-9 items-center justify-center rounded-xl bg-[#f2ece0] px-3 text-xs font-extrabold text-[#2a263a] transition hover:bg-[#e9dfd0]"
+                                    className="inline-flex h-9 items-center justify-center rounded-xl bg-[#f2ece0] px-3 text-xs font-extrabold text-[#2a263a] transition hover:bg-[#e9dfd0] dark:border dark:border-[#30273b] dark:bg-[#241c2d] dark:text-[#c9bdd5] dark:hover:bg-[#2c2236]"
                                   >
                                     Activar
                                   </button>

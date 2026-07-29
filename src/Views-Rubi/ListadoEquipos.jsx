@@ -464,7 +464,7 @@ function ListadoEquipos() {
           <div>
             <h1 className="mt-3 text-2xl font-extrabold text-[#201d31] sm:text-3xl">Selecciona un equipo</h1>
             <p className="mt-2 text-sm font-bold text-[#8d88a2]">
-              Haz clic en <span className="text-blue-500">Ver ficha</span> para acceder al detalle completo
+              Haz clic en Ver ficha para acceder al detalle completo
             </p>
           </div>
 

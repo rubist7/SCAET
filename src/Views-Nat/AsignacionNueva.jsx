@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useState } from "react";
 import { Check, FileText, RotateCcw, Search } from "lucide-react";
 import DateInput from "./DateInput";
-import { formatDate } from "./dateUtils";
+import { formatDate, formatIsoDate } from "./dateUtils";
 import { typeOptions } from "../Views-Rubi/equiposData";
 
 const steps = ["Colaborador", "Activo", "Tipo y fecha", "Confirmar"];
@@ -336,7 +336,9 @@ function ActiveAssignments({ rows, onOpenResguardo, onOpenDevolucion }) {
                 const tipos = [...new Set(items.map((item) => item.tipoLabel))].join(", ");
                 const asignaciones = [...new Set(items.map((item) => item.tipoAsignacion || resguardo.tipo))];
                 const firstStart = items[0]?.fechaAsignacion || resguardo.fecha;
-                const hasPermanent = items.some((item) => !item.fechaDev);
+                const devoluciones = [...new Set(items.map((item) => (
+                  item.fechaDev ? formatIsoDate(item.fechaDev) : "Permanente"
+                )))];
 
                 return (
                   <Fragment key={rowKey}>
@@ -354,14 +356,18 @@ function ActiveAssignments({ rows, onOpenResguardo, onOpenDevolucion }) {
                           {asignaciones.map((asignacion) => <Badge key={asignacion} estado={asignacion} />)}
                         </div>
                       </td>
-                      <td className="px-2 py-3 text-gray-500 dark:text-gray-400">{formatDate(firstStart)}</td>
-                      <td className="px-2 py-3 text-gray-500 dark:text-gray-400">{hasPermanent ? "Permanente" : "Programada"}</td>
+                      <td className="whitespace-nowrap px-2 py-3 text-gray-500 dark:text-gray-400">
+                        {formatIsoDate(firstStart)}
+                      </td>
+                      <td className="px-2 py-3 text-gray-500 dark:text-gray-400">
+                        {devoluciones.join(", ")}
+                      </td>
                       <td className="py-3 pl-2 pr-0">
                         <div className="flex flex-wrap justify-end gap-2">
                           <button
                             type="button"
                             onClick={() => setExpandedKey(expanded ? null : rowKey)}
-                            className="inline-flex h-8 items-center gap-1 rounded-[8px] bg-gray-50 px-3 text-xs font-black text-gray-600 transition hover:bg-gray-100"
+                            className="inline-flex h-8 items-center gap-1 rounded-[8px] bg-gray-50 px-3 text-xs font-black text-gray-600 transition hover:bg-gray-100 dark:bg-[#f4efe6]/10 dark:text-[#ddd4e7] dark:hover:bg-[#f4efe6]/15"
                           >
                             Ver asignaciones
                           </button>
@@ -376,7 +382,7 @@ function ActiveAssignments({ rows, onOpenResguardo, onOpenDevolucion }) {
                           <button
                             type="button"
                             onClick={() => onOpenDevolucion?.(resguardo, items.map((item) => item.key))}
-                            className="inline-flex h-8 items-center gap-1 rounded-[8px] bg-emerald-50 px-3 text-xs font-black text-emerald-600 transition hover:bg-emerald-100"
+                            className="inline-flex h-8 items-center gap-1 rounded-[8px] bg-emerald-50 px-3 text-xs font-black text-emerald-600 transition hover:bg-emerald-100 dark:bg-emerald-400/15 dark:text-emerald-300 dark:hover:bg-emerald-400/20"
                           >
                             <RotateCcw size={13} />
                             Devolver

@@ -31,6 +31,19 @@ export function formatDate(value) {
   return `${day}/${month}/${year}`;
 }
 
+export function formatIsoDate(value) {
+  if (!value) return "";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+
+  return new Intl.DateTimeFormat("es-MX", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(date);
+}
+
 export function todayIsoDate() {
   const date = new Date();
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Download, Eraser, Mail, PenLine, Plus, Send, Trash2, X } from "lucide-react";
+import { Download, Eraser, FileText, Mail, PenLine, Plus, Send, Trash2, X } from "lucide-react";
 import DateInput from "./DateInput";
 import { formatDate } from "./dateUtils";
 import Signature from "../components/Signature";
@@ -562,12 +562,12 @@ function GeneratedResguardoModal({ data, signature, onClose }) {
     const printWindow = window.open("", "_blank", "width=900,height=700");
     if (!printWindow || !documentRef.current) return;
     const printStyles = `
-      @page { size: Letter; margin: 13mm; }
+      @page { size: Letter; margin: 14mm; }
       * { box-sizing: border-box; }
       html, body { margin: 0; padding: 0; background: #fff !important; color: #21192c; font-family: Arial, Helvetica, sans-serif; }
       body { width: 100%; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .scaet-print-document { width: 100%; max-width: 190mm; margin: 0 auto; }
-      .scaet-print-document > div { width: 100%; border-color: #ded6c8 !important; border-radius: 0 !important; box-shadow: none !important; padding: 8mm !important; }
+      .scaet-print-document { width: 100%; margin: 0; }
+      .scaet-print-document > div { width: 100%; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; padding: 0 !important; }
       table { width: 100% !important; min-width: 0 !important; border-collapse: collapse; table-layout: auto; }
       thead { display: table-header-group; }
       tfoot { display: table-footer-group; }
@@ -575,12 +575,36 @@ function GeneratedResguardoModal({ data, signature, onClose }) {
       th, td { vertical-align: top; overflow-wrap: anywhere; }
       img { max-width: 100%; }
       button { display: none !important; }
-      @media print { .scaet-print-document { max-width: none; } }
+      @media print {
+        .scaet-print-document { width: 100%; margin: 0; }
+        .scaet-print-document .mt-7 { margin-top: 12px !important; }
+        .scaet-print-document .gap-8 { gap: 16px !important; }
+        .scaet-print-document .h-32 { height: 88px !important; }
+      }
     `;
     printWindow.document.write(`<html><head>${document.head.innerHTML}<title>${data.folio || "Documento SCAET"}</title><style>${printStyles}</style></head><body><main class="scaet-print-document">${documentRef.current.innerHTML}</main></body></html>`);
     printWindow.document.close();
     printWindow.focus();
     window.setTimeout(() => printWindow.print(), 500);
+  };
+
+  const downloadTxt = () => {
+    if (!documentRef.current) return;
+
+    const content = documentRef.current.innerText
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .join("\n");
+    const blob = new Blob([`${content}\n`], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const safeName = String(data.folio || "resguardo").replace(/[^\w-]+/g, "_");
+
+    link.href = url;
+    link.download = `${safeName}.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -596,8 +620,9 @@ function GeneratedResguardoModal({ data, signature, onClose }) {
           </div>
           <div className="p-4 sm:p-5">
             <div ref={documentRef}><DocumentPreview data={data} signature={signature} /></div>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
               <button type="button" onClick={() => window.alert("El envío por correo se configurará en una fase posterior.")} className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#3A9AF2] text-xs font-black text-[#FFFFFF] transition hover:bg-[#238BEA]"><Mail size={14} />Enviar por Gmail</button>
+              <button type="button" onClick={downloadTxt} className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#eee8dc] text-xs font-black text-[#6f6584] transition hover:bg-[#e4dccf]"><FileText size={14} />Descargar TXT</button>
               <button type="button" onClick={downloadPdf} className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#eee8dc] text-xs font-black text-[#6f6584]"><Download size={14} />Descargar PDF</button>
             </div>
           </div>

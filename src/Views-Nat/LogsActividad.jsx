@@ -4,11 +4,11 @@ import DateInput from "./DateInput";
 import { formatDate } from "./dateUtils";
 
 const actionStyles = {
-  Alta: { icon: Plus, iconStyle: "bg-emerald-100 text-emerald-500" },
-  Asignacion: { icon: KeyRound, iconStyle: "bg-blue-100 text-blue-600" },
-  Mantenimiento: { icon: Wrench, iconStyle: "bg-amber-100 text-amber-500" },
-  Sesion: { icon: LogIn, iconStyle: "bg-blue-100 text-blue-500" },
-  Edicion: { icon: PenLine, iconStyle: "bg-blue-100 text-blue-600" },
+  Alta: { icon: Plus, iconStyle: "bg-emerald-100 text-emerald-500 dark:bg-emerald-400/15 dark:text-emerald-300" },
+  Asignacion: { icon: KeyRound, iconStyle: "bg-violet-100 text-violet-600 dark:bg-violet-400/15 dark:text-violet-300" },
+  Mantenimiento: { icon: Wrench, iconStyle: "bg-amber-100 text-amber-500 dark:bg-amber-400/15 dark:text-amber-300" },
+  Sesion: { icon: LogIn, iconStyle: "bg-blue-100 text-blue-500 dark:bg-blue-400/15 dark:text-blue-300" },
+  Edicion: { icon: PenLine, iconStyle: "bg-rose-100 text-rose-500 dark:bg-rose-400/15 dark:text-rose-300" },
 };
 
 const normalizeRole = (role = "") => {
@@ -313,7 +313,7 @@ export default function LogsActividad() {
               <col style="width:115px"><col style="width:120px"><col style="width:140px">
               <col style="width:420px">
             </colgroup>
-            <tr><th colspan="7" style="background:#3c3445;color:#fff;font-size:20px;padding:14px;text-align:center;">SCAET - Logs de actividad</th></tr>
+            <tr><th colspan="7" style="background:#a9c7e8;color:#1f3b57;font-size:20px;padding:14px;text-align:center;">SCAET - Logs de actividad</th></tr>
             <tr><td colspan="7" style="padding:8px 10px;"><strong>Fecha de exportación:</strong> ${escapeHtml(ahora.toLocaleString("es-MX"))}</td></tr>
             <tr><td colspan="7" style="padding:4px 10px;"><strong>Filtros aplicados</strong></td></tr>
             <tr><td colspan="7" style="padding:4px 10px;">Fecha: ${escapeHtml(fecha ? formatDate(fecha) : "Todas")} | Acción: ${escapeHtml(accion)} | Usuario: ${escapeHtml(usuarioSeleccionado)}</td></tr>
@@ -322,7 +322,7 @@ export default function LogsActividad() {
               ${["Fecha", "Hora", "Usuario", "Rol", "Acción", "Módulo", "Descripción"]
                 .map(
                   (titulo) =>
-                    `<th style="border:1px solid #9e95aa;background:#6f6584;color:#fff;font-weight:bold;padding:8px;text-align:center;">${titulo}</th>`,
+                    `<th style="border:1px solid #b8d2ea;background:#d6e7f7;color:#1f3b57;font-weight:bold;padding:8px;text-align:center;">${titulo}</th>`,
                 )
                 .join("")}
             </tr>

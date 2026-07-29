@@ -32,16 +32,16 @@ const tipoMantenimientoLabel = {
 };
 
 const statusStyles = {
-  Asignado: "bg-emerald-100 text-emerald-600",
-  Disponible: "bg-blue-100 text-blue-600",
-  Mantenimiento: "bg-amber-100 text-amber-600",
-  Baja: "bg-red-100 text-red-500",
+  Asignado: "bg-emerald-100 text-emerald-600 dark:bg-emerald-400/15 dark:text-emerald-300",
+  Disponible: "bg-blue-100 text-blue-600 dark:bg-blue-400/15 dark:text-blue-300",
+  Mantenimiento: "bg-amber-100 text-amber-600 dark:bg-amber-400/15 dark:text-amber-300",
+  Baja: "bg-red-100 text-red-500 dark:bg-red-400/15 dark:text-red-300",
 };
 
 const maintenanceStatusStyles = {
-  "En proceso": "bg-amber-100 text-amber-600",
-  Resuelto: "bg-emerald-100 text-emerald-600",
-  Cancelado: "bg-red-100 text-red-500",
+  "En proceso": "bg-amber-100 text-amber-600 dark:bg-amber-400/15 dark:text-amber-300",
+  Resuelto: "bg-emerald-100 text-emerald-600 dark:bg-emerald-400/15 dark:text-emerald-300",
+  Cancelado: "bg-red-100 text-red-500 dark:bg-red-400/15 dark:text-red-300",
 };
 
 const categoriaStyles = {
@@ -106,7 +106,7 @@ function MaintenanceStatusBadge({ value }) {
   return <span className={"rounded-full px-3 py-1 text-[11px] font-black " + (maintenanceStatusStyles[value] || "bg-blue-50 text-blue-600")}>{value}</span>;
 }
 
-function MaintenanceEntryCard({ entry, isHidden = false, onHide, onRestore }) {
+function MaintenanceEntryCard({ entry, isHidden = false, onRestore }) {
   const categoryStyle = categoriaStyles[entry.categoria] || "border-blue-400 bg-blue-50 text-blue-600";
   const borderStyle = categoryStyle.split(" ")[0];
   return (
@@ -132,15 +132,10 @@ function MaintenanceEntryCard({ entry, isHidden = false, onHide, onRestore }) {
         </div>
       </div>
       <div className="mt-4 flex justify-end">
-        {isHidden ? (
+        {isHidden && entry.estado !== "Resuelto" ? (
           <button type="button" onClick={() => onRestore?.(entry.id)}
             className="inline-flex h-8 items-center gap-2 rounded-[8px] bg-blue-50 px-3 text-xs font-black text-blue-600 transition hover:bg-blue-100">
             <RotateCcw size={14} />Restaurar
-          </button>
-        ) : entry.estado === "Resuelto" ? (
-          <button type="button" onClick={() => onHide?.(entry.id)}
-            className="inline-flex h-8 items-center gap-2 rounded-[8px] bg-[#eee8dc] px-3 text-xs font-black text-[#6f6584] transition hover:bg-[#e4dccd]">
-            <EyeOff size={14} />
           </button>
         ) : null}
       </div>
@@ -200,8 +195,14 @@ export default function MantenimientoEquipos({ onOpenBitacora }) {
       && (marca === "Todas las marcas" || equipo.marca === marca);
   }), [equipos, marca, search, tipo]);
 
-  const hiddenEntries = useMemo(() => entries.filter((entry) => hiddenEntryIds.includes(entry.id)), [entries, hiddenEntryIds]);
-  const visibleEntries = useMemo(() => entries.filter((entry) => !hiddenEntryIds.includes(entry.id)), [entries, hiddenEntryIds]);
+  const hiddenEntries = useMemo(
+    () => entries.filter((entry) => entry.estado === "Resuelto" || hiddenEntryIds.includes(entry.id)),
+    [entries, hiddenEntryIds],
+  );
+  const visibleEntries = useMemo(
+    () => entries.filter((entry) => entry.estado !== "Resuelto" && !hiddenEntryIds.includes(entry.id)),
+    [entries, hiddenEntryIds],
+  );
   const totalCost = useMemo(() => entries.reduce((total, entry) => total + parseCurrencyValue(entry.costo), 0), [entries]);
 
   return (
@@ -275,7 +276,7 @@ export default function MantenimientoEquipos({ onOpenBitacora }) {
           {hiddenEntries.map((entry) => <MaintenanceEntryCard key={entry.id} entry={entry} isHidden onRestore={(id) => { setHiddenEntryIds((current) => current.filter((item) => item !== id)); setShowHiddenEntries(false); }} />)}
         </div> : null}
         {!showHiddenEntries && visibleEntries.length ? <div className="mt-4 space-y-3">
-          {visibleEntries.map((entry) => <MaintenanceEntryCard key={entry.id} entry={entry} onHide={(id) => setHiddenEntryIds((current) => current.includes(id) ? current : [...current, id])} />)}
+          {visibleEntries.map((entry) => <MaintenanceEntryCard key={entry.id} entry={entry} />)}
         </div> : null}
         {!loading && !showHiddenEntries && !visibleEntries.length ? <div className="mt-4 rounded-[8px] border border-dashed border-[#ded6c8] px-4 py-8 text-center text-sm font-semibold text-[#9e95aa]">Aún no hay entradas de mantenimiento guardadas.</div> : null}
       </section>

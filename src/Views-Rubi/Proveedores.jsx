@@ -435,7 +435,7 @@ function Proveedores() {
                 <button
                   type="button"
                   onClick={handleToggleHiddenProviders}
-                  className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-[#e2d9c9] bg-[#fbf7ef] px-3 text-xs font-extrabold text-[#5d5870] shadow-sm transition hover:bg-[#f2ece0] hover:text-[#2a263a]"
+                  className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-[#e2d9c9] bg-[#fbf7ef] px-3 text-xs font-extrabold text-[#6f6584] shadow-sm transition hover:bg-[#f2ece0] dark:border-[#30273b] dark:bg-[#241c2d] dark:text-[#c9bdd5] dark:hover:border-[#493a59] dark:hover:bg-[#2c2236]"
                   aria-label={showHiddenProviders ? 'Ver proveedores activos' : 'Ver proveedores ocultos'}
                   title={showHiddenProviders ? 'Ver proveedores activos' : 'Ver proveedores ocultos'}
                 >
@@ -511,7 +511,7 @@ function Proveedores() {
                                       onClick={() => handleProviderStateChange(provider, !provider.active)}
                                       className={`flex h-9 w-9 items-center justify-center rounded-xl transition ${
                                         provider.active
-                                          ? 'bg-rose-50 text-rose-400 hover:bg-rose-100'
+                                          ? 'border border-[#e8dfd0] bg-[#f2ece0] text-[#8d88a2] hover:bg-[#e9e0cf] dark:border-[#30273b] dark:bg-[#241c2d] dark:text-[#c9bdd5] dark:hover:border-[#493a59] dark:hover:bg-[#2c2236]'
                                           : 'bg-emerald-50 text-emerald-500 hover:bg-emerald-100'
                                       }`}
                                       aria-label={`${provider.active ? 'Ocultar' : 'Activar'} ${provider.providerName}`}
@@ -612,7 +612,7 @@ function Proveedores() {
                                 onClick={() => handleProviderStateChange(provider, !provider.active)}
                                 className={`inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl text-xs font-extrabold transition ${
                                   provider.active
-                                    ? 'bg-rose-50 text-rose-400 hover:bg-rose-100'
+                                    ? 'border border-[#e8dfd0] bg-[#f2ece0] text-[#8d88a2] hover:bg-[#e9e0cf] dark:border-[#30273b] dark:bg-[#241c2d] dark:text-[#c9bdd5] dark:hover:border-[#493a59] dark:hover:bg-[#2c2236]'
                                     : 'bg-emerald-50 text-emerald-500 hover:bg-emerald-100'
                                 }`}
                               >

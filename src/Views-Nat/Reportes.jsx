@@ -284,13 +284,46 @@ export default function Reportes() {
   };
 
   const handleExcelExport = () => {
-    const tableRows = rows.map((row) => `<tr>${selectedColumns.map((column) =>
-      `<td>${escapeHtml(row[column])}</td>`).join("")}</tr>`).join("");
-    const headerRow = selectedColumns.map((column) => `<th>${escapeHtml(column)}</th>`).join("");
-    const html = `<!doctype html><html><head><meta charset="utf-8" />
-      <style>body{font-family:Arial,sans-serif;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #d9d9d9;padding:8px;text-align:left;}th{background:#eaf4ff;font-weight:700;}h1{font-size:20px;margin-bottom:4px;}p{margin-top:0;color:#555;}</style>
-      </head><body><h1>${escapeHtml(exportTitle)}</h1><p>${escapeHtml(exportSubtitle)}</p><table><thead><tr>${headerRow}</tr></thead><tbody>${tableRows}</tbody></table></body></html>`;
-    const blob = new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8" });
+    if (!rows.length) {
+      window.alert("No hay registros para exportar");
+      return;
+    }
+
+    const ahora = new Date();
+    const columnWidths = {
+      Tag: 110, Tipo: 130, Marca: 130, Modelo: 160, Serie: 160, Estado: 120,
+      "Gar.Tipo": 110, "Gar.Fin": 110, Ubicacion: 210, Costo: 120,
+      Asignado: 190, Proveedor: 190, "Tipo de documento": 150,
+      Colaborador: 190, "Número de colaborador": 150, Fecha: 110, Equipo: 230,
+      Identificador: 130, "Cantidad de equipos": 140, "Tipo de asignación": 150,
+    };
+    const columnCount = selectedColumns.length;
+    const tableRows = rows.map((row, index) => `
+      <tr style="background:${index % 2 === 0 ? "#ffffff" : "#f7f4ee"};">
+        ${selectedColumns.map((column) =>
+          `<td style="border:1px solid #c8c1b5;padding:7px;white-space:normal;vertical-align:top;mso-number-format:'\\@';">${escapeHtml(row[column])}</td>`).join("")}
+      </tr>`).join("");
+    const headerRow = selectedColumns.map((column) =>
+      `<th style="border:1px solid #b8d2ea;background:#d6e7f7;color:#1f3b57;font-weight:bold;padding:8px;text-align:center;">${escapeHtml(column)}</th>`).join("");
+    const colgroup = selectedColumns.map((column) =>
+      `<col style="width:${columnWidths[column] || 140}px">`).join("");
+    const html = `<!DOCTYPE html>
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">
+        <head><meta charset="UTF-8"></head>
+        <body>
+          <table style="border-collapse:collapse;font-family:Arial,sans-serif;color:#21192c;">
+            <colgroup>${colgroup}</colgroup>
+            <tr><th colspan="${columnCount}" style="background:#a9c7e8;color:#1f3b57;font-size:20px;padding:14px;text-align:center;">SCAET - ${escapeHtml(exportTitle)}</th></tr>
+            <tr><td colspan="${columnCount}" style="padding:8px 10px;"><strong>Fecha de exportación:</strong> ${escapeHtml(ahora.toLocaleString("es-MX"))}</td></tr>
+            <tr><td colspan="${columnCount}" style="padding:4px 10px;"><strong>Filtros aplicados</strong></td></tr>
+            <tr><td colspan="${columnCount}" style="padding:4px 10px;">Categoría: ${escapeHtml(source)} | Estado: ${escapeHtml(filter)} | Columnas: ${escapeHtml(selectedColumns.join(", "))}</td></tr>
+            <tr><td colspan="${columnCount}" style="padding:4px 10px 12px;"><strong>Total de registros:</strong> ${rows.length}</td></tr>
+            <tr>${headerRow}</tr>
+            ${tableRows}
+          </table>
+        </body>
+      </html>`;
+    const blob = new Blob(["\ufeff", html], { type: "application/vnd.ms-excel;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -298,7 +331,7 @@ export default function Reportes() {
     document.body.appendChild(link);
     link.click();
     link.remove();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 0);
   };
 
   const handleEdit = (row) => {
@@ -365,7 +398,7 @@ export default function Reportes() {
       <div className="mt-5">
         <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-[10px] font-black uppercase tracking-[0.24em] text-blue-300">Campos</p>
-          <label className="inline-flex w-fit items-center gap-2 rounded-[8px] border border-gray-100 bg-gray-50 px-3 py-2 text-xs font-bold text-[#6f6584]">
+          <label className="inline-flex w-fit items-center gap-2 rounded-[8px] border border-[#e2d9c9] bg-[#fbf7ef] px-3 py-2 text-xs font-bold text-[#6f6584] transition hover:bg-[#f2ece0] dark:border-[#30273b] dark:bg-[#241c2d] dark:text-[#c9bdd5] dark:hover:border-[#493a59] dark:hover:bg-[#2c2236]">
             <input type="checkbox" checked={allFieldsSelected}
               onChange={() => setActiveFields(allFieldsSelected ? [] : fieldOptions)}
               className="h-4 w-4 accent-blue-600" />Seleccionar todos
@@ -377,7 +410,7 @@ export default function Reportes() {
             return <button key={field} type="button" onClick={() => toggleField(field)}
               className={"h-9 rounded-full border px-4 text-xs font-black transition " + (active
                 ? "border-[#3A9AF2] bg-[#3A9AF2] text-[#FFFFFF] shadow-sm"
-                : "border-gray-200 bg-gray-50 text-[#6f6584] hover:border-blue-300 hover:bg-blue-50/60")}>{field}</button>;
+                : "border-[#e2d9c9] bg-[#fbf7ef] text-[#6f6584] hover:bg-[#f2ece0] dark:border-[#30273b] dark:bg-[#241c2d] dark:text-[#c9bdd5] dark:hover:border-[#493a59] dark:hover:bg-[#2c2236]")}>{field}</button>;
           })}
         </div>
       </div>
@@ -388,12 +421,12 @@ export default function Reportes() {
       <p className="font-mono text-xs font-bold text-[#887e96]">{rows.length} reg.</p>
       <div className="flex flex-wrap gap-2">
         <button type="button" onClick={handlePrint}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-blue-600 px-4 text-xs font-black text-white">
-          <FileArchive size={15} />PDF imprimible
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#3A9AF2] px-4 text-xs font-black text-white shadow-sm transition hover:bg-[#238BEA] focus:outline-none focus:ring-2 focus:ring-blue-200">
+          <FileArchive size={15} />PDF
         </button>
         <button type="button" onClick={handleExcelExport}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-cyan-600 px-4 text-xs font-black text-white">
-          <FileArchive size={15} />Exportar Excel (.xls)
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] border border-[#e2d9c9] bg-[#eee8dc] px-4 text-xs font-black text-[#6f6584] shadow-sm transition hover:bg-[#e4dccf] focus:outline-none focus:ring-2 focus:ring-blue-100 dark:border-[#30273b] dark:bg-[#241c2d] dark:text-[#c9bdd5] dark:hover:border-[#493a59] dark:hover:bg-[#2c2236]">
+          <FileArchive size={15} />Exportar Excel
         </button>
       </div>
     </div>

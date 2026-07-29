@@ -105,13 +105,13 @@ export function calculateWarrantyEnd(purchaseDate, warrantyMonths) {
 
 export function statusClass(status) {
   const classes = {
-    Disponible: 'bg-blue-50 text-blue-500',
-    Asignado: 'bg-emerald-50 text-emerald-500',
-    Mantenimiento: 'bg-amber-50 text-amber-500',
-    Baja: 'bg-rose-50 text-rose-500',
+    Disponible: 'bg-blue-50 text-blue-500 dark:bg-blue-400/15 dark:text-blue-300',
+    Asignado: 'bg-emerald-50 text-emerald-500 dark:bg-emerald-400/15 dark:text-emerald-300',
+    Mantenimiento: 'bg-amber-50 text-amber-500 dark:bg-amber-400/15 dark:text-amber-300',
+    Baja: 'bg-rose-50 text-rose-500 dark:bg-rose-400/15 dark:text-rose-300',
   }
 
-  return classes[status] ?? 'bg-blue-50 text-blue-500'
+  return classes[status] ?? 'bg-blue-50 text-blue-500 dark:bg-blue-400/15 dark:text-blue-300'
 }
 
 export function warrantyClass(warrantyEnd) {
