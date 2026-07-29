@@ -57,6 +57,8 @@ function normalizeResguardoItem(data) {
   if (data.tipoResguardo === "tarjeta") {
     return {
       key: `tarjeta-${data.idTarjeta || "actual"}`,
+      isOriginal: false,
+      isNew: true,
       tipoResguardo: "tarjeta",
       tipoLabel: "Tarjeta comedor",
       codigo: data.idTarjeta,
@@ -75,6 +77,8 @@ function normalizeResguardoItem(data) {
   if (data.tipoResguardo === "yubikey") {
     return {
       key: `yubikey-${data.serieYubikey || data.yubikey || "actual"}`,
+      isOriginal: false,
+      isNew: true,
       tipoResguardo: "yubikey",
       tipoLabel: "Yubikey",
       codigo: data.serieYubikey,
@@ -92,6 +96,8 @@ function normalizeResguardoItem(data) {
 
   return {
     key: `equipo-${data.equipo.codigo}`,
+    isOriginal: false,
+    isNew: true,
     tipoResguardo: "equipo",
     tipoLabel: "Equipo tecnologico",
     codigo: data.activoInventario || data.equipo.codigo,
@@ -108,11 +114,43 @@ function normalizeResguardoItem(data) {
   };
 }
 
+function mergeResguardoItems(originalItems = [], editedItems = []) {
+  const mergedItems = [...originalItems];
+  const knownKeys = new Set(originalItems.map((item) => item.key));
+  const knownIds = new Set(
+    originalItems
+      .map((item) => Number(item.id))
+      .filter((id) => Number.isFinite(id)),
+  );
+
+  editedItems.forEach((item) => {
+    const itemId = Number(item.id);
+    const hasKnownId = Number.isFinite(itemId) && knownIds.has(itemId);
+    if (knownKeys.has(item.key) || hasKnownId) return;
+
+    mergedItems.push({
+      ...item,
+      isOriginal: item.isNew ? false : true,
+      isNew: item.isNew === true,
+    });
+    knownKeys.add(item.key);
+    if (Number.isFinite(itemId)) knownIds.add(itemId);
+  });
+
+  return mergedItems;
+}
+
 function itemResguardoName(item) {
   if (item.tipoResguardo === "tarjeta") return "tarjeta comedor";
   if (item.tipoResguardo === "yubikey") return "yubikey";
 
   return item.tipoActivo?.toLowerCase() || item.nombre?.toLowerCase() || "equipo tecnologico";
+}
+
+function formatResguardoDate(value) {
+  if (!value) return "";
+
+  return formatDate(String(value).slice(0, 10));
 }
 
 function documentTitle(data) {
@@ -403,9 +441,9 @@ function AssetsTable({ items }) {
               <td className="px-3 py-2 text-[#6f6584]">{item.serie || "-"}</td>
               <td className="px-3 py-2 text-[#6f6584]">{item.codigo || "-"}</td>
               <td className="px-3 py-2 text-[#6f6584]">
-                {item.tipoAsignacion || "-"} {item.fechaAsignacion ? `- ${formatDate(item.fechaAsignacion)}` : ""}
+                {item.tipoAsignacion || "-"} {item.fechaAsignacion ? `- ${formatResguardoDate(item.fechaAsignacion)}` : ""}
               </td>
-              <td className="px-3 py-2 text-[#6f6584]">{item.fechaDev ? formatDate(item.fechaDev) : "Permanente"}</td>
+              <td className="px-3 py-2 text-[#6f6584]">{item.fechaDev ? formatResguardoDate(item.fechaDev) : "Permanente"}</td>
               <td className="px-3 py-2 text-[#6f6584]">{item.estadoEntrega || "-"}{item.accesorios ? ` / ${item.accesorios}` : ""}</td>
               <td className="px-3 py-2 text-[#6f6584]">{item.observaciones || "-"}</td>
             </tr>
@@ -469,7 +507,6 @@ function ResguardoEquipo({ data, signature }) {
         <PreviewRow label="Centro de trabajo" value={data.ubicacionTrabajo} />
         <PreviewRow label="Accesorios" value={data.accesorios} />
         <PreviewRow label="Estado fisico" value={data.estadoFisico} />
-        <PreviewRow label="Observaciones" value={data.observaciones} />
       </div>
       <AssetsTable items={data.items} />
       <ResponsibilityText>{responsibilityForItems(data.items)}</ResponsibilityText>
@@ -488,7 +525,6 @@ function ResguardoGeneral({ data, signature }) {
         <PreviewRow label="Departamento" value={data.colaborador.departamento || data.colaborador.area} />
         <PreviewRow label="Puesto" value={data.colaborador.puesto} />
         <PreviewRow label="Centro de trabajo" value={data.ubicacionTrabajo} />
-        <PreviewRow label="Observaciones" value={data.observaciones} />
       </div>
       <AssetsTable items={data.items} />
       <ResponsibilityText>{responsibilityForItems(data.items)}</ResponsibilityText>
@@ -510,7 +546,6 @@ function ResguardoTarjetaComedor({ data, signature }) {
         <PreviewRow label="ID / Num. tarjeta" value={data.idTarjeta} />
         <PreviewRow label="Cantidad" value={data.cantidad} />
         <PreviewRow label="Motivo" value={data.motivoTarjeta} />
-        <PreviewRow label="Observaciones" value={data.observaciones} />
       </div>
       <ResponsibilityText>{RESPONSIBILITY_TEXTS.tarjeta}</ResponsibilityText>
       <SignatureSection signature={signature} colaborador={data.colaborador} />
@@ -632,7 +667,12 @@ function GeneratedResguardoModal({ data, signature, onClose }) {
   );
 }
 
-function ResguardoItemsSummary({ items, onAddItem, onRemoveItem }) {
+function ResguardoItemsSummary({ items, selectedItemKey, onSelectItem, onAddItem, onRemoveItem }) {
+  const handleRemoveItem = (item) => {
+    if (item.isOriginal || !item.isNew) return;
+    onRemoveItem?.(item.key);
+  };
+
   return (
     <div className="rounded-[8px] border border-[#eee8f6] bg-blue-50/40 p-3">
       <div className="mb-2 flex items-center justify-between gap-3">
@@ -652,25 +692,41 @@ function ResguardoItemsSummary({ items, onAddItem, onRemoveItem }) {
       </div>
       <div className="space-y-2">
         {items.map((item) => (
-          <div key={item.key} className="flex min-w-0 items-start gap-2 rounded-[8px] bg-white px-3 py-2 text-xs">
+          <div
+            key={item.key}
+            role="button"
+            tabIndex={0}
+            onClick={() => onSelectItem?.(item)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") onSelectItem?.(item);
+            }}
+            className={`flex min-w-0 cursor-pointer items-start gap-2 rounded-[8px] border px-3 py-2 text-xs transition ${
+              selectedItemKey === item.key ? "border-blue-300 bg-blue-50" : "border-transparent bg-white"
+            }`}
+          >
             <div className="grid min-w-0 flex-1 gap-1 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.2fr)] sm:items-center">
               <span className="min-w-0 break-words font-semibold text-[#21192c]">
                 {item.nombre} {item.codigo ? `#${item.codigo}` : ""}
               </span>
               <span className="min-w-0 break-words text-[#8f879b]">
-                {item.tipoLabel} - {item.marca || "-"} {item.modelo || ""} - {item.serie || "Sin serie"} - {item.tipoAsignacion || "-"} - {item.fechaDev ? `Dev. ${formatDate(item.fechaDev)}` : "Permanente"}
+                {item.tipoLabel} - {item.marca || "-"} {item.modelo || ""} - {item.serie || "Sin serie"} - {item.tipoAsignacion || "-"} - {item.fechaDev ? `Dev. ${formatResguardoDate(item.fechaDev)}` : "Permanente"}
               </span>
             </div>
-            <button
-              type="button"
-              onClick={() => onRemoveItem?.(item.key)}
-              disabled={!onRemoveItem}
-              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-red-50 text-red-500 transition hover:bg-red-100"
-              aria-label={`Eliminar ${item.nombre} del resguardo`}
-              title="Eliminar activo"
-            >
-              <Trash2 size={14} />
-            </button>
+            {item.isNew && !item.isOriginal && (
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleRemoveItem(item);
+                }}
+                disabled={!onRemoveItem}
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-red-50 text-red-500 transition hover:bg-red-100"
+                aria-label={`Eliminar ${item.nombre} del resguardo`}
+                title="Eliminar activo"
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
           </div>
         ))}
       </div>
@@ -752,7 +808,7 @@ function ConditionalFields({ data, setters }) {
       </Field>
       <Field label="Fecha de devolucion">
         <DateInput
-          value={data.tipo === "Permanente" ? "" : data.fechaDev}
+          value={data.tipo === "Permanente" || !data.fechaDev ? "" : String(data.fechaDev).slice(0, 10)}
           onChange={setters.setFechaDev}
           disabled={data.tipo === "Permanente"}
         />
@@ -761,28 +817,44 @@ function ConditionalFields({ data, setters }) {
   );
 }
 
-function ResguardoEditor({ resguardo, onBack, onGoDevolucion, onAddItem, onRemoveItem, onGenerate }) {
+function ResguardoEditor({ resguardo, onBack, onAddItem, onRemoveItem, onGenerate }) {
   const source = useMemo(() => ({ ...defaultResguardo, ...resguardo }), [resguardo]);
   const canCaptureSignature = useCanCaptureTouchSignature();
-  const tipoResguardo = source.tipoResguardo;
-  const [tipo, setTipo] = useState(source.tipo);
-  const [fechaDev, setFechaDev] = useState(source.fechaDev);
-  const [observaciones, setObservaciones] = useState(source.observaciones);
+  const initialItems = useMemo(
+    () => (source.items?.length ? source.items : [normalizeResguardoItem(source)]),
+    [source],
+  );
+  const [items, setItems] = useState(initialItems);
+  const [selectedItemKey, setSelectedItemKey] = useState(initialItems[0]?.key || "");
+  const selectedItem = items.find((item) => item.key === selectedItemKey) || items[0];
+  const tipoResguardo = selectedItem?.tipoResguardo || source.tipoResguardo;
+  const [tipo, setTipo] = useState(selectedItem?.tipoAsignacion || source.tipo);
+  const [fechaDev, setFechaDev] = useState(selectedItem?.fechaDev || source.fechaDev);
+  const [observacionesGenerales] = useState(source.observaciones);
+  const [observaciones, setObservaciones] = useState(selectedItem?.observaciones || "");
   const [numeroEmpleado, setNumeroEmpleado] = useState(source.numeroEmpleado);
-  const [activoInventario, setActivoInventario] = useState(source.activoInventario);
-  const [accesorios, setAccesorios] = useState(source.accesorios);
-  const [estadoFisico, setEstadoFisico] = useState(source.estadoFisico);
+  const [activoInventario, setActivoInventario] = useState(selectedItem?.codigo || source.activoInventario);
+  const [accesorios, setAccesorios] = useState(selectedItem?.accesorios || source.accesorios);
+  const [estadoFisico, setEstadoFisico] = useState(selectedItem?.estadoEntrega || source.estadoFisico);
   const [ubicacionTrabajo, setUbicacionTrabajo] = useState(source.ubicacionTrabajo);
   const [responsableEntrega, setResponsableEntrega] = useState(source.responsableEntrega);
-  const [idTarjeta, setIdTarjeta] = useState(source.idTarjeta);
+  const [idTarjeta, setIdTarjeta] = useState(
+    selectedItem?.tipoResguardo === "tarjeta" ? selectedItem.codigo || "" : source.idTarjeta,
+  );
   const [cantidad, setCantidad] = useState(source.cantidad);
   const [departamentoTarjeta, setDepartamentoTarjeta] = useState(source.departamentoTarjeta);
   const [puestoTarjeta, setPuestoTarjeta] = useState(source.puestoTarjeta);
   const [fechaEntregaTarjeta, setFechaEntregaTarjeta] = useState(source.fechaEntregaTarjeta);
   const [motivoTarjeta, setMotivoTarjeta] = useState(source.motivoTarjeta);
-  const [yubikey, setYubikey] = useState(source.yubikey);
-  const [serieYubikey, setSerieYubikey] = useState(source.serieYubikey);
-  const [modeloYubikey, setModeloYubikey] = useState(source.modeloYubikey);
+  const [yubikey, setYubikey] = useState(
+    selectedItem?.tipoResguardo === "yubikey" ? selectedItem.nombre || "" : source.yubikey,
+  );
+  const [serieYubikey, setSerieYubikey] = useState(
+    selectedItem?.tipoResguardo === "yubikey" ? selectedItem.serie || "" : source.serieYubikey,
+  );
+  const [modeloYubikey, setModeloYubikey] = useState(
+    selectedItem?.tipoResguardo === "yubikey" ? selectedItem.modelo || "" : source.modeloYubikey,
+  );
   const [userId, setUserId] = useState(source.userId);
   const [pin, setPin] = useState(source.pin);
   const [correoAsociado, setCorreoAsociado] = useState(source.correoAsociado);
@@ -795,12 +867,49 @@ function ResguardoEditor({ resguardo, onBack, onGoDevolucion, onAddItem, onRemov
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
+  const updateSelectedItem = (changes) => {
+    setItems((currentItems) => currentItems.map((item) => (
+      item.key === selectedItemKey ? { ...item, ...changes } : item
+    )));
+  };
+
+  const handleSelectItem = (item) => {
+    setSelectedItemKey(item.key);
+    setTipo(item.tipoAsignacion || "Permanente");
+    setFechaDev(item.fechaDev || "");
+    setActivoInventario(item.codigo || "");
+    setAccesorios(item.accesorios || "");
+    setEstadoFisico(item.estadoEntrega || "Buen estado");
+    setObservaciones(item.observaciones || "");
+    if (item.tipoResguardo === "tarjeta") setIdTarjeta(item.codigo || "");
+    if (item.tipoResguardo === "yubikey") {
+      setYubikey(item.nombre || "");
+      setSerieYubikey(item.serie || "");
+      setModeloYubikey(item.modelo || "");
+    }
+  };
+
+  const selectedEquipo = tipoResguardo === "equipo"
+    ? {
+        ...source.equipo,
+        id: selectedItem?.id ?? source.equipo?.id,
+        codigo: selectedItem?.codigo || source.equipo?.codigo,
+        nombre: selectedItem?.nombre || source.equipo?.nombre,
+        tipo: selectedItem?.tipoActivo || source.equipo?.tipo,
+        marca: selectedItem?.marca || source.equipo?.marca,
+        modelo: selectedItem?.modelo || source.equipo?.modelo,
+        serie: selectedItem?.serie || source.equipo?.serie,
+        proveedor: selectedItem?.proveedor || source.equipo?.proveedor,
+      }
+    : source.equipo;
+
   const editableSource = {
     ...source,
+    equipo: selectedEquipo,
     tipoResguardo,
     tipo,
     fechaDev,
-    observaciones,
+    observaciones: observacionesGenerales,
     numeroEmpleado,
     activoInventario,
     accesorios,
@@ -826,15 +935,34 @@ function ResguardoEditor({ resguardo, onBack, onGoDevolucion, onAddItem, onRemov
 
   const data = {
     ...editableSource,
-    items: source.items?.length ? source.items : [normalizeResguardoItem(editableSource)],
+    items,
   };
 
   const setters = {
-    setTipo,
-    setFechaDev,
-    setActivoInventario,
-    setAccesorios,
-    setEstadoFisico,
+    setTipo: (value) => {
+      setTipo(value);
+      updateSelectedItem({
+        tipoAsignacion: value,
+        fechaDev: value === "Permanente" ? "" : fechaDev,
+      });
+      if (value === "Permanente") setFechaDev("");
+    },
+    setFechaDev: (value) => {
+      setFechaDev(value);
+      updateSelectedItem({ fechaDev: value });
+    },
+    setActivoInventario: (value) => {
+      setActivoInventario(value);
+      updateSelectedItem({ codigo: value });
+    },
+    setAccesorios: (value) => {
+      setAccesorios(value);
+      updateSelectedItem({ accesorios: value });
+    },
+    setEstadoFisico: (value) => {
+      setEstadoFisico(value);
+      updateSelectedItem({ estadoEntrega: value });
+    },
     setIdTarjeta,
     setCantidad,
     setDepartamentoTarjeta,
@@ -857,7 +985,11 @@ function ResguardoEditor({ resguardo, onBack, onGoDevolucion, onAddItem, onRemov
     setMessage("");
     try {
       let result = generatedResult;
-      if (!source.persisted && !result) {
+      const hasNewItems = data.items.some((item) => item.isNew || item.isOriginal === false);
+      if (source.persisted && !hasNewItems) {
+        throw new Error("Agrega al menos un activo nuevo antes de generar el resguardo");
+      }
+      if ((!source.persisted || hasNewItems) && !result) {
         result = await onGenerate?.(data);
         setGeneratedResult(result);
       }
@@ -888,9 +1020,6 @@ function ResguardoEditor({ resguardo, onBack, onGoDevolucion, onAddItem, onRemov
             <button type="button" className="rounded-t-[8px] bg-blue-50 px-5 py-3 text-xs font-black text-blue-600">
               Resguardo
             </button>
-            <button type="button" onClick={onGoDevolucion} className="px-5 py-3 text-xs font-bold text-[#8f879b]">
-              Devolucion
-            </button>
           </div>
 
           <div className="mt-5 space-y-4">
@@ -913,11 +1042,21 @@ function ResguardoEditor({ resguardo, onBack, onGoDevolucion, onAddItem, onRemov
               </Field>
             </div>
             <ConditionalFields data={data} setters={setters} />
-            <ResguardoItemsSummary items={data.items} onAddItem={onAddItem} onRemoveItem={onRemoveItem} />
+            <ResguardoItemsSummary
+              items={data.items}
+              selectedItemKey={selectedItemKey}
+              onSelectItem={handleSelectItem}
+              onAddItem={onAddItem ? () => onAddItem(data) : undefined}
+              onRemoveItem={onRemoveItem}
+            />
             <Field label="Observaciones">
               <textarea
                 value={observaciones}
-                onChange={(event) => setObservaciones(event.target.value)}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setObservaciones(value);
+                  updateSelectedItem({ observaciones: value });
+                }}
                 placeholder="Estado, accesorios, condiciones u observaciones..."
                 className="h-24 w-full min-w-0 resize-none rounded-[8px] border border-[#ded6c8] bg-[#eee8dc] px-4 py-3 text-sm font-normal text-[#3c3445] outline-none transition placeholder:text-[#9b927f] focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
               />
@@ -975,6 +1114,8 @@ function mapApiResguardo(payload) {
   };
   const items = (payload.activos || []).map((item) => ({
     key: `detalle-${item.id_detalle}`,
+    isOriginal: true,
+    isNew: false,
     id: Number(item.id_equipo),
     idDetalle: item.id_detalle,
     tipoResguardo: item.tipo_equipo === "Tarjeta" ? "tarjeta" : item.tipo_equipo === "YubiKey" ? "yubikey" : "equipo",
@@ -1040,5 +1181,13 @@ export default function ResguardoFirma(props) {
     return <div className="rounded-2xl bg-white p-6 text-sm font-semibold text-gray-500 shadow-sm">{loadError || "Cargando resguardo..."}</div>;
   }
 
-  return <ResguardoEditor key={idResguardo || "draft"} {...props} resguardo={loadedResguardo || props.resguardo} />;
+  const editorResguardo = loadedResguardo
+    ? {
+        ...props.resguardo,
+        ...loadedResguardo,
+        items: mergeResguardoItems(loadedResguardo.items, props.resguardo?.items),
+      }
+    : props.resguardo;
+
+  return <ResguardoEditor key={idResguardo || "draft"} {...props} resguardo={editorResguardo} />;
 }

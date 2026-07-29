@@ -277,6 +277,44 @@ function Badge({ estado }) {
   return <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${colors[estado]}`}>{estado}</span>;
 }
 
+function groupAssignmentsByCollaborator(assignments) {
+  const groups = new Map();
+
+  assignments.forEach((assignment, assignmentIndex) => {
+    const collaboratorId = Number(assignment.colaborador?.id);
+    const collaboratorKey = Number.isFinite(collaboratorId)
+      ? collaboratorId
+      : assignment.colaborador?.numero || `sin-colaborador-${assignmentIndex}`;
+    const existing = groups.get(String(collaboratorKey));
+    const items = (assignment.items || []).map((item) => ({
+      ...item,
+      idAsignacion: assignment.idAsignacion,
+      idResguardo: assignment.idResguardo,
+    }));
+
+    if (existing) {
+      const knownItemKeys = new Set(existing.items.map((item) => item.key));
+      existing.assignments.push(assignment);
+      items.forEach((item) => {
+        if (!knownItemKeys.has(item.key)) {
+          existing.items.push(item);
+          knownItemKeys.add(item.key);
+        }
+      });
+      return;
+    }
+
+    groups.set(String(collaboratorKey), {
+      ...assignment,
+      groupKey: `colaborador-${collaboratorKey}`,
+      assignments: [assignment],
+      items,
+    });
+  });
+
+  return [...groups.values()];
+}
+
 function ActiveAssignments({ rows, onOpenResguardo, onOpenDevolucion }) {
   const [expandedKey, setExpandedKey] = useState(null);
   const [search, setSearch] = useState("");
@@ -330,10 +368,10 @@ function ActiveAssignments({ rows, onOpenResguardo, onOpenDevolucion }) {
             </thead>
             <tbody>
               {filteredRows.map((resguardo) => {
-                const rowKey = resguardo.idAsignacion || resguardo.folio || resguardo.colaborador?.id || resguardo.colaborador?.numero;
+                const rowKey = resguardo.groupKey || resguardo.idAsignacion || resguardo.folio || resguardo.colaborador?.id || resguardo.colaborador?.numero;
                 const items = resguardo.items || [];
                 const expanded = expandedKey === rowKey;
-                const tipos = [...new Set(items.map((item) => item.tipoLabel))].join(", ");
+                const tipos = [...new Set(items.map((item) => item.nombre || item.tipoLabel).filter(Boolean))].join(", ");
                 const asignaciones = [...new Set(items.map((item) => item.tipoAsignacion || resguardo.tipo))];
                 const firstStart = items[0]?.fechaAsignacion || resguardo.fecha;
                 const devoluciones = [...new Set(items.map((item) => (
@@ -421,9 +459,9 @@ function ActiveAssignments({ rows, onOpenResguardo, onOpenDevolucion }) {
   );
 }
 
-export default function NuevaAsignacion({ initialColaborador, initialStep = 0, initialItems = [], onOpenResguardo, onOpenDevolucion, onCreateResguardo }) {
+export default function NuevaAsignacion({ addMode = false, initialColaborador, initialStep = 0, initialItems = [], onOpenResguardo, onOpenDevolucion, onCreateResguardo }) {
   const [step, setStep] = useState(initialStep);
-  const [colaborador, setColaborador] = useState(initialColaborador || null);
+  const [colaborador, setColaborador] = useState(addMode ? initialColaborador || null : null);
   const [tipoActivo, setTipoActivo] = useState("equipo");
   const [activo, setActivo] = useState(null);
   const [tipo, setTipo] = useState("Temporal");
@@ -432,8 +470,9 @@ export default function NuevaAsignacion({ initialColaborador, initialStep = 0, i
   const [assets, setAssets] = useState([]);
   const [asignacionesActivas, setAsignacionesActivas] = useState([]);
   const [message, setMessage] = useState("");
-  const addingToExistingResguardo = !!initialColaborador;
-  const selectedIds = new Set(initialItems.map((item) => Number(item.id)));
+  const addingToExistingResguardo = addMode && !!initialColaborador;
+  const contextItems = addMode ? initialItems : [];
+  const selectedIds = new Set(contextItems.map((item) => Number(item.id)));
 
   useEffect(() => {
     const headers = { Authorization: `Bearer ${localStorage.getItem("scaet-token")}` };
@@ -455,7 +494,7 @@ export default function NuevaAsignacion({ initialColaborador, initialStep = 0, i
         tipo: item.tipo_equipo, marca: item.marca, modelo: item.modelo, serie: item.numero_serie,
         estado: item.estado, proveedor: item.nombre_proveedor || "-",
       })));
-      setAsignacionesActivas((payloads[2].data.asignaciones || []).map((assignment) => ({
+      const mappedAssignments = (payloads[2].data.asignaciones || []).map((assignment) => ({
         idAsignacion: assignment.id_asignacion,
         idResguardo: assignment.resguardo?.id_resguardo,
         folio: assignment.resguardo?.folio,
@@ -474,9 +513,13 @@ export default function NuevaAsignacion({ initialColaborador, initialStep = 0, i
           tipoActivo: item.tipo_equipo, marca: item.marca, modelo: item.modelo, serie: item.numero_serie,
           fechaAsignacion: item.fecha_asignacion,
           tipoAsignacion: `${item.tipo_asignacion[0].toUpperCase()}${item.tipo_asignacion.slice(1)}`,
-          fechaDev: item.fecha_devolucion_programada || "", estadoEntrega: item.estado_fisico_entrega,
+          fechaDev: item.fecha_devolucion_programada || "",
+          accesorios: item.accesorios_entregados || "",
+          estadoEntrega: item.estado_fisico_entrega,
+          observaciones: item.observaciones || "",
         })),
-      })));
+      }));
+      setAsignacionesActivas(groupAssignmentsByCollaborator(mappedAssignments));
     }).catch((error) => setMessage(error.message));
   }, []);
 
@@ -489,6 +532,16 @@ export default function NuevaAsignacion({ initialColaborador, initialStep = 0, i
     setActivo(null);
     setTipo("Temporal");
     setFechaDev("");
+  };
+
+  const handleSelectCollaborator = (nextCollaborator) => {
+    if (!addMode && nextCollaborator?.id !== colaborador?.id) {
+      setActivo(null);
+      setTipoActivo("equipo");
+      setTipo("Temporal");
+      setFechaDev("");
+    }
+    setColaborador(nextCollaborator);
   };
 
   const currentItem = activo ? {
@@ -510,7 +563,7 @@ export default function NuevaAsignacion({ initialColaborador, initialStep = 0, i
     accesorios: "",
     observaciones: "",
   } : null;
-  const confirmationItems = currentItem ? [...initialItems, currentItem] : initialItems;
+  const confirmationItems = currentItem ? [...contextItems, currentItem] : contextItems;
 
   const handleConfirm = () => {
     if (!currentItem) return;
@@ -550,7 +603,7 @@ export default function NuevaAsignacion({ initialColaborador, initialStep = 0, i
       <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-[#16131F] sm:p-6">
         <StepIndicator current={step} />
         <div className="min-h-[180px]">
-          {step === 0 && <Step1 colaboradores={colaboradores} selected={colaborador} onSelect={setColaborador} />}
+          {step === 0 && <Step1 colaboradores={colaboradores} selected={colaborador} onSelect={handleSelectCollaborator} />}
           {step === 1 && <Step2 assets={assets} tipoActivo={tipoActivo} setTipoActivo={setTipoActivo} selected={activo} onSelect={setActivo} selectedIds={selectedIds} />}
           {step === 2 && <Step3 tipo={tipo} setTipo={(value) => { setTipo(value); if (value === "Permanente") setFechaDev(""); }} fechaDev={fechaDev} setFechaDev={setFechaDev} />}
           {step === 3 && <Step4 colaborador={colaborador} items={confirmationItems} />}

@@ -67,13 +67,18 @@ function NataliaFlow({ initialScreen = "asignacion" }) {
   const [resguardo, setResguardo] = useState(null);
   const [resguardosPorColaborador, setResguardosPorColaborador] = useState({});
   const [asignacionInicial, setAsignacionInicial] = useState(null);
+  const [assignmentSessionKey, setAssignmentSessionKey] = useState(0);
   const [devolucionInicial, setDevolucionInicial] = useState(null);
   const [maintenanceEquipo, setMaintenanceEquipo] = useState(null);
 
   const handleCreateResguardo = (payload) => {
     const colaboradorId = payload.colaborador?.id || payload.colaborador?.numero || "sin-colaborador";
-    const existing = resguardosPorColaborador[colaboradorId];
-    const currentItem = payload.item || {
+    const currentResguardoId = resguardo?.colaborador?.id || resguardo?.colaborador?.numero;
+    const existing =
+      resguardosPorColaborador[colaboradorId] ||
+      (String(currentResguardoId) === String(colaboradorId) ? resguardo : null);
+    const currentItem = {
+      ...(payload.item || {
       key: `${payload.tipoResguardo || "equipo"}-${payload.activoInventario || payload.equipo?.codigo || "actual"}`,
       tipoResguardo: payload.tipoResguardo || "equipo",
       tipoLabel: payload.tipoResguardo || "Equipo tecnologico",
@@ -86,9 +91,15 @@ function NataliaFlow({ initialScreen = "asignacion" }) {
       fechaAsignacion: payload.fecha,
       tipoAsignacion: payload.tipo,
       fechaDev: payload.fechaDev,
+      }),
+      isOriginal: false,
+      isNew: true,
     };
     const previousItems = existing?.items || [];
-    const hasItem = previousItems.some((item) => item.key === currentItem.key);
+    const hasItem = previousItems.some((item) => (
+      item.key === currentItem.key ||
+      (Number.isFinite(Number(item.id)) && Number(item.id) === Number(currentItem.id))
+    ));
     const items = hasItem ? previousItems : [...previousItems, currentItem];
     const nextResguardo = {
       ...existing,
@@ -131,17 +142,36 @@ function NataliaFlow({ initialScreen = "asignacion" }) {
     modeloYubikey: item.tipoResguardo === "yubikey" ? item.modelo : current.modeloYubikey,
   });
 
-  const handleAddResguardoItem = () => {
+  const handleAddResguardoItem = (currentResguardo = resguardo) => {
+    if (currentResguardo) {
+      const colaboradorId =
+        currentResguardo.colaborador?.id || currentResguardo.colaborador?.numero || "sin-colaborador";
+      setResguardo(currentResguardo);
+      setResguardosPorColaborador((previous) => ({
+        ...previous,
+        [colaboradorId]: currentResguardo,
+      }));
+    }
     setAsignacionInicial({
-      colaborador: resguardo?.colaborador || null,
-      step: resguardo?.colaborador ? 1 : 0,
+      mode: "add",
+      colaborador: currentResguardo?.colaborador || null,
+      step: currentResguardo?.colaborador ? 1 : 0,
     });
+    setAssignmentSessionKey((current) => current + 1);
     setScreen("asignacion");
     navigate(natRoutes.Asignacion);
   };
 
   const handleOpenResguardoActivo = (nextResguardo) => {
-    setResguardo({ idResguardo: nextResguardo.idResguardo, persisted: true });
+    setResguardo({
+      ...nextResguardo,
+      persisted: true,
+      items: (nextResguardo.items || []).map((item) => ({
+        ...item,
+        isOriginal: true,
+        isNew: false,
+      })),
+    });
     setDevolucionInicial(null);
     setScreen("resguardo");
   };
@@ -159,11 +189,19 @@ function NataliaFlow({ initialScreen = "asignacion" }) {
         idAsignacion = payload.asignacion.id_asignacion;
       }
       if (!idAsignacion) throw new Error("No se encontro la asignacion para devolver");
+      const groupedItems = nextResguardo?.items || [];
+      const idAsignaciones = [...new Set([
+        idAsignacion,
+        ...(nextResguardo?.assignments || []).map((assignment) => assignment.idAsignacion),
+        ...groupedItems.map((item) => item.idAsignacion),
+      ].filter(Boolean))];
       if (nextResguardo?.idResguardo) setResguardo({ idResguardo: nextResguardo.idResguardo, persisted: true });
       setDevolucionInicial({
         idAsignacion,
+        idAsignaciones,
         idResguardo,
-        selectedItemKeys: itemKeys || nextResguardo?.items?.map((item) => item.key) || [],
+        items: groupedItems,
+        selectedItemKeys: itemKeys || groupedItems.map((item) => item.key),
       });
       setScreen("devolucion");
     } catch (error) {
@@ -178,6 +216,14 @@ function NataliaFlow({ initialScreen = "asignacion" }) {
   };
 
   const handleGenerateResguardo = async (data) => {
+    const itemsToSave = data.persisted
+      ? data.items.filter((item) => item.isNew || item.isOriginal === false)
+      : data.items;
+
+    if (data.persisted && itemsToSave.length === 0) {
+      throw new Error("Agrega al menos un activo nuevo antes de generar el resguardo");
+    }
+
     const response = await fetch("/api/asignaciones", {
       method: "POST",
       headers: {
@@ -187,7 +233,7 @@ function NataliaFlow({ initialScreen = "asignacion" }) {
       body: JSON.stringify({
         id_colaborador: data.colaborador.id,
         observaciones_generales: data.observaciones || "",
-        activos: data.items.map((item) => ({
+        activos: itemsToSave.map((item) => ({
           id_equipo: item.id,
           tipo_asignacion: item.tipoAsignacion.toLowerCase(),
           fecha_devolucion_programada: item.fechaDev || null,
@@ -212,6 +258,9 @@ function NataliaFlow({ initialScreen = "asignacion" }) {
   };
   const handleRemoveResguardoItem = (itemKey) => {
     if (!resguardo) return;
+
+    const itemToRemove = (resguardo.items || []).find((item) => item.key === itemKey);
+    if (!itemToRemove || itemToRemove.isOriginal || !itemToRemove.isNew) return;
 
     const colaboradorId = resguardo.colaborador?.id || resguardo.colaborador?.numero || "sin-colaborador";
     const nextItems = (resguardo.items || []).filter((item) => item.key !== itemKey);
@@ -248,7 +297,11 @@ function NataliaFlow({ initialScreen = "asignacion" }) {
     }
 
     if (label === "Asignacion") {
+      setResguardo(null);
+      setResguardosPorColaborador({});
       setAsignacionInicial(null);
+      setDevolucionInicial(null);
+      setAssignmentSessionKey((current) => current + 1);
       setScreen("asignacion");
     }
     if (label === "Mantenimiento") setScreen("mantenimiento");
@@ -282,9 +335,11 @@ function NataliaFlow({ initialScreen = "asignacion" }) {
     if (screen === "asignacion") {
       return (
         <NuevaAsignacion
+          key={assignmentSessionKey}
+          addMode={asignacionInicial?.mode === "add"}
           initialColaborador={asignacionInicial?.colaborador}
           initialStep={asignacionInicial?.step}
-          initialItems={resguardo?.items || []}
+          initialItems={asignacionInicial?.mode === "add" ? resguardo?.items || [] : []}
           asignacionesActivas={asignacionesActivas}
           onOpenResguardo={handleOpenResguardoActivo}
           onOpenDevolucion={handleOpenDevolucionActivo}
@@ -299,8 +354,8 @@ function NataliaFlow({ initialScreen = "asignacion" }) {
           resguardo={resguardo}
           onBack={handleBackFromResguardo}
           onGoDevolucion={handleOpenDevolucionActivo}
-          onAddItem={resguardo?.persisted ? undefined : handleAddResguardoItem}
-          onRemoveItem={resguardo?.persisted ? undefined : handleRemoveResguardoItem}
+          onAddItem={handleAddResguardoItem}
+          onRemoveItem={handleRemoveResguardoItem}
           onGenerate={handleGenerateResguardo}
         />
       );

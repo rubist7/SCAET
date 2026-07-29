@@ -172,7 +172,7 @@ function Tabs({ onGoResguardo }) {
   );
 }
 
-function AssetReturnSelector({ items, selectedKeys, onChange }) {
+function AssetReturnSelector({ items, selectedKeys, returnDetails, onChange, onDetailChange }) {
   const toggleAll = () => {
     onChange(items.map((item) => item.key));
   };
@@ -204,12 +204,14 @@ function AssetReturnSelector({ items, selectedKeys, onChange }) {
           const checked = selectedKeys.includes(item.key);
 
           return (
-            <label key={item.key} className="flex min-w-0 cursor-pointer items-start gap-2 rounded-[8px] bg-white px-3 py-2 text-xs">
+            <div key={item.key} className="rounded-[8px] bg-white px-3 py-2 text-xs">
+              <div className="flex min-w-0 items-start gap-2">
               <input
                 type="checkbox"
                 checked={checked}
                 onChange={() => toggleItem(item.key)}
                 className="mt-0.5 h-4 w-4 shrink-0 accent-blue-600"
+                aria-label={`Seleccionar ${item.nombre} para devolucion`}
               />
               <span className="min-w-0">
                 <span className="block break-words font-black text-[#21192c]">
@@ -219,7 +221,27 @@ function AssetReturnSelector({ items, selectedKeys, onChange }) {
                   {item.tipoLabel} - {item.marca || "-"} {item.modelo || ""} - {item.serie || "Sin serie"}
                 </span>
               </span>
-            </label>
+              </div>
+              {checked && (
+                <div className="mt-3 grid gap-3 border-t border-[#eee8f6] pt-3 md:grid-cols-2">
+                  <Field label="Accesorios devueltos">
+                    <SoftInput
+                      value={returnDetails[item.key]?.accesoriosDevueltos || ""}
+                      onChange={(value) => onDetailChange(item.key, "accesoriosDevueltos", value)}
+                      placeholder="Cargador, mouse, cable..."
+                    />
+                  </Field>
+                  <Field label="Observacion de devolucion">
+                    <textarea
+                      value={returnDetails[item.key]?.observacionesDevolucion || ""}
+                      onChange={(event) => onDetailChange(item.key, "observacionesDevolucion", event.target.value)}
+                      placeholder={returnObservationsPlaceholder([item])}
+                      className="h-20 w-full min-w-0 resize-none rounded-[8px] border border-[#ded6c8] bg-[#eee8dc] px-4 py-3 text-sm text-[#3c3445] outline-none transition placeholder:text-[#9b927f] focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                    />
+                  </Field>
+                </div>
+              )}
+            </div>
           );
         })}
       </div>
@@ -448,6 +470,7 @@ function PreviewAssetsList({ items }) {
             <span className="break-words text-[#6f6584]">
               {item.tipoLabel} - {item.marca || "-"} {item.modelo || ""} - {item.serie || "Sin serie"}
               <span className="mt-1 block">Accesorios devueltos: {item.accesoriosDevueltos || "-"}</span>
+              <span className="mt-1 block">Observacion: {item.observacionesDevolucion || "-"}</span>
             </span>
           </div>
         ))}
@@ -476,7 +499,6 @@ function DocumentPreview({ data, items, signature }) {
         <PreviewRow label="Total activos" value={items.length} />
         <PreviewRow label="Fecha devolucion" value={formatDate(data.fecha)} />
         <PreviewRow label="Estado" value={data.estado} />
-        <PreviewRow label="Observaciones" value={data.observaciones} />
       </div>
       <PreviewAssetsList items={items} />
 
@@ -597,13 +619,23 @@ function DevolucionEditor({ devolucion, initialSelectedItemKeys, onBack, onGoRes
   const canCaptureSignature = useCanCaptureTouchSignature();
   const items = useMemo(() => (source.items?.length ? source.items : [fallbackItem(source)]), [source]);
   const [selectedItemKeys, setSelectedItemKeys] = useState(initialSelectedItemKeys?.length ? initialSelectedItemKeys : [items[items.length - 1]?.key]);
-  const selectedItems = items.filter((item) => selectedItemKeys.includes(item.key));
+  const [returnDetails, setReturnDetails] = useState(() => Object.fromEntries(
+    items.map((item) => [
+      item.key,
+      {
+        accesoriosDevueltos: item.accesoriosDevueltos || "",
+        observacionesDevolucion: item.observacionesDevolucion || "",
+      },
+    ]),
+  ));
+  const selectedItems = items
+    .filter((item) => selectedItemKeys.includes(item.key))
+    .map((item) => ({ ...item, ...returnDetails[item.key] }));
   const activeItems = selectedItems.length ? selectedItems : [items[0]];
   const estadoOptions = estadoOptionsForItems(activeItems);
   const [fecha, setFecha] = useState(source.fecha);
   const [estadoSeleccionado, setEstadoSeleccionado] = useState(source.estado || estadoOptions[0]);
   const estado = estadoOptions.includes(estadoSeleccionado) ? estadoSeleccionado : estadoOptions[0];
-  const [observaciones, setObservaciones] = useState(source.observaciones || "");
   const [signature, setSignature] = useState("");
   const [generatedOpen, setGeneratedOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -613,7 +645,16 @@ function DevolucionEditor({ devolucion, initialSelectedItemKeys, onBack, onGoRes
     ...source,
     fecha,
     estado,
-    observaciones,
+  };
+
+  const handleReturnDetailChange = (itemKey, field, value) => {
+    setReturnDetails((current) => ({
+      ...current,
+      [itemKey]: {
+        ...current[itemKey],
+        [field]: value,
+      },
+    }));
   };
 
   const collaboratorValue = `${data.colaborador.nombre} - ${data.colaborador.numero}`;
@@ -626,27 +667,50 @@ function DevolucionEditor({ devolucion, initialSelectedItemKeys, onBack, onGoRes
   const handleConfirm = async () => {
     setSaving(true);
     try {
-      const response = await fetch(`/api/asignaciones/${source.idAsignacion}/devoluciones`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("scaet-token")}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          fecha_devolucion: fecha,
-          firma_colaborador: signature || null,
-          firma_responsable: null,
-          detalles: activeItems.map((item) => ({
-            id_detalle: item.idDetalle,
-            estado_fisico_devolucion: estado,
-            accesorios_devueltos: "",
-            observaciones_devolucion: observaciones,
-          })),
-        }),
+      const itemsByAssignment = new Map();
+      activeItems.forEach((item) => {
+        const assignmentId = item.idAsignacion || source.idAsignacion;
+        if (!assignmentId) throw new Error(`No se encontro la asignacion de origen para ${item.nombre}`);
+        const assignmentItems = itemsByAssignment.get(assignmentId) || [];
+        assignmentItems.push(item);
+        itemsByAssignment.set(assignmentId, assignmentItems);
       });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.mensaje || "No se pudo guardar la devolucion");
-      setSavedResult(result);
+
+      const results = [];
+      for (const [assignmentId, assignmentItems] of itemsByAssignment) {
+        const response = await fetch(`/api/asignaciones/${assignmentId}/devoluciones`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("scaet-token")}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            fecha_devolucion: fecha,
+            firma_colaborador: signature || null,
+            firma_responsable: null,
+            detalles: assignmentItems.map((item) => ({
+              id_detalle: item.idDetalle,
+              estado_fisico_devolucion: estado,
+              accesorios_devueltos: item.accesoriosDevueltos || "",
+              observaciones_devolucion: item.observacionesDevolucion || "",
+            })),
+          }),
+        });
+        const result = await response.json();
+        if (!response.ok) {
+          const savedMessage = results.length
+            ? ` ${results.length} devolucion(es) se guardaron antes del error.`
+            : "";
+          throw new Error(`${result.mensaje || "No se pudo guardar la devolucion"}.${savedMessage}`);
+        }
+        results.push(result);
+      }
+
+      setSavedResult({
+        ...results[0],
+        resultados: results,
+        totalAsignaciones: results.length,
+      });
       setGeneratedOpen(true);
     } catch (error) {
       window.alert(error.message);
@@ -689,16 +753,14 @@ function DevolucionEditor({ devolucion, initialSelectedItemKeys, onBack, onGoRes
               </Field>
             </div>
             <div className="mt-4">
-              <AssetReturnSelector items={items} selectedKeys={selectedItemKeys} onChange={setSelectedItemKeys} />
-            </div>
-            <Field label="Observaciones de la Devolucion">
-              <textarea
-                value={observaciones}
-                onChange={(event) => setObservaciones(event.target.value)}
-                placeholder={returnObservationsPlaceholder(activeItems)}
-                className="mt-1 h-24 w-full min-w-0 resize-none rounded-[8px] border border-[#ded6c8] bg-[#eee8dc] px-4 py-3 text-sm text-[#3c3445] outline-none transition placeholder:text-[#9b927f] focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+              <AssetReturnSelector
+                items={items}
+                selectedKeys={selectedItemKeys}
+                returnDetails={returnDetails}
+                onChange={setSelectedItemKeys}
+                onDetailChange={handleReturnDetailChange}
               />
-            </Field>
+            </div>
           </div>
 
           <div className="mt-5 rounded-2xl bg-white">
@@ -741,7 +803,10 @@ function mapAssignmentToDevolucion(payload) {
   const items = (payload.activos || []).filter((item) => item.estado_detalle === "activo").map((item) => ({
     key: `detalle-${item.id_detalle}`,
     id: Number(item.id_equipo),
+    idEquipo: Number(item.id_equipo),
     idDetalle: Number(item.id_detalle),
+    idAsignacion: Number(payload.asignacion.id_asignacion),
+    idResguardo: payload.resguardo?.id_resguardo || null,
     tipoResguardo: item.tipo_equipo === "Tarjeta" ? "tarjeta" : item.tipo_equipo === "YubiKey" ? "yubikey" : "equipo",
     tipoLabel: item.tipo_equipo,
     codigo: item.codigo_equipo,
@@ -750,8 +815,13 @@ function mapAssignmentToDevolucion(payload) {
     marca: item.marca,
     modelo: item.modelo,
     serie: item.numero_serie,
+    tipoAsignacion: item.tipo_asignacion
+      ? `${item.tipo_asignacion[0].toUpperCase()}${item.tipo_asignacion.slice(1)}`
+      : "",
+    fechaDev: item.fecha_devolucion_programada || "",
     accesorios: item.accesorios_entregados || "",
     accesoriosDevueltos: item.accesorios_devueltos || "",
+    observacionesDevolucion: item.observaciones_devolucion || "",
     estadoEntrega: item.estado_fisico_entrega || "Buen estado",
   }));
   const first = items[0] || {};
@@ -780,23 +850,40 @@ export default function DevolucionFirma(props) {
   const [loaded, setLoaded] = useState(null);
   const [loadError, setLoadError] = useState("");
   const idAsignacion = props.devolucion?.idAsignacion;
+  const idAsignaciones = [...new Set(
+    (props.devolucion?.idAsignaciones?.length
+      ? props.devolucion.idAsignaciones
+      : [idAsignacion]).filter(Boolean),
+  )];
+  const assignmentIdsKey = idAsignaciones.join(",");
 
   useEffect(() => {
-    if (!idAsignacion) return;
-    fetch(`/api/asignaciones/${idAsignacion}`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("scaet-token")}` },
-    }).then(async (response) => {
+    if (!idAsignaciones.length) return;
+    const headers = { Authorization: `Bearer ${localStorage.getItem("scaet-token")}` };
+    Promise.all(idAsignaciones.map(async (assignmentId) => {
+      const response = await fetch(`/api/asignaciones/${assignmentId}`, { headers });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.mensaje || "No se pudo cargar la asignacion");
-      const mapped = mapAssignmentToDevolucion(payload);
-      if (!mapped.items.length) throw new Error("La asignacion ya no tiene activos pendientes de devolucion");
-      setLoaded(mapped);
+      return mapAssignmentToDevolucion(payload);
+    })).then((mappedAssignments) => {
+      const primary = mappedAssignments[0];
+      const itemsByDetail = new Map();
+      mappedAssignments.forEach((assignment) => {
+        assignment.items.forEach((item) => itemsByDetail.set(item.idDetalle, item));
+      });
+      const items = [...itemsByDetail.values()];
+      if (!items.length) throw new Error("El colaborador ya no tiene activos pendientes de devolucion");
+      setLoaded({
+        ...primary,
+        idAsignaciones,
+        items,
+      });
     }).catch((error) => setLoadError(error.message));
-  }, [idAsignacion]);
+  }, [assignmentIdsKey]);
 
   if (!loaded) {
     return <div className="rounded-2xl bg-white p-6 text-sm font-semibold text-gray-500 shadow-sm">{loadError || "Cargando devolucion..."}</div>;
   }
 
-  return <DevolucionEditor key={idAsignacion} {...props} devolucion={loaded} />;
+  return <DevolucionEditor key={assignmentIdsKey} {...props} devolucion={loaded} />;
 }
