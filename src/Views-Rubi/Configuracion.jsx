@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AppIcon } from '../components/Sidebar'
 import { getUserInitials, loadUserProfile, roleLabels, updateStoredUser } from '../utils/userProfile'
 
@@ -133,6 +133,7 @@ function Configuracion() {
   const [profileStatus, setProfileStatus] = useState({ type: '', text: '' })
   const [passwordStatus, setPasswordStatus] = useState({ type: '', text: '' })
   const [managementStatus, setManagementStatus] = useState({ type: '', text: '' })
+  const managementFormRef = useRef(null)
 
   const canManageUsers = profile.roleKey === 'admin' || profile.roleKey === 'capturista'
 
@@ -159,6 +160,18 @@ function Configuracion() {
       ignore = true
     }
   }, [canManageUsers])
+
+  useEffect(() => {
+    if (!selectedAction || !selectedUserId) {
+      return undefined
+    }
+
+    const animationFrame = window.requestAnimationFrame(() => {
+      managementFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
+
+    return () => window.cancelAnimationFrame(animationFrame)
+  }, [selectedAction, selectedUserId])
 
   const handleProfileChange = (event) => {
     const { name, value } = event.target
@@ -494,6 +507,11 @@ function Configuracion() {
 
   return (
     <div className="space-y-6">
+            {profile.roleKey === 'admin' && managementStatus.text && (
+              <div className="fixed right-4 top-4 z-50 w-[min(24rem,calc(100vw-2rem))] shadow-lg" role="status">
+                <StatusMessage status={managementStatus} />
+              </div>
+            )}
             <section>
               <p className="text-[10px] font-extrabold uppercase tracking-[0.3em] text-blue-300">Cuenta</p>
               <h1 className="mt-3 text-2xl font-extrabold text-[#201d31] sm:text-3xl">Configuración</h1>
@@ -760,21 +778,21 @@ function Configuracion() {
                                 <button
                                   type="button"
                                   onClick={() => handleSelectedUserAction(user, 'edit')}
-                                  className="inline-flex h-9 items-center justify-center rounded-xl bg-[#f2ece0] px-3 text-xs font-extrabold text-[#2a263a] transition hover:bg-[#e9dfd0] dark:border dark:border-[#30273b] dark:bg-[#241c2d] dark:text-[#c9bdd5] dark:hover:bg-[#2c2236]"
+                                  className="inline-flex h-8 items-center justify-center rounded-lg bg-[#f2ece0] px-2.5 text-[11px] font-extrabold text-[#2a263a] transition hover:bg-[#e9dfd0] dark:border dark:border-[#30273b] dark:bg-[#241c2d] dark:text-[#c9bdd5] dark:hover:bg-[#2c2236]"
                                 >
                                   Editar datos
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => handleSelectedUserAction(user, 'role')}
-                                  className="inline-flex h-9 items-center justify-center rounded-xl bg-[#f2ece0] px-3 text-xs font-extrabold text-[#2a263a] transition hover:bg-[#e9dfd0] dark:border dark:border-[#30273b] dark:bg-[#241c2d] dark:text-[#c9bdd5] dark:hover:bg-[#2c2236]"
+                                  className="inline-flex h-8 items-center justify-center rounded-lg bg-[#f2ece0] px-2.5 text-[11px] font-extrabold text-[#2a263a] transition hover:bg-[#e9dfd0] dark:border dark:border-[#30273b] dark:bg-[#241c2d] dark:text-[#c9bdd5] dark:hover:bg-[#2c2236]"
                                 >
                                   Cambiar rol
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => handleSelectedUserAction(user, 'reset')}
-                                  className="inline-flex h-9 items-center justify-center rounded-xl bg-[#f2ece0] px-3 text-xs font-extrabold text-[#2a263a] transition hover:bg-[#e9dfd0] dark:border dark:border-[#30273b] dark:bg-[#241c2d] dark:text-[#c9bdd5] dark:hover:bg-[#2c2236]"
+                                  className="inline-flex h-8 items-center justify-center rounded-lg bg-[#f2ece0] px-2.5 text-[11px] font-extrabold text-[#2a263a] transition hover:bg-[#e9dfd0] dark:border dark:border-[#30273b] dark:bg-[#241c2d] dark:text-[#c9bdd5] dark:hover:bg-[#2c2236]"
                                 >
                                   Restablecer contraseña
                                 </button>
@@ -783,15 +801,17 @@ function Configuracion() {
                                     type="button"
                                     onClick={() => handleUserStateChange(user, 0)}
                                     disabled={String(user.id_usuario) === String(profile.id)}
-                                    className="inline-flex h-9 items-center justify-center rounded-xl bg-[#f2ece0] px-3 text-xs font-extrabold text-[#2a263a] transition hover:bg-[#e9dfd0] disabled:cursor-not-allowed disabled:opacity-50 dark:border dark:border-[#30273b] dark:bg-[#241c2d] dark:text-[#c9bdd5] dark:hover:bg-[#2c2236]"
+                                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[#f2ece0] text-[#2a263a] transition hover:bg-[#e9dfd0] disabled:cursor-not-allowed disabled:opacity-50 dark:border dark:border-[#30273b] dark:bg-[#241c2d] dark:text-[#c9bdd5] dark:hover:bg-[#2c2236]"
+                                    aria-label={`Ocultar ${user.nombre_completo}`}
+                                    title="Ocultar"
                                   >
-                                    Ocultar
+                                    <AppIcon name="eyeOff" />
                                   </button>
                                 ) : (
                                   <button
                                     type="button"
                                     onClick={() => handleUserStateChange(user, 1)}
-                                    className="inline-flex h-9 items-center justify-center rounded-xl bg-[#f2ece0] px-3 text-xs font-extrabold text-[#2a263a] transition hover:bg-[#e9dfd0] dark:border dark:border-[#30273b] dark:bg-[#241c2d] dark:text-[#c9bdd5] dark:hover:bg-[#2c2236]"
+                                    className="inline-flex h-8 items-center justify-center rounded-lg bg-[#f2ece0] px-2.5 text-[11px] font-extrabold text-[#2a263a] transition hover:bg-[#e9dfd0] dark:border dark:border-[#30273b] dark:bg-[#241c2d] dark:text-[#c9bdd5] dark:hover:bg-[#2c2236]"
                                   >
                                     Activar
                                   </button>
@@ -812,7 +832,7 @@ function Configuracion() {
                 </div>
 
                 {selectedAction === 'edit' && selectedUser && (
-                  <form onSubmit={handleUpdateUser} className="space-y-4 rounded-xl border border-[#f1edf5] p-4">
+                  <form ref={managementFormRef} onSubmit={handleUpdateUser} className="scroll-mt-6 space-y-4 rounded-xl border border-[#f1edf5] p-4">
                     <div>
                       <h3 className="text-sm font-extrabold text-[#201d31]">Editar datos</h3>
                       <p className="mt-1 text-xs font-bold text-[#8d88a2]">{selectedUser.nombre_completo}</p>
@@ -854,7 +874,7 @@ function Configuracion() {
                 )}
 
                 {selectedAction === 'role' && selectedUser && (
-                  <form onSubmit={handleRoleSubmit} className="space-y-4 rounded-xl border border-[#f1edf5] p-4">
+                  <form ref={managementFormRef} onSubmit={handleRoleSubmit} className="scroll-mt-6 space-y-4 rounded-xl border border-[#f1edf5] p-4">
                     <div>
                       <h3 className="text-sm font-extrabold text-[#201d31]">Cambiar rol</h3>
                       <p className="mt-1 text-xs font-bold text-[#8d88a2]">{selectedUser.nombre_completo}</p>
@@ -887,7 +907,7 @@ function Configuracion() {
                 )}
 
                 {selectedAction === 'reset' && selectedUser && (
-                  <form onSubmit={handleResetPassword} className="space-y-4 rounded-xl border border-[#f1edf5] p-4">
+                  <form ref={managementFormRef} onSubmit={handleResetPassword} className="scroll-mt-6 space-y-4 rounded-xl border border-[#f1edf5] p-4">
                     <div>
                       <h3 className="text-sm font-extrabold text-[#201d31]">Restablecer contraseña</h3>
                       <p className="mt-1 text-xs font-bold text-[#8d88a2]">{selectedUser.nombre_completo}</p>
@@ -979,7 +999,7 @@ function Configuracion() {
               </form>
             )}
 
-            {canManageUsers && <StatusMessage status={managementStatus} />}
+            {profile.roleKey === 'capturista' && <StatusMessage status={managementStatus} />}
           </div>
   )
 }
