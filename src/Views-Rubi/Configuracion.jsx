@@ -584,15 +584,15 @@ function Configuracion() {
               <form onSubmit={handlePasswordSubmit} className="space-y-5 rounded-2xl bg-white p-5 shadow-sm">
                 <div className="flex items-center justify-between gap-4 border-b border-[#f1edf5] pb-4">
                   <div>
-                    <h2 className="text-base font-extrabold text-[#201d31]">Contrasena</h2>
+                    <h2 className="text-base font-extrabold text-[#201d31]">Contraseña</h2>
                     <p className="mt-1 text-xs font-bold text-[#8d88a2]">Seguridad de la cuenta</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => setShowPasswords((currentValue) => !currentValue)}
                     className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#f2ece0] text-[#5d5870] transition hover:bg-[#e9dfd0]"
-                    aria-label={showPasswords ? 'Ocultar contrasenas' : 'Mostrar contrasenas'}
-                    title={showPasswords ? 'Ocultar contrasenas' : 'Mostrar contrasenas'}
+                    aria-label={showPasswords ? 'Ocultar contraseñas' : 'Mostrar contraseñas'}
+                    title={showPasswords ? 'Ocultar contraseñas' : 'Mostrar contraseñas'}
                   >
                     <AppIcon name={showPasswords ? 'eyeOff' : 'eye'} />
                   </button>
@@ -600,7 +600,7 @@ function Configuracion() {
 
                 <div className="space-y-4">
                   <SettingsField
-                    label="Contrasena actual"
+                    label="Contraseña actual"
                     name="currentPassword"
                     type={passwordInputType}
                     value={passwordForm.currentPassword}
@@ -611,7 +611,7 @@ function Configuracion() {
                     required
                   />
                   <SettingsField
-                    label="Nueva contrasena"
+                    label="Nueva contraseña"
                     name="newPassword"
                     type={passwordInputType}
                     value={passwordForm.newPassword}
@@ -622,7 +622,7 @@ function Configuracion() {
                     required
                   />
                   <SettingsField
-                    label="Confirmar contrasena"
+                    label="Confirmar contraseña"
                     name="confirmPassword"
                     type={passwordInputType}
                     value={passwordForm.confirmPassword}
@@ -778,21 +778,21 @@ function Configuracion() {
                                 <button
                                   type="button"
                                   onClick={() => handleSelectedUserAction(user, 'edit')}
-                                  className="inline-flex h-8 items-center justify-center rounded-lg bg-[#f2ece0] px-2.5 text-[11px] font-extrabold text-[#2a263a] transition hover:bg-[#e9dfd0] dark:border dark:border-[#30273b] dark:bg-[#241c2d] dark:text-[#c9bdd5] dark:hover:bg-[#2c2236]"
+                                  className="inline-flex h-8 items-center justify-center rounded-lg border border-sky-100 bg-sky-50 px-2.5 text-[11px] font-extrabold text-sky-700 transition hover:bg-sky-100 dark:border-sky-400/20 dark:bg-sky-400/10 dark:text-sky-300 dark:hover:bg-sky-400/20"
                                 >
                                   Editar datos
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => handleSelectedUserAction(user, 'role')}
-                                  className="inline-flex h-8 items-center justify-center rounded-lg bg-[#f2ece0] px-2.5 text-[11px] font-extrabold text-[#2a263a] transition hover:bg-[#e9dfd0] dark:border dark:border-[#30273b] dark:bg-[#241c2d] dark:text-[#c9bdd5] dark:hover:bg-[#2c2236]"
+                                  className="inline-flex h-8 items-center justify-center rounded-lg border border-violet-100 bg-violet-50 px-2.5 text-[11px] font-extrabold text-violet-700 transition hover:bg-violet-100 dark:border-violet-400/20 dark:bg-violet-400/10 dark:text-violet-300 dark:hover:bg-violet-400/20"
                                 >
                                   Cambiar rol
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => handleSelectedUserAction(user, 'reset')}
-                                  className="inline-flex h-8 items-center justify-center rounded-lg bg-[#f2ece0] px-2.5 text-[11px] font-extrabold text-[#2a263a] transition hover:bg-[#e9dfd0] dark:border dark:border-[#30273b] dark:bg-[#241c2d] dark:text-[#c9bdd5] dark:hover:bg-[#2c2236]"
+                                  className="inline-flex h-8 items-center justify-center rounded-lg border border-amber-100 bg-amber-50 px-2.5 text-[11px] font-extrabold text-amber-700 transition hover:bg-amber-100 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-300 dark:hover:bg-amber-400/20"
                                 >
                                   Restablecer contraseña
                                 </button>
@@ -801,7 +801,7 @@ function Configuracion() {
                                     type="button"
                                     onClick={() => handleUserStateChange(user, 0)}
                                     disabled={String(user.id_usuario) === String(profile.id)}
-                                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[#f2ece0] text-[#2a263a] transition hover:bg-[#e9dfd0] disabled:cursor-not-allowed disabled:opacity-50 dark:border dark:border-[#30273b] dark:bg-[#241c2d] dark:text-[#c9bdd5] dark:hover:bg-[#2c2236]"
+                                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#e8dfd1] bg-[#f2ece0] text-[#756d82] transition hover:bg-[#e9dfd0] disabled:cursor-not-allowed disabled:opacity-50 dark:border-[#30273b] dark:bg-[#241c2d] dark:text-[#9f94ae] dark:hover:bg-[#2c2236]"
                                     aria-label={`Ocultar ${user.nombre_completo}`}
                                     title="Ocultar"
                                   >
@@ -811,7 +811,7 @@ function Configuracion() {
                                   <button
                                     type="button"
                                     onClick={() => handleUserStateChange(user, 1)}
-                                    className="inline-flex h-8 items-center justify-center rounded-lg bg-[#f2ece0] px-2.5 text-[11px] font-extrabold text-[#2a263a] transition hover:bg-[#e9dfd0] dark:border dark:border-[#30273b] dark:bg-[#241c2d] dark:text-[#c9bdd5] dark:hover:bg-[#2c2236]"
+                                    className="inline-flex h-8 items-center justify-center rounded-lg border border-emerald-100 bg-emerald-50 px-2.5 text-[11px] font-extrabold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300 dark:hover:bg-emerald-400/20"
                                   >
                                     Activar
                                   </button>

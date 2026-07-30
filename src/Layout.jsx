@@ -59,7 +59,7 @@ const headerTitles = {
   Configuracion: "Configuracion de cuenta",
 };
 
-function Logo({ compact = false, onClick }) {
+function Logo({ compact = false, iconOnly = false, onClick }) {
   return (
     <button
       type="button"
@@ -70,19 +70,25 @@ function Logo({ compact = false, onClick }) {
     >
       <div
         className={`${
-          compact
-            ? "h-9 w-9 sm:h-10 sm:w-10 md:h-14 md:w-14"
+          iconOnly
+            ? "h-12 w-12"
+            : compact
+            ? "h-[42px] w-[42px] md:h-14 md:w-14"
             : "h-10 w-10 md:h-14 md:w-14"
         } flex shrink-0 items-center justify-center overflow-hidden`}
       >
-        <img src={scaetLogo} alt="SCAET" className="h-full w-full object-contain" />
+        <img
+          src={scaetLogo}
+          alt="SCAET"
+          className={`h-full w-full object-contain ${iconOnly || compact ? "scale-125" : ""}`}
+        />
       </div>
 
-      <div className="-ml-1 shrink-0">
+      {!iconOnly && <div className="-ml-1 shrink-0">
         <p
           className={`${
             compact
-              ? "text-[18px] sm:text-xl md:text-lg lg:text-xl tracking-[0.02em]"
+              ? "text-xl md:text-lg lg:text-xl tracking-[0.02em]"
               : "text-xs md:text-sm tracking-[0.12em]"
           } whitespace-nowrap font-logo font-black text-[#0F83F0]`}
         >
@@ -94,7 +100,7 @@ function Logo({ compact = false, onClick }) {
             Gerencia de Sistemas
           </p>
         )}
-      </div>
+      </div>}
     </button>
   );
 }
@@ -255,7 +261,7 @@ export default function Layout({ children, activeNav, onNavigate }) {
 
         <main className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
           <header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-[#ebe5db] bg-white px-4 shadow-sm sm:px-5">
-           <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+           <div className="flex min-w-0 flex-1 items-center gap-0 overflow-hidden">
               <button
                 type="button"
                 onClick={() => setMenuOpen(true)}
@@ -264,7 +270,7 @@ export default function Layout({ children, activeNav, onNavigate }) {
                 <Menu size={22} />
               </button>
               <div className="lg:hidden">
-                <Logo compact onClick={handleLogoClick} />
+                <Logo compact iconOnly onClick={handleLogoClick} />
               </div>
               <p className="hidden truncate text-[11px] font-black uppercase tracking-[0.24em] text-[#887e96] lg:block">
                 {headerTitle}
@@ -305,7 +311,7 @@ export default function Layout({ children, activeNav, onNavigate }) {
           className={`absolute inset-y-0 left-0 flex w-[min(78vw,390px)] flex-col border-r border-[#ebe5db] bg-white shadow-2xl transition-transform duration-300 ${menuOpen ? "translate-x-0" : "-translate-x-full"
             }`}
         >
-          <div className="flex h-16 items-center gap-3 border-b border-[#f0ebe3] px-4">
+          <div className="flex h-16 items-center gap-0 border-b border-[#f0ebe3] px-4">
             <button
               type="button"
               onClick={() => setMenuOpen(false)}

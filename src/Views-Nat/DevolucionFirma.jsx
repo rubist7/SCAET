@@ -146,7 +146,11 @@ function SoftSelect({ value, onChange, options }) {
       >
         {options.map((option) => {
           const valueOption = typeof option === "string" ? option : option.value;
-          const labelOption = typeof option === "string" ? option : option.label;
+          const labelOption = valueOption === "Con danios"
+            ? "Con daños"
+            : typeof option === "string"
+              ? option
+              : option.label;
 
           return (
             <option key={valueOption} value={valueOption}>
