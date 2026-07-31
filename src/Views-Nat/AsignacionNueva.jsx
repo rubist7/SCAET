@@ -608,7 +608,11 @@ export default function NuevaAsignacion({ addMode = false, initialColaborador, i
         </p>
       </div>
 
-      {message && <p className="rounded-lg bg-red-50 px-4 py-3 text-sm font-semibold text-red-600">{message}</p>}
+      {message && (
+        <p className="rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600 dark:border-red-400/20 dark:bg-red-400/10 dark:text-red-300">
+          {message}
+        </p>
+      )}
       <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-[#16131F] sm:p-6">
         <StepIndicator current={step} />
         <div className="min-h-[180px]">
