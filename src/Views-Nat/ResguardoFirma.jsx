@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, Eraser, FileText, Mail, PenLine, Plus, Send, Trash2, X } from "lucide-react";
 import DateInput from "./DateInput";
-import { formatDate } from "./dateUtils";
+import { formatDate, formatResguardoDate } from "./dateUtils";
 import BackButton from "../components/BackButton";
 import Signature from "../components/Signature";
 
@@ -146,12 +146,6 @@ function itemResguardoName(item) {
   if (item.tipoResguardo === "yubikey") return "yubikey";
 
   return item.tipoActivo?.toLowerCase() || item.nombre?.toLowerCase() || "equipo tecnologico";
-}
-
-function formatResguardoDate(value) {
-  if (!value) return "";
-
-  return formatDate(String(value).slice(0, 10));
 }
 
 function documentTitle(data) {
@@ -852,8 +846,8 @@ function ResguardoEditor({ resguardo, onBack, onAddItem, onRemoveItem, onGenerat
   const [selectedItemKey, setSelectedItemKey] = useState(initialItems[0]?.key || "");
   const selectedItem = items.find((item) => item.key === selectedItemKey) || items[0];
   const tipoResguardo = selectedItem?.tipoResguardo || source.tipoResguardo;
-  const [tipo, setTipo] = useState(selectedItem?.tipoAsignacion || source.tipo);
-  const [fechaDev, setFechaDev] = useState(selectedItem?.fechaDev || source.fechaDev);
+  const tipo = selectedItem?.tipoAsignacion || source.tipo;
+  const fechaDev = selectedItem?.fechaDev || "";
   const [observacionesGenerales] = useState(source.observaciones);
   const [observaciones, setObservaciones] = useState(selectedItem?.observaciones || "");
   const [numeroEmpleado, setNumeroEmpleado] = useState(source.numeroEmpleado);
@@ -899,8 +893,6 @@ function ResguardoEditor({ resguardo, onBack, onAddItem, onRemoveItem, onGenerat
 
   const handleSelectItem = (item) => {
     setSelectedItemKey(item.key);
-    setTipo(item.tipoAsignacion || "Permanente");
-    setFechaDev(item.fechaDev || "");
     setActivoInventario(item.codigo || "");
     setAccesorios(item.accesorios || "");
     setEstadoFisico(item.estadoEntrega || "Buen estado");
@@ -976,15 +968,12 @@ function ResguardoEditor({ resguardo, onBack, onAddItem, onRemoveItem, onGenerat
 
   const setters = {
     setTipo: (value) => {
-      setTipo(value);
       updateSelectedItem({
         tipoAsignacion: value,
         fechaDev: value === "Permanente" ? "" : fechaDev,
       });
-      if (value === "Permanente") setFechaDev("");
     },
     setFechaDev: (value) => {
-      setFechaDev(value);
       updateSelectedItem({ fechaDev: value });
     },
     setActivoInventario: (value) => {

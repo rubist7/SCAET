@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Download, Eraser, FileText, Mail, PenLine, X } from "lucide-react";
-import DateInput from "./DateInput";
-import { formatDate } from "./dateUtils";
+import { formatDate, formatResguardoDate } from "./dateUtils";
 import BackButton from "../components/BackButton";
 import Signature from "../components/Signature";
 
@@ -662,8 +661,9 @@ function DevolucionEditor({ devolucion, initialSelectedItemKeys, onBack, onGoRes
     .filter((item) => selectedItemKeys.includes(item.key))
     .map((item) => ({ ...item, ...returnDetails[item.key] }));
   const activeItems = selectedItems.length ? selectedItems : [items[0]];
+  const selectedItem = activeItems.length === 1 ? activeItems[0] : null;
   const estadoOptions = estadoOptionsForItems(activeItems);
-  const [fecha, setFecha] = useState(source.fecha);
+  const [fecha] = useState(source.fecha);
   const [estadoSeleccionado, setEstadoSeleccionado] = useState(source.estado || estadoOptions[0]);
   const estado = estadoOptions.includes(estadoSeleccionado) ? estadoSeleccionado : estadoOptions[0];
   const [signature, setSignature] = useState("");
@@ -698,6 +698,11 @@ function DevolucionEditor({ devolucion, initialSelectedItemKeys, onBack, onGoRes
     : `${activeItems.length} activos seleccionados`;
   const typeValue = activeItems.length === 1 ? activeItems[0].tipoLabel : "Seleccion multiple";
   const seriesValue = activeItems.length === 1 ? activeItems[0].serie || activeItems[0].codigo || "-" : "Ver lista de seleccion";
+  const fechaDevValue = !selectedItem
+    ? "Seleccion multiple"
+    : selectedItem.fechaDev
+      ? formatResguardoDate(selectedItem.fechaDev)
+      : "Permanente";
 
   const handleConfirm = async () => {
     setSaving(true);
@@ -779,7 +784,7 @@ function DevolucionEditor({ devolucion, initialSelectedItemKeys, onBack, onGoRes
                 <SoftInput value={typeValue} />
               </Field>
               <Field label="Fecha de devolucion">
-                <DateInput value={fecha} onChange={setFecha} />
+                <SoftInput value={fechaDevValue} />
               </Field>
               <Field label={returnStateLabel(activeItems)}>
                 <SoftSelect value={estado} onChange={setEstadoSeleccionado} options={estadoOptions} />

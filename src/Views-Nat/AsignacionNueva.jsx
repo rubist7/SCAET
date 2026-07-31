@@ -2,7 +2,7 @@ import { Fragment, useEffect, useState } from "react";
 import { Check, FileText, RotateCcw, Search } from "lucide-react";
 import BackButton from "../components/BackButton";
 import DateInput from "./DateInput";
-import { formatDate, formatIsoDate } from "./dateUtils";
+import { formatDate, formatIsoDate, formatResguardoDate } from "./dateUtils";
 import { typeOptions } from "../Views-Rubi/equiposData";
 
 const steps = ["Colaborador", "Activo", "Tipo y fecha", "Confirmar"];
@@ -439,8 +439,8 @@ function ActiveAssignments({ rows, onOpenResguardo, onOpenDevolucion }) {
                                   <p className="font-black text-gray-800 dark:text-gray-100">{item.nombre} {item.codigo ? `#${item.codigo}` : ""}</p>
                                   <p className="mt-1 text-gray-400">{item.tipoLabel} - {item.marca || "-"} {item.modelo || ""} - {item.serie || "Sin serie"}</p>
                                   <p className="mt-2 text-gray-500 dark:text-gray-400">
-                                    {item.tipoAsignacion || resguardo.tipo} - {formatDate(item.fechaAsignacion || resguardo.fecha)}
-                                    {item.fechaDev ? ` - Dev. ${formatDate(item.fechaDev)}` : " - Permanente"}
+                                    {item.tipoAsignacion || resguardo.tipo} - {formatResguardoDate(item.fechaAsignacion || resguardo.fecha)}
+                                    {item.fechaDev ? ` - Dev. ${formatResguardoDate(item.fechaDev)}` : " - Permanente"}
                                   </p>
                                 </div>
                               ))}

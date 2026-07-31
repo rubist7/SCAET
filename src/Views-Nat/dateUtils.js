@@ -31,6 +31,12 @@ export function formatDate(value) {
   return `${day}/${month}/${year}`;
 }
 
+export function formatResguardoDate(value) {
+  if (!value) return "";
+
+  return formatDate(String(value).slice(0, 10));
+}
+
 export function formatIsoDate(value) {
   if (!value) return "";
 
