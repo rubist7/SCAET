@@ -26,7 +26,7 @@ const mapEquipment = (e) => ({
   purchaseDate: e.fecha_compra ? String(e.fecha_compra).slice(0, 10) : '',
   warrantyMonths: e.garantia_meses, warrantyEnd: e.vence_garantia ? String(e.vence_garantia).slice(0, 10) : '',
   status: e.estado ? e.estado[0].toUpperCase() + e.estado.slice(1) : 'Disponible',
-  area: '-', specs: e.especificaciones_tecnicas || '-', photoUrl: e.foto_url || '',
+  area: e.area_actual || '-', specs: e.especificaciones_tecnicas || '-', photoUrl: e.foto_url || '',
   qrValue: e.qr_url || `/equipos/qr/${e.qr_token}`, qrToken: e.qr_token, active: Number(e.activo) === 1,
 })
 const qrScannerConfig = {

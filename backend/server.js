@@ -1002,9 +1002,73 @@ app.get("/api/equipos", verificarToken, async (req, res) => {
   for (const campo of ["tipo_equipo", "marca", "id_proveedor"]) if (req.query[campo]) { filtros.push(`e.${campo} = ?`); parametros.push(req.query[campo]); }
   if (req.query.estado_equipo) { filtros.push("e.estado = ?"); parametros.push(req.query.estado_equipo); }
   try {
-    const [equipos] = await pool.query(`SELECT ${camposEquipo} FROM equipos e LEFT JOIN proveedores p ON p.id_proveedor = e.id_proveedor ${filtros.length ? `WHERE ${filtros.join(" AND ")}` : ""} ORDER BY e.fecha_creacion DESC`, parametros);
+    const [equipos] = await pool.query(`SELECT ${camposEquipo},
+      CASE WHEN e.estado = 'asignado' THEN COALESCE((
+        SELECT COALESCE(NULLIF(TRIM(c.area), ''), 'Sin área asignada')
+        FROM asignacion_detalles d
+        JOIN asignaciones a ON a.id_asignacion = d.id_asignacion AND a.estado = 'activa'
+        JOIN colaboradores c ON c.id_colaborador = a.id_colaborador
+        WHERE d.id_equipo = e.id_equipo AND d.estado_detalle = 'activo'
+        ORDER BY d.fecha_asignacion DESC, d.id_detalle DESC
+        LIMIT 1
+      ), 'Sin área asignada') ELSE '-' END AS area_actual
+      FROM equipos e LEFT JOIN proveedores p ON p.id_proveedor = e.id_proveedor ${filtros.length ? `WHERE ${filtros.join(" AND ")}` : ""} ORDER BY e.fecha_creacion DESC`, parametros);
     return res.json({ equipos });
   } catch (error) { console.error("Error al listar equipos:", error); return res.status(500).json({ mensaje: "Error al listar equipos" }); }
+});
+
+app.get("/api/dashboard/resumen", verificarToken, async (req, res) => {
+  try {
+    const [filas] = await pool.query(
+      `SELECT
+        COUNT(*) AS total,
+        COALESCE(SUM(CASE WHEN activo = 1 AND estado = 'asignado' THEN 1 ELSE 0 END), 0) AS asignado,
+        COALESCE(SUM(CASE WHEN activo = 1 AND estado = 'disponible' THEN 1 ELSE 0 END), 0) AS disponible,
+        COALESCE(SUM(CASE WHEN activo = 1 AND estado = 'mantenimiento' THEN 1 ELSE 0 END), 0) AS mantenimiento,
+        COALESCE(SUM(CASE WHEN activo = 0 OR estado = 'baja' THEN 1 ELSE 0 END), 0) AS baja
+      FROM equipos`
+    );
+
+    return res.json({ resumen: filas[0] || { total: 0, asignado: 0, disponible: 0, mantenimiento: 0, baja: 0 } });
+  } catch (error) {
+    console.error("Error al calcular el resumen del dashboard:", error);
+    return res.status(500).json({ mensaje: "Error al cargar el resumen del dashboard" });
+  }
+});
+
+app.get("/api/dashboard/ultimos-equipos", verificarToken, async (req, res) => {
+  const limiteSolicitado = Number.parseInt(req.query.limit, 10);
+  const limite = Number.isInteger(limiteSolicitado)
+    ? Math.min(Math.max(limiteSolicitado, 1), 10)
+    : 5;
+
+  try {
+    const [equipos] = await pool.query(
+      `SELECT e.id_equipo, e.codigo_equipo, e.nombre_equipo, e.marca, e.modelo,
+        e.estado, e.activo, e.fecha_creacion,
+        CASE WHEN e.estado = 'asignado' THEN COALESCE((
+          SELECT COALESCE(NULLIF(TRIM(c.area), ''), NULLIF(TRIM(c.departamento), ''))
+          FROM asignacion_detalles d
+          JOIN asignaciones a
+            ON a.id_asignacion = d.id_asignacion
+           AND a.estado = 'activa'
+          JOIN colaboradores c ON c.id_colaborador = a.id_colaborador
+          WHERE d.id_equipo = e.id_equipo
+            AND d.estado_detalle = 'activo'
+          ORDER BY d.fecha_asignacion DESC, d.id_detalle DESC
+          LIMIT 1
+        ), '-') ELSE '-' END AS area_actual
+      FROM equipos e
+      ORDER BY e.fecha_creacion DESC, e.id_equipo DESC
+      LIMIT ?`,
+      [limite]
+    );
+
+    return res.json({ equipos });
+  } catch (error) {
+    console.error("Error al consultar los ultimos equipos del dashboard:", error);
+    return res.status(500).json({ mensaje: "Error al cargar los ultimos equipos" });
+  }
 });
 
 app.post("/api/equipos", verificarToken, autorizarRoles("admin", "capturista"), async (req, res) => {
@@ -1683,6 +1747,56 @@ app.get(
     } catch (error) {
       console.error("Error al listar colaboradores:", error);
       return res.status(500).json({ mensaje: "Error al listar colaboradores" });
+    }
+  }
+);
+
+app.get(
+  "/api/colaboradores/buscar",
+  verificarToken,
+  autorizarRoles("admin", "capturista"),
+  async (req, res) => {
+    const termino = String(req.query.q ?? "").trim();
+    if (termino.length < 2) {
+      return res.status(400).json({ mensaje: "Escribe al menos 2 caracteres para buscar" });
+    }
+
+    const offsetSolicitado = Number.parseInt(req.query.offset, 10);
+    const offset = Number.isInteger(offsetSolicitado) && offsetSolicitado > 0
+      ? offsetSolicitado
+      : 0;
+    const limiteSolicitado = Number.parseInt(req.query.limit, 10);
+    const limite = Number.isInteger(limiteSolicitado)
+      ? Math.min(Math.max(limiteSolicitado, 1), 20)
+      : 20;
+    const coincidencia = `%${termino.toLowerCase()}%`;
+
+    try {
+      const [filas] = await pool.query(
+        `SELECT id_colaborador, num_colaborador, nombre_completo, area, departamento, puesto, correo
+        FROM colaboradores
+        WHERE activo = 1
+          AND (
+            LOWER(nombre_completo) LIKE ?
+            OR LOWER(COALESCE(puesto, '')) LIKE ?
+            OR LOWER(COALESCE(departamento, '')) LIKE ?
+            OR LOWER(num_colaborador) LIKE ?
+          )
+        ORDER BY nombre_completo, id_colaborador
+        LIMIT ? OFFSET ?`,
+        [coincidencia, coincidencia, coincidencia, coincidencia, limite + 1, offset]
+      );
+
+      const tieneMas = filas.length > limite;
+      const colaboradores = tieneMas ? filas.slice(0, limite) : filas;
+      return res.json({
+        colaboradores,
+        has_more: tieneMas,
+        next_offset: offset + colaboradores.length,
+      });
+    } catch (error) {
+      console.error("Error al buscar colaboradores:", error);
+      return res.status(500).json({ mensaje: "Error al buscar colaboradores" });
     }
   }
 );

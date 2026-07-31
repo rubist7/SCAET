@@ -5,6 +5,66 @@ const authHeaders = () => ({
   Authorization: "Bearer " + localStorage.getItem("scaet-token"),
 });
 
+const dashboardSessionKey = "scaet-dashboard-session";
+const latestEquipmentCacheKey = "scaet-dashboard-latest-equipos";
+
+function localDayKey() {
+  const today = new Date();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+  return `${today.getFullYear()}-${month}-${day}`;
+}
+
+function dashboardCacheContext() {
+  try {
+    const storedUser = JSON.parse(localStorage.getItem("scaet-user") || "null");
+    const userId = storedUser?.id_usuario;
+    if (!userId) return null;
+
+    let sessionId = sessionStorage.getItem(dashboardSessionKey);
+    if (!sessionId) {
+      sessionId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
+      sessionStorage.setItem(dashboardSessionKey, sessionId);
+    }
+
+    return { userId: String(userId), sessionId, day: localDayKey() };
+  } catch {
+    return null;
+  }
+}
+
+function readLatestEquipmentCache() {
+  const context = dashboardCacheContext();
+  if (!context) return null;
+
+  try {
+    const cached = JSON.parse(sessionStorage.getItem(latestEquipmentCacheKey) || "null");
+    if (
+      cached?.userId === context.userId &&
+      cached?.sessionId === context.sessionId &&
+      cached?.day === context.day &&
+      Array.isArray(cached?.equipos)
+    ) {
+      return cached.equipos;
+    }
+  } catch {
+    // Una caché inválida se reemplaza con la siguiente consulta válida.
+  }
+
+  return null;
+}
+
+function saveLatestEquipmentCache(equipos) {
+  const context = dashboardCacheContext();
+  if (!context) return;
+
+  try {
+    sessionStorage.setItem(latestEquipmentCacheKey, JSON.stringify({ ...context, equipos }));
+  } catch {
+    // La tabla sigue funcionando aunque el navegador no permita almacenamiento temporal.
+  }
+}
+
 const cardStyles = [
   { key: "total", label: "Total equipos", color: "text-blue-500", bubble: "bg-blue-100" },
   { key: "asignado", label: "Asignados", color: "text-emerald-400", bubble: "bg-emerald-100" },
@@ -35,7 +95,8 @@ async function apiRequest(path) {
 
 function Dashboard() {
   const navigate = useNavigate();
-  const [equipos, setEquipos] = useState([]);
+  const [resumen, setResumen] = useState({ total: 0, asignado: 0, disponible: 0, mantenimiento: 0, baja: 0 });
+  const [ultimosEquipos, setUltimosEquipos] = useState(() => readLatestEquipmentCache() || []);
   const [asignaciones, setAsignaciones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -44,12 +105,23 @@ function Dashboard() {
     setLoading(true);
     setMessage("");
     try {
-      const [equiposData, asignacionesData] = await Promise.all([
-        apiRequest("/equipos?estado=todos"),
+      const equiposEnCache = readLatestEquipmentCache();
+      const requests = [
+        apiRequest("/dashboard/resumen"),
         apiRequest("/asignaciones/activas"),
-      ]);
-      setEquipos(equiposData.equipos || []);
+      ];
+      if (!equiposEnCache) requests.push(apiRequest("/dashboard/ultimos-equipos?limit=5"));
+
+      const [resumenData, asignacionesData, ultimosData] = await Promise.all(requests);
+      setResumen(resumenData.resumen || { total: 0, asignado: 0, disponible: 0, mantenimiento: 0, baja: 0 });
       setAsignaciones(asignacionesData.asignaciones || []);
+      if (equiposEnCache) {
+        setUltimosEquipos(equiposEnCache);
+      } else {
+        const siguientesUltimos = ultimosData?.equipos || [];
+        setUltimosEquipos(siguientesUltimos);
+        saveLatestEquipmentCache(siguientesUltimos);
+      }
     } catch (error) {
       setMessage(error.message);
     } finally {
@@ -61,39 +133,6 @@ function Dashboard() {
     const timer = window.setTimeout(cargarDashboard, 0);
     return () => window.clearTimeout(timer);
   }, [cargarDashboard]);
-
-  const resumen = useMemo(() => ({
-    total: equipos.length,
-    asignado: equipos.filter((equipo) => Number(equipo.activo) === 1 && equipo.estado === "asignado").length,
-    disponible: equipos.filter((equipo) => Number(equipo.activo) === 1 && equipo.estado === "disponible").length,
-    mantenimiento: equipos.filter((equipo) => Number(equipo.activo) === 1 && equipo.estado === "mantenimiento").length,
-    baja: equipos.filter((equipo) => Number(equipo.activo) === 0 || equipo.estado === "baja").length,
-  }), [equipos]);
-
-  const areaPorEquipoAsignado = useMemo(() => {
-    const areas = new Map();
-    asignaciones.forEach((asignacion) => {
-      const areaReal = asignacion.colaborador?.area || asignacion.colaborador?.departamento || "";
-      if (!areaReal) return;
-      (asignacion.activos || []).forEach((activo) => {
-        if (activo.id_equipo) areas.set(Number(activo.id_equipo), areaReal);
-      });
-    });
-    return areas;
-  }, [asignaciones]);
-
-  const areaActualAsignada = (equipo) => {
-    if (equipo.estado !== "asignado") return "-";
-    return areaPorEquipoAsignado.get(Number(equipo.id_equipo)) || "-";
-  };
-
-  const ultimosEquipos = useMemo(() => [...equipos]
-    .sort((a, b) => {
-      const first = new Date(a.fecha_creacion || 0).getTime();
-      const second = new Date(b.fecha_creacion || 0).getTime();
-      return second - first;
-    })
-    .slice(0, 5), [equipos]);
 
   const temporales = useMemo(() => asignaciones.flatMap((asignacion) =>
     (asignacion.activos || [])
@@ -141,7 +180,7 @@ function Dashboard() {
             <div><p className="font-extrabold text-[#201d31]">{equipo.nombre_equipo || equipo.codigo_equipo}</p>
               <p className="text-xs font-bold text-[#8d88a2]">{equipo.codigo_equipo}</p></div>
             <p className="font-bold text-[#5d5870]">{equipo.marca || "-"} / {equipo.modelo || "-"}</p>
-            <p className="font-bold text-[#8d88a2]">{areaActualAsignada(equipo)}</p>
+            <p className="font-bold text-[#8d88a2]">{equipo.area_actual || "-"}</p>
             <p className="font-extrabold capitalize text-blue-500">{equipo.estado || "-"}</p>
           </div>)}
         </div> : <div className="flex min-h-28 items-center justify-center px-5 py-8 text-center">

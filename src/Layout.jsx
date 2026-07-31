@@ -212,6 +212,8 @@ export default function Layout({ children, activeNav, onNavigate }) {
     if (label === "Cerrar Sesion") {
       localStorage.removeItem("scaet-token");
       localStorage.removeItem("scaet-user");
+      sessionStorage.removeItem("scaet-dashboard-session");
+      sessionStorage.removeItem("scaet-dashboard-latest-equipos");
       navigate("/login");
       setMenuOpen(false);
       return;

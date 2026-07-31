@@ -58,6 +58,11 @@ function Login() {
 
       localStorage.setItem('scaet-token', data.token)
       localStorage.setItem('scaet-user', JSON.stringify(data.usuario))
+      sessionStorage.setItem(
+        'scaet-dashboard-session',
+        globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`
+      )
+      sessionStorage.removeItem('scaet-dashboard-latest-equipos')
       navigate('/dashboard')
     } catch {
       setError('No se pudo conectar con el servidor.')

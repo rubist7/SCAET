@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { Check, FileText, RotateCcw, Search } from "lucide-react";
 import BackButton from "../components/BackButton";
 import DateInput from "./DateInput";
@@ -94,20 +94,102 @@ function SelectableRow({ item, selected, onSelect, title, subtitle }) {
   );
 }
 
-function Step1({ colaboradores, selected, onSelect }) {
+function Step1({ selected, onSelect }) {
   const [search, setSearch] = useState("");
-  const normalizedSearch = search.toLowerCase();
-  const filtered = colaboradores.filter((colaborador) => {
-    const query = [
-      colaborador.nombre,
-      colaborador.puesto,
-      colaborador.departamento,
-      colaborador.area,
-      colaborador.numero,
-    ].join(" ").toLowerCase();
+  const [colaboradores, setColaboradores] = useState([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [nextOffset, setNextOffset] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const requestVersion = useRef(0);
 
-    return query.includes(normalizedSearch);
+  const mapColaborador = (item) => ({
+    id: Number(item.id_colaborador),
+    numero: item.num_colaborador,
+    nombre: item.nombre_completo,
+    area: item.area,
+    departamento: item.departamento,
+    puesto: item.puesto,
+    correo: item.correo,
   });
+
+  useEffect(() => {
+    const termino = search.trim();
+    const version = ++requestVersion.current;
+
+    if (termino.length < 2) {
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch(
+          `/api/colaboradores/buscar?q=${encodeURIComponent(termino)}&offset=0&limit=20`,
+          {
+            headers: { Authorization: `Bearer ${localStorage.getItem("scaet-token")}` },
+            signal: controller.signal,
+          }
+        );
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.mensaje || "No se pudieron buscar colaboradores");
+        if (requestVersion.current !== version) return;
+
+        setColaboradores((payload.colaboradores || []).map(mapColaborador));
+        setHasMore(Boolean(payload.has_more));
+        setNextOffset(Number(payload.next_offset) || 0);
+      } catch (requestError) {
+        if (requestError.name !== "AbortError" && requestVersion.current === version) {
+          setError(requestError.message);
+          setColaboradores([]);
+          setHasMore(false);
+        }
+      } finally {
+        if (requestVersion.current === version) setLoading(false);
+      }
+    }, 300);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [search]);
+
+  const handleSearchChange = (value) => {
+    requestVersion.current += 1;
+    setSearch(value);
+    setError("");
+    setColaboradores([]);
+    setHasMore(false);
+    setNextOffset(0);
+    setLoading(value.trim().length >= 2);
+  };
+
+  const loadMore = async () => {
+    const termino = search.trim();
+    if (loading || !hasMore || termino.length < 2) return;
+
+    const version = ++requestVersion.current;
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch(
+        `/api/colaboradores/buscar?q=${encodeURIComponent(termino)}&offset=${nextOffset}&limit=20`,
+        { headers: { Authorization: `Bearer ${localStorage.getItem("scaet-token")}` } }
+      );
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.mensaje || "No se pudieron cargar más colaboradores");
+      if (requestVersion.current !== version) return;
+
+      setColaboradores((actuales) => [...actuales, ...(payload.colaboradores || []).map(mapColaborador)]);
+      setHasMore(Boolean(payload.has_more));
+      setNextOffset(Number(payload.next_offset) || nextOffset);
+    } catch (requestError) {
+      if (requestVersion.current === version) setError(requestError.message);
+    } finally {
+      if (requestVersion.current === version) setLoading(false);
+    }
+  };
 
   return (
     <div className="grid gap-5 md:grid-cols-2">
@@ -115,9 +197,9 @@ function Step1({ colaboradores, selected, onSelect }) {
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
           Busca un colaborador
         </p>
-        <SearchInput placeholder="Buscar nombre, puesto, departamento o numero..." value={search} onChange={setSearch} />
+        <SearchInput placeholder="Buscar nombre, puesto, departamento o numero..." value={search} onChange={handleSearchChange} />
         <div className="mt-2 max-h-44 overflow-y-auto pr-0.5">
-          {filtered.map((colaborador) => (
+          {colaboradores.map((colaborador) => (
             <SelectableRow
               key={colaborador.id}
               item={colaborador}
@@ -127,6 +209,15 @@ function Step1({ colaboradores, selected, onSelect }) {
               subtitle={`${colaborador.puesto} - ${colaborador.departamento}`}
             />
           ))}
+          {hasMore && !loading && (
+            <button type="button" onClick={loadMore} className="mt-1 w-full rounded-lg px-3 py-2 text-xs font-semibold text-blue-600 transition hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-blue-900/20">
+              Cargar más resultados
+            </button>
+          )}
+          {loading && <p className="px-3 py-3 text-xs text-gray-400">Buscando colaboradores...</p>}
+          {!loading && error && <p className="px-3 py-3 text-xs text-red-500">{error}</p>}
+          {!loading && !error && search.trim().length < 2 && <p className="px-3 py-3 text-xs text-gray-400">Escribe al menos 2 caracteres para buscar.</p>}
+          {!loading && !error && search.trim().length >= 2 && colaboradores.length === 0 && <p className="px-3 py-3 text-xs text-gray-400">No se encontraron colaboradores.</p>}
         </div>
       </div>
       <div>
@@ -467,7 +558,6 @@ export default function NuevaAsignacion({ addMode = false, initialColaborador, i
   const [activo, setActivo] = useState(null);
   const [tipo, setTipo] = useState("Temporal");
   const [fechaDev, setFechaDev] = useState("");
-  const [colaboradores, setColaboradores] = useState([]);
   const [assets, setAssets] = useState([]);
   const [asignacionesActivas, setAsignacionesActivas] = useState([]);
   const [message, setMessage] = useState("");
@@ -478,7 +568,6 @@ export default function NuevaAsignacion({ addMode = false, initialColaborador, i
   useEffect(() => {
     const headers = { Authorization: `Bearer ${localStorage.getItem("scaet-token")}` };
     Promise.all([
-      fetch("/api/colaboradores?estado=activos", { headers }),
       fetch("/api/equipos?estado=activos&estado_equipo=disponible", { headers }),
       fetch("/api/asignaciones/activas", { headers }),
     ]).then(async (responses) => {
@@ -486,16 +575,12 @@ export default function NuevaAsignacion({ addMode = false, initialColaborador, i
       const failed = payloads.find(({ response }) => !response.ok);
       if (failed) throw new Error(failed.data.mensaje || "No se pudieron cargar los datos de asignacion");
 
-      setColaboradores((payloads[0].data.colaboradores || []).map((item) => ({
-        id: Number(item.id_colaborador), numero: item.num_colaborador, nombre: item.nombre_completo,
-        area: item.area, departamento: item.departamento, puesto: item.puesto, correo: item.correo,
-      })));
-      setAssets((payloads[1].data.equipos || []).map((item) => ({
+      setAssets((payloads[0].data.equipos || []).map((item) => ({
         id: Number(item.id_equipo), codigo: item.codigo_equipo, nombre: item.nombre_equipo,
         tipo: item.tipo_equipo, marca: item.marca, modelo: item.modelo, serie: item.numero_serie,
         estado: item.estado, proveedor: item.nombre_proveedor || "-",
       })));
-      const mappedAssignments = (payloads[2].data.asignaciones || []).map((assignment) => ({
+      const mappedAssignments = (payloads[1].data.asignaciones || []).map((assignment) => ({
         idAsignacion: assignment.id_asignacion,
         idResguardo: assignment.resguardo?.id_resguardo,
         folio: assignment.resguardo?.folio,
@@ -616,7 +701,7 @@ export default function NuevaAsignacion({ addMode = false, initialColaborador, i
       <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-[#16131F] sm:p-6">
         <StepIndicator current={step} />
         <div className="min-h-[180px]">
-          {step === 0 && <Step1 colaboradores={colaboradores} selected={colaborador} onSelect={handleSelectCollaborator} />}
+          {step === 0 && <Step1 selected={colaborador} onSelect={handleSelectCollaborator} />}
           {step === 1 && <Step2 assets={assets} tipoActivo={tipoActivo} setTipoActivo={setTipoActivo} selected={activo} onSelect={setActivo} selectedIds={selectedIds} />}
           {step === 2 && <Step3 tipo={tipo} setTipo={(value) => { setTipo(value); if (value === "Permanente") setFechaDev(""); }} fechaDev={fechaDev} setFechaDev={setFechaDev} />}
           {step === 3 && <Step4 colaborador={colaborador} items={confirmationItems} />}
