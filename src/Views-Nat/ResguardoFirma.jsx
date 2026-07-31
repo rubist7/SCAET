@@ -490,10 +490,13 @@ function SignatureImage({ value, fallback }) {
 }
 
 function ReceiverSignatureDetails({ colaborador }) {
+  const areaDepartamento = `${colaborador?.area || "-"} - ${colaborador?.departamento || "-"}`;
+
   return (
-    <div className="mt-1 text-[9px] font-semibold text-[#6f6584]">
-      <p>{colaborador?.nombre || "-"}</p>
-      <p>{colaborador?.puesto || colaborador?.area || "-"}</p>
+    <div className="mt-1 text-[9px] text-[#6f6584]">
+      <p className="font-semibold">{colaborador?.nombre || "-"}</p>
+      <p className="font-bold">{areaDepartamento}</p>
+      <p className="font-bold">{colaborador?.puesto || "-"}</p>
     </div>
   );
 }
@@ -558,7 +561,7 @@ function ResguardoTarjetaComedor({ data, signature }) {
       <div className="mt-4">
         <PreviewRow label="Colaborador" value={data.colaborador.nombre} />
         <PreviewRow label="Numero de empleado" value={data.numeroEmpleado} />
-        <PreviewRow label="Departamento" value={data.departamentoTarjeta} />
+        <PreviewRow label="Area / Depto." value={data.departamentoTarjeta} />
         <PreviewRow label="Puesto" value={data.puestoTarjeta} />
         <PreviewRow label="Fecha de entrega" value={formatDate(data.fechaEntregaTarjeta)} />
         <PreviewRow label="ID / Num. tarjeta" value={data.idTarjeta} />
@@ -762,7 +765,7 @@ function ConditionalFields({ data, setters }) {
         <Field label="Cantidad">
           <SoftInput value={data.cantidad} onChange={setters.setCantidad} />
         </Field>
-        <Field label="Departamento">
+        <Field label="Área / Depto.">
           <SoftInput value={data.departamentoTarjeta} onChange={setters.setDepartamentoTarjeta} />
         </Field>
         <Field label="Puesto">
@@ -860,8 +863,11 @@ function ResguardoEditor({ resguardo, onBack, onAddItem, onRemoveItem, onGenerat
     selectedItem?.tipoResguardo === "tarjeta" ? selectedItem.codigo || "" : source.idTarjeta,
   );
   const [cantidad, setCantidad] = useState(source.cantidad);
-  const [departamentoTarjeta, setDepartamentoTarjeta] = useState(source.departamentoTarjeta);
-  const [puestoTarjeta, setPuestoTarjeta] = useState(source.puestoTarjeta);
+  const [departamentoTarjeta, setDepartamentoTarjeta] = useState(
+    source.departamentoTarjeta
+      || `${source.colaborador?.area || "-"} - ${source.colaborador?.departamento || "-"}`,
+  );
+  const [puestoTarjeta, setPuestoTarjeta] = useState(source.puestoTarjeta || source.colaborador?.puesto || "");
   const [fechaEntregaTarjeta, setFechaEntregaTarjeta] = useState(source.fechaEntregaTarjeta);
   const [motivoTarjeta, setMotivoTarjeta] = useState(source.motivoTarjeta);
   const [yubikey, setYubikey] = useState(

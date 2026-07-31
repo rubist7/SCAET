@@ -474,10 +474,13 @@ function SignatureImage({ value }) {
 }
 
 function ReceiverSignatureDetails({ colaborador }) {
+  const areaDepartamento = `${colaborador?.area || "-"} - ${colaborador?.departamento || "-"}`;
+
   return (
     <div className="mt-1 text-[9px] font-semibold text-[#6f6584]">
       <p>{colaborador?.nombre || "-"}</p>
-      <p>{colaborador?.puesto || colaborador?.area || "-"}</p>
+      <p className="font-bold">{areaDepartamento}</p>
+      <p className="font-bold">{colaborador?.puesto || "-"}</p>
     </div>
   );
 }
