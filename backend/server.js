@@ -8,6 +8,7 @@ const pool = require("./config/db");
 const crearRouterMantenimientos = require("./routes/mantenimientos.routes");
 const crearRouterLogsActividad = require("./routes/logsActividad.routes");
 const crearRouterImagenesEquipos = require("./routes/equiposImagen.routes");
+const crearRouterImagenesColaboradores = require("./routes/colaboradoresImagen.routes");
 const { registrarLogActividad } = require("./utils/logsActividad");
 require("dotenv").config();
 
@@ -1966,6 +1967,11 @@ app.use(
 app.use(
   "/api/equipos-imagenes",
   crearRouterImagenesEquipos({ pool, verificarToken, autorizarRoles, registrarLogActividad })
+);
+
+app.use(
+  "/api/colaboradores-imagenes",
+  crearRouterImagenesColaboradores({ pool, verificarToken, autorizarRoles, registrarLogActividad })
 );
 const PORT = process.env.PORT || 3000;
 

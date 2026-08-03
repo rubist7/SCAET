@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import imageCompression from 'browser-image-compression'
 import { AppIcon } from '../components/Sidebar'
 import { loadUserProfile } from '../utils/userProfile'
 
@@ -7,6 +8,12 @@ function apiHeaders() {
   const token = localStorage.getItem('scaet-token')
   return { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token }
 }
+function apiFileHeaders() {
+  return { Authorization: 'Bearer ' + localStorage.getItem('scaet-token') }
+}
+const allowedImageTypes = ['image/jpeg', 'image/png', 'image/webp']
+const maxImageBytes = 5 * 1024 * 1024
+
 function mapCollaborator(item) {
   return {
     id: item.id_colaborador, employeeNumber: String(item.num_colaborador ?? ''),
@@ -14,7 +21,7 @@ function mapCollaborator(item) {
     department: item.departamento ?? '', position: item.puesto ?? '',
     email: item.correo ?? '', phone: item.telefono ?? '', extension: item.extension ?? '',
     equipmentCount: String(item.equipos_asignados ?? 0), status: item.estado === 'inactivo' ? 'Inactivo' : 'Activo',
-    notes: item.observaciones ?? '', photoUrl: item.foto_url ?? '', photoName: '',
+    notes: item.observaciones ?? '', photoUrl: item.foto_url ?? '', photoName: item.foto_key ?? '',
     hidden: Number(item.activo) !== 1,
   }
 }
@@ -149,6 +156,7 @@ function Colaboradores() {
   const [showHidden, setShowHidden] = useState(false)
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
+  const [photoFile, setPhotoFile] = useState(null)
   const role = loadUserProfile().roleKey
   const canManage = role === 'admin' || role === 'capturista'
   const canChangeState = role === 'admin'
@@ -245,22 +253,48 @@ function Colaboradores() {
     setForm((currentForm) => ({ ...currentForm, [fieldName]: value }))
   }
 
-  const handlePhotoChange = (event) => {
+  const handlePhotoChange = async (event) => {
     const file = event.target.files?.[0]
-
-    if (!file) {
+    event.target.value = ''
+    if (!file) return
+    if (!allowedImageTypes.includes(file.type)) {
+      setMessage('Solo puedes seleccionar imagenes JPG, JPEG, PNG o WEBP.')
       return
     }
 
-    setForm((currentForm) => ({
-      ...currentForm,
-      photoUrl: URL.createObjectURL(file),
-      photoName: file.name,
-    }))
+    try {
+      const compressedFile = await imageCompression(file, {
+        maxSizeMB: 4.5,
+        maxWidthOrHeight: 1920,
+        useWebWorker: true,
+      })
+      if (compressedFile.size > maxImageBytes) {
+        setMessage('La imagen comprimida supera el limite de 5 MB.')
+        return
+      }
+
+      setPhotoFile(compressedFile)
+      setForm((currentForm) => {
+        if (currentForm.photoUrl.startsWith('blob:')) URL.revokeObjectURL(currentForm.photoUrl)
+        return {
+          ...currentForm,
+          photoUrl: URL.createObjectURL(compressedFile),
+          photoName: compressedFile.name,
+        }
+      })
+      setMessage('')
+    } catch (error) {
+      setMessage(error.message || 'No se pudo comprimir la imagen seleccionada.')
+    }
   }
+
+  useEffect(() => () => {
+    if (form.photoUrl.startsWith('blob:')) URL.revokeObjectURL(form.photoUrl)
+  }, [form.photoUrl])
 
   const handleNewCollaborator = () => {
     setForm(emptyCollaboratorForm)
+    setPhotoFile(null)
     setEditingId(null)
     setShowForm(true)
     setExpandedCollaboratorId(null)
@@ -269,6 +303,7 @@ function Colaboradores() {
 
   const handleCancel = () => {
     setForm(emptyCollaboratorForm)
+    setPhotoFile(null)
     setEditingId(null)
     setShowForm(false)
   }
@@ -288,6 +323,7 @@ function Colaboradores() {
       estado: form.status.toLowerCase(),
       observaciones: form.notes.trim(),
     }
+    let collaboratorSaved = false
     try {
       const endpoint = editingId ? apiUrl + '/colaboradores/' + editingId : apiUrl + '/colaboradores'
       const response = await fetch(endpoint, {
@@ -297,6 +333,28 @@ function Colaboradores() {
       })
       const data = await response.json()
       if (!response.ok) throw new Error(data.mensaje || 'No fue posible guardar el colaborador')
+      const idColaboradorGuardado = data.colaborador?.id_colaborador || editingId
+      collaboratorSaved = true
+
+      if (photoFile) {
+        const imageFormData = new FormData()
+        imageFormData.append('imagen', photoFile, photoFile.name)
+        const imageResponse = await fetch(`${apiUrl}/colaboradores-imagenes/${idColaboradorGuardado}`, {
+          method: 'POST',
+          headers: apiFileHeaders(),
+          body: imageFormData,
+        })
+        const imageData = await imageResponse.json()
+        if (!imageResponse.ok) throw new Error(imageData.mensaje || 'No se pudo subir la imagen del colaborador')
+
+        setPhotoFile(null)
+        setForm((currentForm) => ({
+          ...currentForm,
+          photoUrl: `${imageData.foto_url}?v=${Date.now()}`,
+          photoName: imageData.foto_key,
+        }))
+      }
+
       setForm(emptyCollaboratorForm)
       setEditingId(null)
       setShowForm(false)
@@ -305,7 +363,7 @@ function Colaboradores() {
       setMessage(data.mensaje)
       scrollToList()
     } catch (error) {
-      setMessage(error.message)
+      setMessage(collaboratorSaved ? `El colaborador se guardo, pero no se pudo subir la imagen: ${error.message}` : error.message)
     }
   }
   const handleEdit = (collaborator) => {
@@ -324,6 +382,7 @@ function Colaboradores() {
       photoUrl: collaborator.photoUrl,
       photoName: collaborator.photoName,
     })
+    setPhotoFile(null)
     setEditingId(collaborator.id)
     setShowForm(true)
     setExpandedCollaboratorId(null)
@@ -632,14 +691,14 @@ function Colaboradores() {
                         </button>
                       </div>
                       <p className="text-center text-[10px] font-extrabold uppercase tracking-[0.24em] text-[#c7c1d6]">
-                        JPG / PNG
+                        JPG, PNG o WEBP · Máximo 5 MB
                       </p>
                       {canTakePhoto && (
                         <input
                           ref={cameraInputRef}
                           type="file"
-                          accept="image/*"
-                          capture="user"
+                          accept="image/jpeg,image/png,image/webp"
+                          capture="environment"
                           onChange={handlePhotoChange}
                           className="hidden"
                         />
@@ -647,7 +706,7 @@ function Colaboradores() {
                       <input
                         ref={uploadInputRef}
                         type="file"
-                        accept="image/*"
+                        accept="image/jpeg,image/png,image/webp"
                         onChange={handlePhotoChange}
                         className="hidden"
                       />
