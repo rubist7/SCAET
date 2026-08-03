@@ -3,9 +3,11 @@ const cors = require("cors");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
+const path = require("path");
 const pool = require("./config/db");
 const crearRouterMantenimientos = require("./routes/mantenimientos.routes");
 const crearRouterLogsActividad = require("./routes/logsActividad.routes");
+const crearRouterImagenesEquipos = require("./routes/equiposImagen.routes");
 const { registrarLogActividad } = require("./utils/logsActividad");
 require("dotenv").config();
 
@@ -13,6 +15,10 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use(
+  "/uploads",
+  express.static(path.join(__dirname, "../uploads"))
+);
 
 app.get("/", (req, res) => {
   res.send("Backend de SCAET funcionando");
@@ -1955,6 +1961,11 @@ app.use(
 app.use(
   "/api/logs-actividad",
   crearRouterLogsActividad({ pool, verificarToken, autorizarRoles })
+);
+
+app.use(
+  "/api/equipos-imagenes",
+  crearRouterImagenesEquipos({ pool, verificarToken, autorizarRoles, registrarLogActividad })
 );
 const PORT = process.env.PORT || 3000;
 

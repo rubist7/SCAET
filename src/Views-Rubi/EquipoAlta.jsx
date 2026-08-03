@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import imageCompression from 'browser-image-compression'
 import BackButton from '../components/BackButton'
 import { AppIcon } from '../components/Sidebar'
 import { calculateWarrantyEnd, statusOptions, typeOptions } from './equiposData'
@@ -9,7 +10,10 @@ const apiUrl = '/api'
 const emptyForm = { id_proveedor: '', tipo_equipo: 'Laptop', marca: '', modelo: '', numero_serie: '', fecha_compra: '', garantia_meses: '', vence_garantia: '', especificaciones_tecnicas: '', estado: 'disponible' }
 const emptyProvider = { nombre_proveedor: '', empresa: '', nombre_vendedor: '', rfc_empresa: '', telefono: '', correo: '', direccion: '', calificacion: 'bueno', observaciones: '' }
 const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('scaet-token')}`, 'Content-Type': 'application/json' })
+const authFileHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('scaet-token')}` })
 const dateValue = (value) => value ? String(value).slice(0, 10) : ''
+const allowedImageTypes = ['image/jpeg', 'image/png', 'image/webp']
+const maxImageBytes = 5 * 1024 * 1024
 const ratingOptions = [
   { value: 'excelente', label: 'Excelente', stars: 5 },
   { value: 'bueno', label: 'Bueno', stars: 4 },
@@ -31,6 +35,8 @@ function EquipoAlta() {
   const [message, setMessage] = useState('')
   const [photoPreview, setPhotoPreview] = useState('')
   const [photoName, setPhotoName] = useState('')
+  const [photoFile, setPhotoFile] = useState(null)
+  const [createdEquipmentId, setCreatedEquipmentId] = useState(null)
   const [hasActiveAssignment, setHasActiveAssignment] = useState(false)
   const cameraInputRef = useRef(null)
   const fileInputRef = useRef(null)
@@ -66,6 +72,8 @@ function EquipoAlta() {
       const loadedForm = { id_proveedor: e.id_proveedor ?? '', tipo_equipo: e.tipo_equipo, marca: e.marca, modelo: e.modelo, numero_serie: e.numero_serie, fecha_compra: dateValue(e.fecha_compra), garantia_meses: e.garantia_meses ?? '', vence_garantia: dateValue(e.vence_garantia), especificaciones_tecnicas: e.especificaciones_tecnicas ?? '', estado: e.estado }
       setForm(loadedForm)
       setInitialForm(loadedForm)
+      setPhotoPreview(e.foto_url || '')
+      setPhotoName(e.foto_key || '')
     }).catch((error) => setMessage(error.message)).finally(() => setLoading(false))
   }, [equipmentId])
 
@@ -74,17 +82,39 @@ function EquipoAlta() {
     setForm((current) => { const next = { ...current, [name]: value }; if (name === 'fecha_compra' || name === 'garantia_meses') next.vence_garantia = calculateWarrantyEnd(next.fecha_compra, next.garantia_meses); return next })
   }
 
-  const changePhoto = (event) => {
+  const changePhoto = async (event) => {
     const file = event.target.files?.[0]
-    if (!file) return
-    if (photoPreview) URL.revokeObjectURL(photoPreview)
-    setPhotoPreview(URL.createObjectURL(file))
-    setPhotoName(file.name)
     event.target.value = ''
+    if (!file) return
+    if (!allowedImageTypes.includes(file.type)) {
+      setMessage('Solo puedes seleccionar imagenes JPG, JPEG, PNG o WEBP.')
+      return
+    }
+
+    try {
+      const compressedFile = await imageCompression(file, {
+        maxSizeMB: 4.5,
+        maxWidthOrHeight: 1920,
+        useWebWorker: true,
+      })
+
+      if (compressedFile.size > maxImageBytes) {
+        setMessage('La imagen comprimida supera el limite de 5 MB.')
+        return
+      }
+
+      if (photoPreview.startsWith('blob:')) URL.revokeObjectURL(photoPreview)
+      setPhotoFile(compressedFile)
+      setPhotoPreview(URL.createObjectURL(compressedFile))
+      setPhotoName(compressedFile.name)
+      setMessage('')
+    } catch (error) {
+      setMessage(error.message || 'No se pudo comprimir la imagen seleccionada.')
+    }
   }
 
   useEffect(() => () => {
-    if (photoPreview) URL.revokeObjectURL(photoPreview)
+    if (photoPreview.startsWith('blob:')) URL.revokeObjectURL(photoPreview)
   }, [photoPreview])
 
   const saveProvider = async (event) => {
@@ -102,19 +132,44 @@ function EquipoAlta() {
 
   const submit = async (event) => {
     event.preventDefault(); setSaving(true); setMessage('')
+    let equipoGuardado = false
     try {
       const payload = { ...form }
-      if (equipmentId && payload.estado === 'asignado') delete payload.estado
-      const response = await fetch(`${apiUrl}/equipos${equipmentId ? `/${equipmentId}` : ''}`, { method: equipmentId ? 'PUT' : 'POST', headers: authHeaders(), body: JSON.stringify(payload) })
+      const idEquipo = equipmentId || createdEquipmentId
+      if (idEquipo && payload.estado === 'asignado') delete payload.estado
+      const response = await fetch(`${apiUrl}/equipos${idEquipo ? `/${idEquipo}` : ''}`, { method: idEquipo ? 'PUT' : 'POST', headers: authHeaders(), body: JSON.stringify(payload) })
       const data = await response.json()
       if (!response.ok) throw new Error(data.mensaje || 'No se pudo guardar el equipo')
+      const idEquipoGuardado = data.equipo?.id_equipo || idEquipo
+      equipoGuardado = true
+      if (!equipmentId && idEquipoGuardado) setCreatedEquipmentId(idEquipoGuardado)
+
+      if (photoFile) {
+        const imageFormData = new FormData()
+        imageFormData.append('imagen', photoFile, photoFile.name)
+        const imageResponse = await fetch(`${apiUrl}/equipos-imagenes/${idEquipoGuardado}`, {
+          method: 'POST',
+          headers: authFileHeaders(),
+          body: imageFormData,
+        })
+        const imageData = await imageResponse.json()
+        if (!imageResponse.ok) throw new Error(imageData.mensaje || 'No se pudo subir la imagen del equipo')
+
+        if (photoPreview.startsWith('blob:')) URL.revokeObjectURL(photoPreview)
+        setPhotoPreview(`${imageData.foto_url}?v=${Date.now()}`)
+        setPhotoName(imageData.foto_key)
+        setPhotoFile(null)
+      }
+
       navigate(location.state?.returnTo || '/equipos')
-    } catch (error) { setMessage(error.message) } finally { setSaving(false) }
+    } catch (error) {
+      setMessage(equipoGuardado ? `El equipo se guardo, pero no se pudo subir la imagen: ${error.message}` : error.message)
+    } finally { setSaving(false) }
   }
 
   const returnTo = location.state?.returnTo || '/equipos'
   const returnLabel = location.state?.returnLabel ? `Volver a ${location.state.returnLabel}` : 'Volver a equipos'
-  const hasUnsavedChanges = JSON.stringify(form) !== JSON.stringify(initialForm) || Boolean(photoName)
+  const hasUnsavedChanges = JSON.stringify(form) !== JSON.stringify(initialForm) || Boolean(photoFile)
 
   if (loading) return <EquipmentShell><p className="p-8 text-sm font-bold text-[#8d88a2]">Cargando equipo...</p></EquipmentShell>
   return <EquipmentShell><div className="space-y-6 px-4 py-7 sm:px-6 lg:px-8">
@@ -136,11 +191,11 @@ function EquipoAlta() {
         <p className="border-b border-[#f0edf6] pb-3 text-[10px] font-extrabold uppercase tracking-[0.28em] text-blue-300">Fotografía del equipo</p>
         <div className="grid gap-3 lg:grid-cols-1">
           {canTakePhoto && <button type="button" onClick={() => cameraInputRef.current?.click()} className="flex h-28 items-center justify-center overflow-hidden rounded-2xl border border-dashed border-[#d9cfbf] bg-[#f2ece0] text-[#201d31] transition hover:bg-[#e9dfd0]" aria-label="Tomar foto del equipo">{photoPreview ? <img src={photoPreview} alt="Vista previa del equipo" className="h-full w-full object-cover" /> : <span className="flex h-14 w-16 items-center justify-center rounded-xl bg-[#e7dcc9]"><AppIcon name="camera" /></span>}</button>}
-          <button type="button" onClick={() => fileInputRef.current?.click()} className="flex min-h-28 min-w-0 items-center justify-center gap-4 overflow-hidden rounded-2xl border border-dashed border-[#d9cfbf] bg-[#f2ece0] px-5 text-left transition hover:bg-[#e9dfd0]">{photoPreview ? <img src={photoPreview} alt="Vista previa del equipo" className="h-20 w-24 shrink-0 rounded-xl object-cover" /> : <span className="flex h-14 w-16 shrink-0 items-center justify-center rounded-xl bg-[#e7dcc9]"><AppIcon name="image" /></span>}<span className="min-w-0"><span className="block truncate text-sm font-extrabold text-[#5d5870]">{photoName || 'Haz clic para seleccionar una imagen desde tus archivos'}</span><span className="mt-1 block text-[10px] font-extrabold uppercase tracking-[0.24em] text-[#aaa3b8]">JPG o PNG</span></span></button>
+          <button type="button" onClick={() => fileInputRef.current?.click()} className="flex min-h-28 min-w-0 items-center justify-center gap-4 overflow-hidden rounded-2xl border border-dashed border-[#d9cfbf] bg-[#f2ece0] px-5 text-left transition hover:bg-[#e9dfd0]">{photoPreview ? <img src={photoPreview} alt="Vista previa del equipo" className="h-20 w-24 shrink-0 rounded-xl object-cover" /> : <span className="flex h-14 w-16 shrink-0 items-center justify-center rounded-xl bg-[#e7dcc9]"><AppIcon name="image" /></span>}<span className="min-w-0"><span className="block truncate text-sm font-extrabold text-[#5d5870]">{photoName || 'Haz clic para seleccionar una imagen desde tus archivos'}</span><span className="mt-1 block text-[10px] font-extrabold uppercase tracking-[0.24em] text-[#aaa3b8]">JPG, PNG o WEBP · Máximo 5 MB</span></span></button>
         </div>
-        <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={changePhoto} className="hidden" />
-        <input ref={fileInputRef} type="file" accept="image/jpeg,image/png" onChange={changePhoto} className="hidden" />
-        <p className="text-xs font-bold text-[#9b95ac]">Vista previa local. La fotografía todavía no se envía ni se guarda en el servidor.</p>
+        <input ref={cameraInputRef} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={changePhoto} className="hidden" />
+        <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={changePhoto} className="hidden" />
+        <p className="text-xs font-bold text-[#9b95ac]">La imagen se comprime antes de enviarse y se guarda al guardar el equipo.</p>
       </div>
       <div className="rounded-2xl bg-[#f2ece0] p-4"><div className="flex items-center gap-3"><QrCode /><p className="text-sm font-extrabold">El QR se genera automáticamente al guardar.</p></div></div>
       <div className="flex justify-end gap-3"><button disabled={saving} className="h-11 rounded-xl bg-[#3A9AF2] px-8 font-extrabold text-white disabled:opacity-60">{saving ? 'Guardando...' : 'Guardar equipo y generar QR'}</button></div>
