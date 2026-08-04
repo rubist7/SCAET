@@ -81,6 +81,18 @@ function crearNombreAdjunto(folio, codigosEquipo) {
   return `resguardo-${folioSeguro || "resguardo"}.pdf`;
 }
 
+function crearNombreAdjuntoDevolucion(folio, codigosEquipo) {
+  const folioSeguro = texto(folio)
+    .replace(/[^a-zA-Z0-9_-]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  const codigoSeguro = texto(codigosEquipo[0])
+    .replace(/[^a-zA-Z0-9_-]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+  if (codigosEquipo.length === 1) return `devolucion-${codigoSeguro}-${folioSeguro || "devolucion"}.pdf`;
+  return `devolucion-${folioSeguro || "devolucion"}.pdf`;
+}
+
 function formatearFechaDevolucion(fecha) {
   const coincidencia = /^(\d{4})-(\d{2})-(\d{2})$/.exec(texto(fecha));
   return coincidencia ? `${coincidencia[3]}/${coincidencia[2]}/${coincidencia[1]}` : "";
@@ -143,7 +155,26 @@ function crearMensajeResguardo({ folio, nombreColaborador, equipos }) {
   return { asunto, contenido: lineas.join("\n"), codigosEquipo };
 }
 
-async function enviarResguardoCorreo({ folio, nombreColaborador, correoColaborador, equipos, pdfBuffer }) {
+function crearMensajeDevolucion({ folio, nombreColaborador, equipos }) {
+  const codigosEquipo = [...new Set((equipos || [])
+    .map((equipo) => texto(equipo.codigo_equipo).toUpperCase())
+    .filter(Boolean))]
+    .sort((codigoA, codigoB) => codigoA.localeCompare(codigoB, "es"));
+  const unSoloEquipo = codigosEquipo.length === 1;
+  const listaCodigos = codigosEquipo.length ? formatearCodigosEquipo(codigosEquipo) : "";
+  const asunto = codigosEquipo.length
+    ? unSoloEquipo
+      ? `Devolución del equipo ${listaCodigos}`
+      : `Devolución de equipos ${listaCodigos}`
+    : `Devolución de equipo ${folio}`;
+  const contenido = codigosEquipo.length
+    ? `Hola ${texto(nombreColaborador) || "colaborador"},\n\nAdjuntamos el comprobante de devolución correspondiente ${unSoloEquipo ? "al equipo" : "a los equipos"} ${listaCodigos}.\n\nFolio de devolución: ${folio}.`
+    : `Hola ${texto(nombreColaborador) || "colaborador"},\n\nAdjuntamos el comprobante de devolución.\n\nFolio de devolución: ${folio}.`;
+
+  return { asunto, contenido, codigosEquipo };
+}
+
+async function enviarCorreoConPdf({ correoColaborador, asunto, contenido, nombreAdjunto, pdfBuffer }) {
   if (!transporter || !configuracionCorreo) {
     const error = new Error("El servicio de correo no esta configurado");
     error.code = "CORREO_NO_CONFIGURADO";
@@ -158,15 +189,13 @@ async function enviarResguardoCorreo({ folio, nombreColaborador, correoColaborad
     throw error;
   }
 
-  const { asunto, contenido, codigosEquipo } = crearMensajeResguardo({ folio, nombreColaborador, equipos });
-
   const opciones = {
     from: configuracionCorreo.from,
     to: destinatario,
     subject: asunto,
     text: contenido,
     attachments: [{
-      filename: crearNombreAdjunto(folio, codigosEquipo),
+      filename: nombreAdjunto,
       content: pdfBuffer,
       contentType: "application/pdf",
     }],
@@ -176,7 +205,30 @@ async function enviarResguardoCorreo({ folio, nombreColaborador, correoColaborad
   return transporter.sendMail(opciones);
 }
 
+async function enviarResguardoCorreo({ folio, nombreColaborador, correoColaborador, equipos, pdfBuffer }) {
+  const { asunto, contenido, codigosEquipo } = crearMensajeResguardo({ folio, nombreColaborador, equipos });
+  return enviarCorreoConPdf({
+    correoColaborador,
+    asunto,
+    contenido,
+    nombreAdjunto: crearNombreAdjunto(folio, codigosEquipo),
+    pdfBuffer,
+  });
+}
+
+async function enviarDevolucionCorreo({ folio, nombreColaborador, correoColaborador, equipos, pdfBuffer }) {
+  const { asunto, contenido, codigosEquipo } = crearMensajeDevolucion({ folio, nombreColaborador, equipos });
+  return enviarCorreoConPdf({
+    correoColaborador,
+    asunto,
+    contenido,
+    nombreAdjunto: crearNombreAdjuntoDevolucion(folio, codigosEquipo),
+    pdfBuffer,
+  });
+}
+
 module.exports = {
+  enviarDevolucionCorreo,
   enviarResguardoCorreo,
   esCorreoValido,
   verificarTransporterCorreo,

@@ -3,6 +3,7 @@ import { ChevronDown, Download, Eraser, FileText, Mail, PenLine, X } from "lucid
 import { formatDate, formatResguardoDate } from "./dateUtils";
 import BackButton from "../components/BackButton";
 import Signature from "../components/Signature";
+import { descargarPdfResguardo, generarPdfResguardo } from "../utils/resguardoPdf";
 
 const defaultDevolucion = {
   idAsignacion: null,
@@ -550,37 +551,80 @@ function DocumentPreview({ data, items, signature }) {
   );
 }
 
-function GeneratedDevolucionModal({ data, items, signature, onClose }) {
+function GeneratedDevolucionModal({ data, items, signature, idResguardo, onClose }) {
+  const TIEMPO_MAXIMO_ENVIO_MS = 60_000;
   const documentRef = useRef(null);
+  const pdfRef = useRef(null);
+  const [generandoPdf, setGenerandoPdf] = useState(false);
+  const [enviandoCorreo, setEnviandoCorreo] = useState(false);
+  const [correoEnviado, setCorreoEnviado] = useState(false);
+  const [mensajeCorreo, setMensajeCorreo] = useState("");
+  const [errorCorreo, setErrorCorreo] = useState(false);
 
-  const downloadPdf = () => {
-    const printWindow = window.open("", "_blank", "width=900,height=700");
-    if (!printWindow || !documentRef.current) return;
-    const printStyles = `
-      @page { size: Letter; margin: 14mm; }
-      * { box-sizing: border-box; }
-      html, body { margin: 0; padding: 0; background: #fff !important; color: #21192c; font-family: Arial, Helvetica, sans-serif; }
-      body { width: 100%; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .scaet-print-document { width: 100%; margin: 0; }
-      .scaet-print-document > div { width: 100%; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; padding: 0 !important; }
-      table { width: 100% !important; min-width: 0 !important; border-collapse: collapse; table-layout: auto; }
-      thead { display: table-header-group; }
-      tfoot { display: table-footer-group; }
-      tr, img, svg { break-inside: avoid; page-break-inside: avoid; }
-      th, td { vertical-align: top; overflow-wrap: anywhere; }
-      img { max-width: 100%; }
-      button { display: none !important; }
-      @media print {
-        .scaet-print-document { width: 100%; margin: 0; }
-        .scaet-print-document .mt-7 { margin-top: 12px !important; }
-        .scaet-print-document .gap-8 { gap: 16px !important; }
-        .scaet-print-document .h-32 { height: 88px !important; }
+  const crearPdf = async () => {
+    if (!documentRef.current) throw new Error("No se encontro el documento de devolucion");
+    if (!pdfRef.current) {
+      pdfRef.current = await generarPdfResguardo(documentRef.current, { cantidadEquipos: items.length || 1 });
+    }
+    return pdfRef.current;
+  };
+
+  const downloadPdf = async () => {
+    setGenerandoPdf(true);
+    setMensajeCorreo("");
+    try {
+      descargarPdfResguardo(await crearPdf(), data.folio);
+    } catch (error) {
+      setErrorCorreo(true);
+      setMensajeCorreo(error.message || "No se pudo generar el PDF de devolucion");
+    } finally {
+      setGenerandoPdf(false);
+    }
+  };
+
+  const enviarCorreo = async () => {
+    if (!idResguardo) {
+      setErrorCorreo(true);
+      setMensajeCorreo("No se encontro el identificador de la devolucion");
+      return;
+    }
+    if (correoEnviado && !window.confirm("Esta devolucion ya fue enviada. ¿Deseas enviarla nuevamente?")) return;
+
+    setEnviandoCorreo(true);
+    setErrorCorreo(false);
+    setMensajeCorreo("");
+    try {
+      const pdf = await crearPdf();
+      const formData = new FormData();
+      formData.append("pdf", pdf, `${data.folio || "devolucion"}.pdf`);
+      const controller = new AbortController();
+      const timeoutEnvio = window.setTimeout(() => controller.abort(), TIEMPO_MAXIMO_ENVIO_MS);
+      let response;
+      try {
+        response = await fetch(`/api/resguardos/${idResguardo}/enviar`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${localStorage.getItem("scaet-token")}` },
+          body: formData,
+          signal: controller.signal,
+        });
+      } finally {
+        window.clearTimeout(timeoutEnvio);
       }
-    `;
-    printWindow.document.write(`<html><head>${document.head.innerHTML}<title>${data.folio || "Documento SCAET"}</title><style>${printStyles}</style></head><body><main class="scaet-print-document">${documentRef.current.innerHTML}</main></body></html>`);
-    printWindow.document.close();
-    printWindow.focus();
-    window.setTimeout(() => printWindow.print(), 500);
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.mensaje || "No se pudo enviar la devolucion por correo");
+
+      setCorreoEnviado(true);
+      setMensajeCorreo("Devolucion enviada correctamente al colaborador y con copia al responsable.");
+    } catch (error) {
+      setErrorCorreo(true);
+      setMensajeCorreo(
+        error.name === "AbortError"
+          ? "La devolucion esta guardada, pero el servicio de correo no respondio."
+          : error.message || "No se pudo enviar la devolucion por correo"
+      );
+    } finally {
+      setEnviandoCorreo(false);
+    }
   };
 
   const downloadTxt = () => {
@@ -623,18 +667,19 @@ function GeneratedDevolucionModal({ data, items, signature, onClose }) {
 
           <div className="p-4 sm:p-5">
             <div ref={documentRef}><DocumentPreview data={data} items={items} signature={signature} /></div>
+            {mensajeCorreo && <p className={`mt-3 rounded-[8px] px-3 py-2 text-xs font-bold ${errorCorreo ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-700"}`}>{mensajeCorreo}</p>}
             <div className="mt-3 grid gap-2 sm:grid-cols-3">
-              <button type="button" className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#3A9AF2] text-xs font-black text-[#FFFFFF] transition hover:bg-[#238BEA]">
+              <button type="button" onClick={enviarCorreo} disabled={enviandoCorreo || generandoPdf} className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#3A9AF2] text-xs font-black text-[#FFFFFF] transition hover:bg-[#238BEA] disabled:cursor-not-allowed disabled:opacity-60">
                 <Mail size={14} />
-                Enviar por Gmail
+                {enviandoCorreo ? "Enviando..." : correoEnviado ? "Reenviar por correo" : "Enviar por correo"}
               </button>
               <button type="button" onClick={downloadTxt} className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#eee8dc] text-xs font-black text-[#6f6584] transition hover:bg-[#e4dccf]">
                 <FileText size={14} />
                 Descargar TXT
               </button>
-              <button type="button" onClick={downloadPdf} className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#eee8dc] text-xs font-black text-[#6f6584]">
+              <button type="button" onClick={downloadPdf} disabled={enviandoCorreo || generandoPdf} className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#eee8dc] text-xs font-black text-[#6f6584] disabled:cursor-not-allowed disabled:opacity-60">
                 <Download size={14} />
-                Descargar PDF
+                {generandoPdf ? "Generando..." : "Descargar PDF"}
               </button>
             </div>
           </div>
@@ -836,7 +881,7 @@ function DevolucionEditor({ devolucion, initialSelectedItemKeys, onBack, onGoRes
         </section>
       </div>
 
-      {generatedOpen && <GeneratedDevolucionModal data={{ ...data, folio: savedResult?.folio || data.folio }} items={activeItems} signature={signature} onClose={() => { setGeneratedOpen(false); onSaved?.(savedResult); }} />}
+      {generatedOpen && <GeneratedDevolucionModal data={{ ...data, folio: savedResult?.folio || data.folio }} items={activeItems} signature={signature} idResguardo={savedResult?.id_resguardo} onClose={() => { setGeneratedOpen(false); onSaved?.(savedResult); }} />}
     </div>
   );
 }

@@ -1,6 +1,10 @@
 const express = require("express");
 const multer = require("multer");
-const { enviarResguardoCorreo, esCorreoValido } = require("../services/resguardoCorreo.service");
+const {
+  enviarDevolucionCorreo,
+  enviarResguardoCorreo,
+  esCorreoValido,
+} = require("../services/resguardoCorreo.service");
 
 const TAMANO_MAXIMO_PDF_BYTES = 10 * 1024 * 1024;
 const PREFIJO_PDF = Buffer.from("%PDF-");
@@ -64,12 +68,12 @@ function crearRouterResguardosCorreo({ pool, verificarToken, autorizarRoles, reg
       enviosEnCurso.add(idResguardo);
       try {
         const [filas] = await pool.query(
-          `SELECT r.id_resguardo, r.id_asignacion, r.folio, r.correo_colaborador, r.correo_enviado,
+          `SELECT r.id_resguardo, r.id_asignacion, r.folio, r.tipo_documento, r.correo_colaborador, r.correo_enviado,
             c.id_colaborador, c.num_colaborador, c.nombre_completo, c.correo AS correo_actual
            FROM resguardos r
            INNER JOIN asignaciones a ON a.id_asignacion = r.id_asignacion
            INNER JOIN colaboradores c ON c.id_colaborador = a.id_colaborador
-           WHERE r.id_resguardo = ? AND r.tipo_documento = 'asignacion'
+           WHERE r.id_resguardo = ? AND r.tipo_documento IN ('asignacion', 'devolucion')
            LIMIT 1`,
           [idResguardo]
         );
@@ -82,19 +86,31 @@ function crearRouterResguardosCorreo({ pool, verificarToken, autorizarRoles, reg
           return res.status(422).json({ mensaje: "El resguardo no tiene un correo de colaborador valido" });
         }
 
+        const esDevolucion = resguardo.tipo_documento === "devolucion";
         const [equipos] = await pool.query(
-          `SELECT d.id_detalle,
-             COALESCE(NULLIF(TRIM(d.codigo_equipo_snapshot), ''), e.codigo_equipo) AS codigo_equipo,
-             d.tipo_asignacion,
-             DATE_FORMAT(d.fecha_devolucion_programada, '%Y-%m-%d') AS fecha_devolucion_programada
-           FROM asignacion_detalles d
-           LEFT JOIN equipos e ON e.id_equipo = d.id_equipo
-           WHERE d.id_asignacion = ?
-           ORDER BY codigo_equipo ASC, d.id_detalle ASC`,
-          [resguardo.id_asignacion]
+          esDevolucion
+            ? `SELECT rd.id_detalle,
+                 COALESCE(NULLIF(TRIM(d.codigo_equipo_snapshot), ''), e.codigo_equipo) AS codigo_equipo
+               FROM resguardo_detalles rd
+               INNER JOIN asignacion_detalles d ON d.id_detalle = rd.id_detalle
+               LEFT JOIN equipos e ON e.id_equipo = d.id_equipo
+               WHERE rd.id_resguardo = ? AND d.id_asignacion = ?
+               ORDER BY codigo_equipo ASC, rd.id_detalle ASC`
+            : `SELECT d.id_detalle,
+                 COALESCE(NULLIF(TRIM(d.codigo_equipo_snapshot), ''), e.codigo_equipo) AS codigo_equipo,
+                 d.tipo_asignacion,
+                 DATE_FORMAT(d.fecha_devolucion_programada, '%Y-%m-%d') AS fecha_devolucion_programada
+               FROM asignacion_detalles d
+               LEFT JOIN equipos e ON e.id_equipo = d.id_equipo
+               WHERE d.id_asignacion = ?
+               ORDER BY codigo_equipo ASC, d.id_detalle ASC`,
+          esDevolucion ? [idResguardo, resguardo.id_asignacion] : [resguardo.id_asignacion]
         );
+        if (esDevolucion && !equipos.length) {
+          return res.status(409).json({ mensaje: "Esta devolucion no tiene detalles relacionados para enviar por correo" });
+        }
 
-        await enviarResguardoCorreo({
+        await (esDevolucion ? enviarDevolucionCorreo : enviarResguardoCorreo)({
           folio: resguardo.folio,
           nombreColaborador: resguardo.nombre_completo,
           correoColaborador,
@@ -112,12 +128,12 @@ function crearRouterResguardosCorreo({ pool, verificarToken, autorizarRoles, reg
           modulo: "Resguardos",
           entidad: "resguardos",
           idEntidad: idResguardo,
-          descripcion: `Resguardo enviado por correo: ${resguardo.folio}`,
+          descripcion: `${esDevolucion ? "Devolucion" : "Resguardo"} enviado por correo: ${resguardo.folio}`,
           req,
           detalles: { id_resguardo: idResguardo, folio: resguardo.folio, correo_enviado_previamente: Boolean(resguardo.correo_enviado) },
         });
         return res.json({
-          mensaje: "Resguardo enviado correctamente",
+          mensaje: esDevolucion ? "Devolucion enviada correctamente" : "Resguardo enviado correctamente",
           id_resguardo: idResguardo,
           folio: resguardo.folio,
           correo_enviado: true,

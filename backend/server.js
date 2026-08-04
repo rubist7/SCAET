@@ -1562,6 +1562,11 @@ app.post(
           folio, textoOpcional(req.body.firma_colaborador), textoOpcional(req.body.firma_responsable),
           asignaciones[0].correo || null, responsable.correo || req.usuario.correo || null]
       );
+      const valoresResguardoDetalles = normalizados.map(() => "(?, ?)").join(", ");
+      await conexion.query(
+        `INSERT INTO resguardo_detalles (id_resguardo, id_detalle) VALUES ${valoresResguardoDetalles}`,
+        normalizados.flatMap((detalle) => [resguardo.insertId, detalle.id_detalle])
+      );
 
       await conexion.commit();
       void registrarLogActividad({
