@@ -62,40 +62,37 @@ function getCameraForMode(cameras, cameraMode) {
     return modeCameras[0]
   }
 
-  if (cameraMode === 'back') {
-    return cameras.find((camera) => (
-      !frontCameraPattern.test(camera.label || '')
-      && !ultraWideCameraPattern.test(camera.label || '')
-    )) ?? cameras[0]
-  }
-
   return null
+}
+
+function getScannerVideoConstraints(cameraMode, preferredCamera) {
+  return {
+    ...(preferredCamera?.id ? { deviceId: { ideal: preferredCamera.id } } : {}),
+    facingMode: { ideal: getFacingMode(cameraMode) },
+    width: { ideal: 1920 },
+    height: { ideal: 1080 },
+    aspectRatio: { ideal: 4 / 3 },
+  }
 }
 
 async function startScanner(scanner, onSuccess, cameraMode) {
   const cameras = await Html5Qrcode.getCameras().catch(() => [])
   const preferredCamera = getCameraForMode(cameras, cameraMode)
+  const videoConstraints = getScannerVideoConstraints(cameraMode, preferredCamera)
 
-  if (preferredCamera?.id) {
-    let preferredCameraStarted
-
-    try {
-      await scanner.start(preferredCamera.id, qrScannerConfig, onSuccess)
-      preferredCameraStarted = true
-    } catch {
-      preferredCameraStarted = false
-    }
-
-    if (preferredCameraStarted) {
-      return
-    }
+  try {
+    await scanner.start(
+      { facingMode: getFacingMode(cameraMode) },
+      { ...qrScannerConfig, videoConstraints },
+      onSuccess,
+    )
+  } catch {
+    await scanner.start(
+      { facingMode: getFacingMode(cameraMode) },
+      qrScannerConfig,
+      onSuccess,
+    )
   }
-
-  await scanner.start(
-    { facingMode: getFacingMode(cameraMode) },
-    qrScannerConfig,
-    onSuccess,
-  )
 }
 
 function getScannerErrorMessage() {
@@ -116,7 +113,7 @@ function getNormalizedZoomValue(value, min, max, step) {
   return Number(Math.min(Math.max(steppedValue, min), max).toFixed(2))
 }
 
-async function applyScannerZoom(scanner, preferredZoom = 1.6) {
+async function getScannerZoomControl(scanner) {
   try {
     const capabilities = scanner.getRunningTrackCapabilities()
     const settings = scanner.getRunningTrackSettings()
@@ -135,11 +132,9 @@ async function applyScannerZoom(scanner, preferredZoom = 1.6) {
     }
 
     const currentZoom = Number(settings.zoom ?? min)
-    const nextZoom = getNormalizedZoomValue(Math.max(currentZoom, preferredZoom), min, max, step)
+    const zoom = getNormalizedZoomValue(currentZoom, min, max, step)
 
-    await scanner.applyVideoConstraints({ advanced: [{ zoom: nextZoom }] })
-
-    return { min, max, step: step > 0 ? step : 0.1, value: nextZoom }
+    return { min, max, step: step > 0 ? step : 0.1, value: zoom }
   } catch {
     return null
   }
@@ -343,7 +338,7 @@ function ListadoEquipos() {
           return
         }
 
-        const nextZoomControl = await applyScannerZoom(scanner)
+        const nextZoomControl = await getScannerZoomControl(scanner)
 
         if (!cancelled) {
           setZoomControl(nextZoomControl)
@@ -665,10 +660,15 @@ function ListadoEquipos() {
                 min-height: 300px;
               }
 
+              #${qrReaderId} #qr-shaded-region {
+                border-color: transparent !important;
+              }
+
               #${qrReaderId} video {
+                background: #000;
                 height: 100% !important;
                 min-height: 300px;
-                object-fit: cover;
+                object-fit: contain;
                 width: 100% !important;
               }
             `}</style>
