@@ -9,8 +9,12 @@ const crearRouterMantenimientos = require("./routes/mantenimientos.routes");
 const crearRouterLogsActividad = require("./routes/logsActividad.routes");
 const crearRouterImagenesEquipos = require("./routes/equiposImagen.routes");
 const crearRouterImagenesColaboradores = require("./routes/colaboradoresImagen.routes");
+const crearRouterResguardosCorreo = require("./routes/resguardosCorreo.routes");
 const { registrarLogActividad } = require("./utils/logsActividad");
+const { verificarTransporterCorreo } = require("./services/resguardoCorreo.service");
 require("dotenv").config();
+
+verificarTransporterCorreo();
 
 const app = express();
 
@@ -1972,6 +1976,11 @@ app.use(
 app.use(
   "/api/colaboradores-imagenes",
   crearRouterImagenesColaboradores({ pool, verificarToken, autorizarRoles, registrarLogActividad })
+);
+
+app.use(
+  "/api/resguardos",
+  crearRouterResguardosCorreo({ pool, verificarToken, autorizarRoles, registrarLogActividad })
 );
 const PORT = process.env.PORT || 3000;
 

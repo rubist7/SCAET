@@ -453,6 +453,7 @@ function ListadoEquipos() {
       }
 
       return [
+        equipment.publicId,
         equipment.title,
         equipment.type,
         equipment.brand,
@@ -520,7 +521,7 @@ function ListadoEquipos() {
                 type="search"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Buscar por nombre, serie, marca..."
+                placeholder="Buscar por nombre, código, serie o marca..."
                 className="h-12 w-full rounded-2xl border border-[#e8dfd0] bg-[#f2ece0] pl-11 pr-4 text-sm font-bold text-[#2a263a] outline-none transition placeholder:text-[#9b95ac] focus:border-blue-300 focus:bg-white focus:ring-2 focus:ring-blue-100"
               />
             </label>

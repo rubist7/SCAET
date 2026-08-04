@@ -4,6 +4,7 @@ import DateInput from "./DateInput";
 import { formatDate, formatResguardoDate } from "./dateUtils";
 import BackButton from "../components/BackButton";
 import Signature from "../components/Signature";
+import { descargarPdfResguardo, generarPdfResguardo } from "../utils/resguardoPdf";
 
 const RESGUARDO_OPTIONS = [
   { value: "equipo", label: "Equipo tecnologico" },
@@ -611,37 +612,78 @@ function DocumentPreview({ data, signature }) {
   return <div className="min-w-0 rounded-2xl border border-[#eee8f6] bg-white px-4 py-6 shadow-sm sm:px-7">{formats[data.tipoResguardo]}</div>;
 }
 
-function GeneratedResguardoModal({ data, signature, onClose }) {
+function GeneratedResguardoModal({ data, signature, idResguardo, onClose }) {
+  const TIEMPO_MAXIMO_ENVIO_MS = 60_000;
   const documentRef = useRef(null);
+  const [generandoPdf, setGenerandoPdf] = useState(false);
+  const [enviandoCorreo, setEnviandoCorreo] = useState(false);
+  const [correoEnviado, setCorreoEnviado] = useState(Boolean(data.correoEnviado));
+  const [mensajeCorreo, setMensajeCorreo] = useState("");
+  const [errorCorreo, setErrorCorreo] = useState(false);
 
-  const downloadPdf = () => {
-    const printWindow = window.open("", "_blank", "width=900,height=700");
-    if (!printWindow || !documentRef.current) return;
-    const printStyles = `
-      @page { size: Letter; margin: 14mm; }
-      * { box-sizing: border-box; }
-      html, body { margin: 0; padding: 0; background: #fff !important; color: #21192c; font-family: Arial, Helvetica, sans-serif; }
-      body { width: 100%; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .scaet-print-document { width: 100%; margin: 0; }
-      .scaet-print-document > div { width: 100%; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; padding: 0 !important; }
-      table { width: 100% !important; min-width: 0 !important; border-collapse: collapse; table-layout: auto; }
-      thead { display: table-header-group; }
-      tfoot { display: table-footer-group; }
-      tr, img, svg { break-inside: avoid; page-break-inside: avoid; }
-      th, td { vertical-align: top; overflow-wrap: anywhere; }
-      img { max-width: 100%; }
-      button { display: none !important; }
-      @media print {
-        .scaet-print-document { width: 100%; margin: 0; }
-        .scaet-print-document .mt-7 { margin-top: 12px !important; }
-        .scaet-print-document .gap-8 { gap: 16px !important; }
-        .scaet-print-document .h-32 { height: 88px !important; }
+  const crearPdf = async () => {
+    if (!documentRef.current) throw new Error("No se encontro el documento del resguardo");
+    return generarPdfResguardo(documentRef.current, { cantidadEquipos: data.items?.length || 1 });
+  };
+
+  const downloadPdf = async () => {
+    setGenerandoPdf(true);
+    setMensajeCorreo("");
+    try {
+      descargarPdfResguardo(await crearPdf(), data.folio);
+    } catch (error) {
+      setErrorCorreo(true);
+      setMensajeCorreo(error.message || "No se pudo generar el PDF");
+    } finally {
+      setGenerandoPdf(false);
+    }
+  };
+
+  const enviarCorreo = async () => {
+    if (!idResguardo) {
+      setErrorCorreo(true);
+      setMensajeCorreo("No se encontro el identificador del resguardo");
+      return;
+    }
+    if (correoEnviado && !window.confirm("Este resguardo ya fue enviado. ¿Deseas enviarlo nuevamente?")) return;
+
+    setEnviandoCorreo(true);
+    setErrorCorreo(false);
+    setMensajeCorreo("");
+    try {
+      const pdf = await crearPdf();
+      const formData = new FormData();
+      formData.append("pdf", pdf, `${data.folio || "resguardo"}.pdf`);
+      const controller = new AbortController();
+      const timeoutEnvio = window.setTimeout(() => controller.abort(), TIEMPO_MAXIMO_ENVIO_MS);
+      let response;
+      console.info("Iniciando fetch de correo");
+      try {
+        response = await fetch(`/api/resguardos/${idResguardo}/enviar`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${localStorage.getItem("scaet-token")}` },
+          body: formData,
+          signal: controller.signal,
+        });
+      } finally {
+        window.clearTimeout(timeoutEnvio);
+        console.info("Fetch de correo finalizado");
       }
-    `;
-    printWindow.document.write(`<html><head>${document.head.innerHTML}<title>${data.folio || "Documento SCAET"}</title><style>${printStyles}</style></head><body><main class="scaet-print-document">${documentRef.current.innerHTML}</main></body></html>`);
-    printWindow.document.close();
-    printWindow.focus();
-    window.setTimeout(() => printWindow.print(), 500);
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.mensaje || "No se pudo enviar el resguardo por correo");
+
+      setCorreoEnviado(true);
+      setMensajeCorreo("Resguardo enviado correctamente al colaborador y con copia al responsable.");
+    } catch (error) {
+      setErrorCorreo(true);
+      setMensajeCorreo(
+        error.name === "AbortError"
+          ? "El resguardo está guardado, pero el servicio de correo no respondió."
+          : error.message || "No se pudo enviar el resguardo por correo"
+      );
+    } finally {
+      setEnviandoCorreo(false);
+    }
   };
 
   const downloadTxt = () => {
@@ -676,10 +718,11 @@ function GeneratedResguardoModal({ data, signature, onClose }) {
           </div>
           <div className="p-4 sm:p-5">
             <div ref={documentRef}><DocumentPreview data={data} signature={signature} /></div>
+            {mensajeCorreo && <p className={`mt-3 rounded-[8px] px-3 py-2 text-xs font-bold ${errorCorreo ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-700"}`}>{mensajeCorreo}</p>}
             <div className="mt-3 grid gap-2 sm:grid-cols-3">
-              <button type="button" onClick={() => window.alert("El envío por correo se configurará en una fase posterior.")} className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#3A9AF2] text-xs font-black text-[#FFFFFF] transition hover:bg-[#238BEA]"><Mail size={14} />Enviar por Gmail</button>
+              <button type="button" onClick={enviarCorreo} disabled={enviandoCorreo || generandoPdf} className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#3A9AF2] text-xs font-black text-[#FFFFFF] transition hover:bg-[#238BEA] disabled:cursor-not-allowed disabled:opacity-60"><Mail size={14} />{enviandoCorreo ? "Enviando..." : correoEnviado ? "Reenviar por correo" : "Enviar por correo"}</button>
               <button type="button" onClick={downloadTxt} className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#eee8dc] text-xs font-black text-[#6f6584] transition hover:bg-[#e4dccf]"><FileText size={14} />Descargar TXT</button>
-              <button type="button" onClick={downloadPdf} className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#eee8dc] text-xs font-black text-[#6f6584]"><Download size={14} />Descargar PDF</button>
+              <button type="button" onClick={downloadPdf} disabled={enviandoCorreo || generandoPdf} className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#eee8dc] text-xs font-black text-[#6f6584] disabled:cursor-not-allowed disabled:opacity-60"><Download size={14} />{generandoPdf ? "Generando..." : "Descargar PDF"}</button>
             </div>
           </div>
         </section>
@@ -1127,7 +1170,7 @@ function ResguardoEditor({ resguardo, onBack, onAddItem, onRemoveItem, onGenerat
         </section>
       </div>
 
-      {generatedOpen && <GeneratedResguardoModal data={{ ...data, folio: generatedResult?.folio || data.folio }} signature={signature} onClose={() => { setGeneratedOpen(false); if (generatedResult) onBack?.(); }} />}
+      {generatedOpen && <GeneratedResguardoModal data={{ ...data, folio: generatedResult?.folio || data.folio }} signature={signature} idResguardo={source.idResguardo || generatedResult?.id_resguardo} onClose={() => { setGeneratedOpen(false); if (generatedResult) onBack?.(); }} />}
     </div>
   );
 }
@@ -1188,6 +1231,7 @@ function mapApiResguardo(payload) {
     observaciones: payload.asignacion.observaciones_generales || "",
     firmaColaborador: payload.resguardo.firma_colaborador || "",
     firmaResponsable: payload.resguardo.firma_responsable || "",
+    correoEnviado: Boolean(payload.resguardo.correo_enviado),
     items,
   };
 }
