@@ -652,12 +652,12 @@ function GeneratedDevolucionModal({ data, items, signature, idResguardo, onClose
           <div className="p-4 sm:p-5">
             <div ref={documentRef}><DocumentPreview data={data} items={items} signature={signature} /></div>
             {mensajeCorreo && <p className={`mt-3 rounded-[8px] px-3 py-2 text-xs font-bold ${errorCorreo ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-700"}`}>{mensajeCorreo}</p>}
-            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-between sm:gap-12">
-              <button type="button" onClick={enviarCorreo} disabled={enviandoCorreo || generandoPdf} className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#3A9AF2] px-4 text-xs font-black text-[#FFFFFF] transition hover:bg-[#238BEA] disabled:cursor-not-allowed disabled:opacity-60">
+            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <button type="button" onClick={enviarCorreo} disabled={enviandoCorreo || generandoPdf} className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-[8px] bg-[#3A9AF2] px-4 text-xs font-black text-[#FFFFFF] transition hover:bg-[#238BEA] disabled:cursor-not-allowed disabled:opacity-60">
                 <Mail size={14} />
                 {enviandoCorreo ? "Enviando..." : correoEnviado ? "Reenviar por correo" : "Enviar por correo"}
               </button>
-              <button type="button" onClick={downloadPdf} disabled={enviandoCorreo || generandoPdf} className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#eee8dc] px-4 text-xs font-black text-[#6f6584] disabled:cursor-not-allowed disabled:opacity-60">
+              <button type="button" onClick={downloadPdf} disabled={enviandoCorreo || generandoPdf} className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-[8px] bg-[#eee8dc] px-4 text-xs font-black text-[#6f6584] disabled:cursor-not-allowed disabled:opacity-60">
                 <Download size={14} />
                 {generandoPdf ? "Generando..." : "Descargar PDF"}
               </button>
