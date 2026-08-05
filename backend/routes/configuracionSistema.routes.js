@@ -11,6 +11,11 @@ const TAMANO_MAXIMO_BYTES = 5 * 1024 * 1024;
 const TIPOS_PERMITIDOS = new Set(["image/jpeg", "image/png", "image/webp"]);
 const CORREO_VALIDO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const CARPETA_CONFIGURACION = path.join(__dirname, "../../uploads/configuracion");
+const CONFIGURACION_PREDETERMINADA = {
+  nombre_empresa: "Puente Calinda",
+  nombre_responsable: "Javier Echeverria",
+  puesto_responsable: "Gerente de IT",
+};
 
 function normalizarTexto(valor, maximo) {
   if (typeof valor !== "string") return null;
@@ -126,6 +131,19 @@ async function prepararReemplazoFirma(archivo) {
   }
 }
 
+async function retirarFirmaPersonalizada() {
+  const rutaFinal = path.join(CARPETA_CONFIGURACION, FIRMA_KEY);
+  const rutaRespaldo = path.join(CARPETA_CONFIGURACION, `.${FIRMA_KEY}.${crypto.randomUUID()}.restore.webp`);
+
+  try {
+    await fs.rename(rutaFinal, rutaRespaldo);
+    return { rutaFinal, rutaRespaldo };
+  } catch (error) {
+    if (error.code === "ENOENT") return { rutaFinal, rutaRespaldo: null };
+    throw error;
+  }
+}
+
 function crearRouterConfiguracionSistema({ pool, verificarToken, autorizarRoles, registrarLogActividad }) {
   const router = express.Router();
   const soloAdmin = [verificarToken, autorizarRoles("admin")];
@@ -148,11 +166,10 @@ function crearRouterConfiguracionSistema({ pool, verificarToken, autorizarRoles,
     const nombreEmpresa = normalizarTexto(body.nombre_empresa, 150);
     const nombreResponsable = normalizarTexto(body.nombre_responsable, 150);
     const puestoResponsable = normalizarTexto(body.puesto_responsable, 150);
-    const correoCc = normalizarCorreoOpcional(body.correo_cc);
 
-    if (!nombreEmpresa || !nombreResponsable || !puestoResponsable || correoCc === null) {
+    if (!nombreEmpresa || !nombreResponsable || !puestoResponsable) {
       return res.status(400).json({
-        mensaje: "Nombre de empresa, responsable y puesto son obligatorios; el correo de copia debe ser valido si se proporciona",
+        mensaje: "Nombre de empresa, responsable y puesto son obligatorios",
       });
     }
 
@@ -165,9 +182,8 @@ function crearRouterConfiguracionSistema({ pool, verificarToken, autorizarRoles,
          ON DUPLICATE KEY UPDATE
           nombre_empresa = VALUES(nombre_empresa),
           nombre_responsable = VALUES(nombre_responsable),
-          puesto_responsable = VALUES(puesto_responsable),
-          correo_cc = VALUES(correo_cc)`,
-        [CONFIGURACION_ID, nombreEmpresa, nombreResponsable, puestoResponsable, correoCc]
+          puesto_responsable = VALUES(puesto_responsable)`,
+        [CONFIGURACION_ID, nombreEmpresa, nombreResponsable, puestoResponsable, ""]
       );
 
       const configuracion = await obtenerConfiguracion(pool);
@@ -175,7 +191,6 @@ function crearRouterConfiguracionSistema({ pool, verificarToken, autorizarRoles,
         ["nombre_empresa", nombreEmpresa],
         ["nombre_responsable", nombreResponsable],
         ["puesto_responsable", puestoResponsable],
-        ["correo_cc", correoCc],
       ]
         .filter(([campo, valor]) => !anterior || anterior[campo] !== valor)
         .map(([campo]) => campo);
@@ -186,18 +201,116 @@ function crearRouterConfiguracionSistema({ pool, verificarToken, autorizarRoles,
         modulo: "Configuracion del sistema",
         entidad: "configuracion_sistema",
         idEntidad: CONFIGURACION_ID,
-        descripcion: anterior ? "Configuracion del sistema actualizada" : "Configuracion del sistema creada",
+        descripcion: anterior ? "Configuracion institucional actualizada" : "Configuracion institucional creada",
         req,
         detalles: { campos_modificados: camposModificados },
       });
 
       return res.json({
-        mensaje: "Configuracion del sistema guardada correctamente",
+        mensaje: "Configuracion institucional guardada correctamente",
         configuracion: serializarConfiguracion(configuracion),
       });
     } catch (error) {
-      console.error("Error al guardar configuracion del sistema:", error);
-      return res.status(500).json({ mensaje: "No se pudo guardar la configuracion del sistema" });
+      console.error("Error al guardar configuracion institucional:", error);
+      return res.status(500).json({ mensaje: "No se pudo guardar la configuracion institucional" });
+    }
+  });
+
+  router.put("/correo", ...soloAdmin, async (req, res) => {
+    const body = req.body && typeof req.body === "object" ? req.body : {};
+    const correoCc = normalizarCorreoOpcional(body.correo_cc);
+
+    if (correoCc === null) {
+      return res.status(400).json({ mensaje: "El correo de copia debe ser valido si se proporciona" });
+    }
+
+    try {
+      const anterior = await obtenerConfiguracion(pool);
+      await pool.query(
+        `INSERT INTO configuracion_sistema
+          (id_configuracion, nombre_empresa, nombre_responsable, puesto_responsable, correo_cc)
+         VALUES (?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE correo_cc = VALUES(correo_cc)`,
+        [
+          CONFIGURACION_ID,
+          CONFIGURACION_PREDETERMINADA.nombre_empresa,
+          CONFIGURACION_PREDETERMINADA.nombre_responsable,
+          CONFIGURACION_PREDETERMINADA.puesto_responsable,
+          correoCc,
+        ]
+      );
+
+      const configuracion = await obtenerConfiguracion(pool);
+      void registrarLogActividad({
+        usuario: req.usuario,
+        accion: "Edicion",
+        modulo: "Configuracion del sistema",
+        entidad: "configuracion_sistema",
+        idEntidad: CONFIGURACION_ID,
+        descripcion: anterior ? "Correo de copia actualizado" : "Configuracion de correo creada",
+        req,
+        detalles: { campos_modificados: ["correo_cc"] },
+      });
+
+      return res.json({
+        mensaje: "Configuracion de correo guardada correctamente",
+        configuracion: serializarConfiguracion(configuracion),
+      });
+    } catch (error) {
+      console.error("Error al guardar configuracion de correo:", error);
+      return res.status(500).json({ mensaje: "No se pudo guardar la configuracion de correo" });
+    }
+  });
+
+  router.post("/restaurar-predeterminada", ...soloAdmin, async (req, res) => {
+    let firmaRetirada;
+
+    try {
+      firmaRetirada = await retirarFirmaPersonalizada();
+      await pool.query(
+        `INSERT INTO configuracion_sistema
+          (id_configuracion, nombre_empresa, nombre_responsable, puesto_responsable, correo_cc, firma_key)
+         VALUES (?, ?, ?, ?, ?, NULL)
+         ON DUPLICATE KEY UPDATE
+          nombre_empresa = VALUES(nombre_empresa),
+          nombre_responsable = VALUES(nombre_responsable),
+          puesto_responsable = VALUES(puesto_responsable),
+          firma_key = NULL`,
+        [
+          CONFIGURACION_ID,
+          CONFIGURACION_PREDETERMINADA.nombre_empresa,
+          CONFIGURACION_PREDETERMINADA.nombre_responsable,
+          CONFIGURACION_PREDETERMINADA.puesto_responsable,
+          "",
+        ]
+      );
+
+      if (firmaRetirada.rutaRespaldo) {
+        await fs.rm(firmaRetirada.rutaRespaldo, { force: true }).catch(() => {});
+      }
+
+      const configuracion = await obtenerConfiguracion(pool);
+      void registrarLogActividad({
+        usuario: req.usuario,
+        accion: "Restauracion",
+        modulo: "Configuracion del sistema",
+        entidad: "configuracion_sistema",
+        idEntidad: CONFIGURACION_ID,
+        descripcion: "Configuracion institucional restaurada a valores predeterminados",
+        req,
+        detalles: { campos_modificados: ["nombre_empresa", "nombre_responsable", "puesto_responsable", "firma_key"] },
+      });
+
+      return res.json({
+        mensaje: "Configuracion institucional restaurada a valores predeterminados",
+        configuracion: serializarConfiguracion(configuracion),
+      });
+    } catch (error) {
+      if (firmaRetirada?.rutaRespaldo) {
+        await fs.rename(firmaRetirada.rutaRespaldo, firmaRetirada.rutaFinal).catch(() => {});
+      }
+      console.error("Error al restaurar configuracion institucional:", error);
+      return res.status(500).json({ mensaje: "No se pudo restaurar la configuracion institucional" });
     }
   });
 
