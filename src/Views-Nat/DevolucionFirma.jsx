@@ -511,10 +511,13 @@ function PreviewAssetsList({ items }) {
 }
 
 function DocumentPreview({ data, items, signature }) {
+  const institucion = data.configuracionInstitucional || {};
+  const empresa = institucion.nombre_empresa || "Puente Calinda";
+  const puesto = institucion.puesto_responsable || "Gerencia de Sistemas";
   return (
     <div className="min-w-0 rounded-2xl border border-[#eee8f6] bg-white px-4 py-6 shadow-sm sm:px-7">
       <div className="text-center">
-        <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-[#b7ab9b]">Puente Calinda - Gerencia de Sistemas</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-[#b7ab9b]">{empresa} - {puesto}</p>
         <h2 className="mt-1 text-sm font-black text-[#21192c]">Devolucion de {selectionTitle(items)}</h2>
         <p className="mt-1 text-[10px] font-semibold text-[#b7ab9b]">
           Folio: {data.folio} - Fecha: {formatDate(data.fecha)}
@@ -526,7 +529,7 @@ function DocumentPreview({ data, items, signature }) {
         <PreviewRow label="Num. colaborador" value={data.colaborador.numero} />
         <PreviewRow label="Area / Depto." value={`${data.colaborador.area} - ${data.colaborador.departamento || "-"}`} />
         <PreviewRow label="Puesto" value={data.colaborador.puesto} />
-        <PreviewRow label="Responsable" value={data.responsableEntrega} />
+        <PreviewRow label="Responsable" value={institucion.nombre_responsable || data.responsableEntrega} />
         <PreviewRow label="Total activos" value={items.length} />
         <PreviewRow label="Fecha devolucion" value={formatDate(data.fecha)} />
         <PreviewRow label="Estado" value={data.estado} />
@@ -545,7 +548,7 @@ function DocumentPreview({ data, items, signature }) {
           <p className="mt-2 border-t border-[#b7ab9b] pt-2 text-[10px] font-semibold tracking-[0.18em] text-[#b7ab9b]">Firma del colaborador</p>
           <ReceiverSignatureDetails colaborador={data.colaborador} />
         </div>
-        <Signature type="entrega" />
+        <Signature type="entrega" institucion={institucion} />
       </div>
     </div>
   );
@@ -649,12 +652,12 @@ function GeneratedDevolucionModal({ data, items, signature, idResguardo, onClose
           <div className="p-4 sm:p-5">
             <div ref={documentRef}><DocumentPreview data={data} items={items} signature={signature} /></div>
             {mensajeCorreo && <p className={`mt-3 rounded-[8px] px-3 py-2 text-xs font-bold ${errorCorreo ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-700"}`}>{mensajeCorreo}</p>}
-            <div className="mt-3 grid gap-2 sm:grid-cols-3">
-              <button type="button" onClick={enviarCorreo} disabled={enviandoCorreo || generandoPdf} className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#3A9AF2] text-xs font-black text-[#FFFFFF] transition hover:bg-[#238BEA] disabled:cursor-not-allowed disabled:opacity-60">
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-between sm:gap-12">
+              <button type="button" onClick={enviarCorreo} disabled={enviandoCorreo || generandoPdf} className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#3A9AF2] px-4 text-xs font-black text-[#FFFFFF] transition hover:bg-[#238BEA] disabled:cursor-not-allowed disabled:opacity-60">
                 <Mail size={14} />
                 {enviandoCorreo ? "Enviando..." : correoEnviado ? "Reenviar por correo" : "Enviar por correo"}
               </button>
-              <button type="button" onClick={downloadPdf} disabled={enviandoCorreo || generandoPdf} className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#eee8dc] text-xs font-black text-[#6f6584] disabled:cursor-not-allowed disabled:opacity-60">
+              <button type="button" onClick={downloadPdf} disabled={enviandoCorreo || generandoPdf} className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#eee8dc] px-4 text-xs font-black text-[#6f6584] disabled:cursor-not-allowed disabled:opacity-60">
                 <Download size={14} />
                 {generandoPdf ? "Generando..." : "Descargar PDF"}
               </button>
@@ -903,7 +906,8 @@ function mapAssignmentToDevolucion(payload) {
       correo: payload.colaborador.correo,
     },
     equipo: { id: first.id, codigo: first.codigo, nombre: first.nombre, tipo: first.tipoActivo, marca: first.marca, modelo: first.modelo, serie: first.serie },
-    responsableEntrega: payload.responsable?.nombre_completo || "-",
+    responsableEntrega: payload.configuracion_institucional?.nombre_responsable || payload.responsable?.nombre_completo || "-",
+    configuracionInstitucional: payload.configuracion_institucional || null,
     observaciones: "",
     items,
   };

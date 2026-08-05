@@ -12,9 +12,8 @@ function obtenerConfiguracionCorreo() {
   const user = texto(process.env.MAIL_USER);
   const password = texto(process.env.MAIL_PASSWORD);
   const fromName = texto(process.env.MAIL_FROM_NAME);
-  const cc = texto(process.env.MAIL_CC).toLowerCase();
 
-  if (!host || !Number.isInteger(port) || port < 1 || port > 65535 || !user || !password || !fromName || !cc) {
+  if (!host || !Number.isInteger(port) || port < 1 || port > 65535 || !user || !password || !fromName) {
     return null;
   }
 
@@ -24,7 +23,6 @@ function obtenerConfiguracionCorreo() {
     secure: texto(process.env.MAIL_SECURE).toLowerCase() === "true",
     auth: { user, pass: password },
     from: `${fromName} <${user}>`,
-    cc,
   };
 }
 
@@ -53,6 +51,16 @@ function normalizarCorreo(valor) {
 
 function esCorreoValido(valor) {
   return correoValido.test(normalizarCorreo(valor));
+}
+
+function resolverCorreoCc(correoConfiguracion) {
+  const configurado = normalizarCorreo(correoConfiguracion);
+  if (esCorreoValido(configurado)) return { correo: configurado, fuente: "configuracion" };
+
+  const respaldo = normalizarCorreo(process.env.MAIL_CC);
+  if (esCorreoValido(respaldo)) return { correo: respaldo, fuente: "env" };
+
+  return { correo: null, fuente: null };
 }
 
 function normalizarEquipos(equipos) {
@@ -174,7 +182,7 @@ function crearMensajeDevolucion({ folio, nombreColaborador, equipos }) {
   return { asunto, contenido, codigosEquipo };
 }
 
-async function enviarCorreoConPdf({ correoColaborador, asunto, contenido, nombreAdjunto, pdfBuffer }) {
+async function enviarCorreoConPdf({ correoColaborador, correoCc = null, asunto, contenido, nombreAdjunto, pdfBuffer }) {
   if (!transporter || !configuracionCorreo) {
     const error = new Error("El servicio de correo no esta configurado");
     error.code = "CORREO_NO_CONFIGURADO";
@@ -182,9 +190,9 @@ async function enviarCorreoConPdf({ correoColaborador, asunto, contenido, nombre
   }
 
   const destinatario = normalizarCorreo(correoColaborador);
-  const copia = normalizarCorreo(configuracionCorreo.cc);
-  if (!esCorreoValido(destinatario) || !esCorreoValido(copia)) {
-    const error = new Error("Los correos configurados para el envio no son validos");
+  const copia = normalizarCorreo(correoCc);
+  if (!esCorreoValido(destinatario)) {
+    const error = new Error("El correo del colaborador no es valido");
     error.code = "CORREO_INVALIDO";
     throw error;
   }
@@ -201,14 +209,15 @@ async function enviarCorreoConPdf({ correoColaborador, asunto, contenido, nombre
     }],
   };
 
-  if (copia !== destinatario) opciones.cc = copia;
+  if (esCorreoValido(copia) && copia !== destinatario) opciones.cc = copia;
   return transporter.sendMail(opciones);
 }
 
-async function enviarResguardoCorreo({ folio, nombreColaborador, correoColaborador, equipos, pdfBuffer }) {
+async function enviarResguardoCorreo({ folio, nombreColaborador, correoColaborador, correoCc, equipos, pdfBuffer }) {
   const { asunto, contenido, codigosEquipo } = crearMensajeResguardo({ folio, nombreColaborador, equipos });
   return enviarCorreoConPdf({
     correoColaborador,
+    correoCc,
     asunto,
     contenido,
     nombreAdjunto: crearNombreAdjunto(folio, codigosEquipo),
@@ -216,10 +225,11 @@ async function enviarResguardoCorreo({ folio, nombreColaborador, correoColaborad
   });
 }
 
-async function enviarDevolucionCorreo({ folio, nombreColaborador, correoColaborador, equipos, pdfBuffer }) {
+async function enviarDevolucionCorreo({ folio, nombreColaborador, correoColaborador, correoCc, equipos, pdfBuffer }) {
   const { asunto, contenido, codigosEquipo } = crearMensajeDevolucion({ folio, nombreColaborador, equipos });
   return enviarCorreoConPdf({
     correoColaborador,
+    correoCc,
     asunto,
     contenido,
     nombreAdjunto: crearNombreAdjuntoDevolucion(folio, codigosEquipo),
@@ -231,5 +241,6 @@ module.exports = {
   enviarDevolucionCorreo,
   enviarResguardoCorreo,
   esCorreoValido,
+  resolverCorreoCc,
   verificarTransporterCorreo,
 };

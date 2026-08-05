@@ -253,6 +253,13 @@ function NataliaFlow({ initialScreen = "asignacion" }) {
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.mensaje || "No se pudo generar el resguardo");
+    const configuracionResponse = await fetch(`/api/resguardos/${result.id_resguardo}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("scaet-token")}` },
+    });
+    if (configuracionResponse.ok) {
+      const configuracionPayload = await configuracionResponse.json();
+      result.configuracion_institucional = configuracionPayload.configuracion_institucional || null;
+    }
     setResguardosPorColaborador({});
     setAsignacionInicial(null);
     return result;

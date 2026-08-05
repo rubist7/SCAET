@@ -414,12 +414,13 @@ function AutoSignature({ signerName }) {
 }
 
 function OfficialHeader({ title, data }) {
+  const institucion = data.configuracionInstitucional || {};
   return (
     <header className="pb-5">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-lg font-black tracking-[0.08em] text-blue-600">Puente Calinda</p>
-          <p className="text-[10px] uppercase tracking-[0.18em] text-[#8f879b]">Gerencia de Sistemas</p>
+          <p className="text-lg font-black tracking-[0.08em] text-blue-600">{institucion.nombre_empresa || "Puente Calinda"}</p>
+          <p className="text-[10px] uppercase tracking-[0.18em] text-[#8f879b]">{institucion.puesto_responsable || "Gerencia de Sistemas"}</p>
         </div>
         <p className="pt-2 text-right text-[10px] font-normal text-[#6f6584]">{formatDate(data.fecha)}</p>
       </div>
@@ -502,7 +503,7 @@ function ReceiverSignatureDetails({ colaborador }) {
   );
 }
 
-function SignatureSection({ signature, colaborador }) {
+function SignatureSection({ signature, colaborador, institucion }) {
   return (
     <div className="mx-auto mt-7 grid max-w-2xl gap-8 text-center sm:grid-cols-2">
       <div>
@@ -512,7 +513,7 @@ function SignatureSection({ signature, colaborador }) {
         <div className="mt-2 border-t border-[#b7ab9b] pt-2 text-[9px] font-bold uppercase tracking-[0.14em] text-[#b7ab9b]">Firma de recibe</div>
         <ReceiverSignatureDetails colaborador={colaborador} />
       </div>
-      <Signature type="entrega" />
+      <Signature type="entrega" institucion={institucion} />
     </div>
   );
 }
@@ -532,7 +533,7 @@ function ResguardoEquipo({ data, signature }) {
       </div>
       <AssetsTable items={data.items} />
       <ResponsibilityText>{responsibilityForItems(data.items)}</ResponsibilityText>
-      <SignatureSection signature={signature} colaborador={data.colaborador} />
+      <SignatureSection signature={signature} colaborador={data.colaborador} institucion={data.configuracionInstitucional} />
     </>
   );
 }
@@ -550,7 +551,7 @@ function ResguardoGeneral({ data, signature }) {
       </div>
       <AssetsTable items={data.items} />
       <ResponsibilityText>{responsibilityForItems(data.items)}</ResponsibilityText>
-      <SignatureSection signature={signature} colaborador={data.colaborador} />
+      <SignatureSection signature={signature} colaborador={data.colaborador} institucion={data.configuracionInstitucional} />
     </>
   );
 }
@@ -570,7 +571,7 @@ function ResguardoTarjetaComedor({ data, signature }) {
         <PreviewRow label="Motivo" value={data.motivoTarjeta} />
       </div>
       <ResponsibilityText>{RESPONSIBILITY_TEXTS.tarjeta}</ResponsibilityText>
-      <SignatureSection signature={signature} colaborador={data.colaborador} />
+      <SignatureSection signature={signature} colaborador={data.colaborador} institucion={data.configuracionInstitucional} />
     </>
   );
 }
@@ -589,7 +590,7 @@ function ResguardoYubikey({ data, signature }) {
         <PreviewRow label="Liga de trabajo" value={data.ligasTrabajo} />
       </div>
       <ResponsibilityText>{RESPONSIBILITY_TEXTS.yubikey}</ResponsibilityText>
-      <SignatureSection signature={signature} colaborador={data.colaborador} />
+      <SignatureSection signature={signature} colaborador={data.colaborador} institucion={data.configuracionInstitucional} />
     </>
   );
 }
@@ -700,9 +701,9 @@ function GeneratedResguardoModal({ data, signature, idResguardo, onClose }) {
           <div className="p-4 sm:p-5">
             <div ref={documentRef}><DocumentPreview data={data} signature={signature} /></div>
             {mensajeCorreo && <p className={`mt-3 rounded-[8px] px-3 py-2 text-xs font-bold ${errorCorreo ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-700"}`}>{mensajeCorreo}</p>}
-            <div className="mt-3 grid gap-2 sm:grid-cols-3">
-              <button type="button" onClick={enviarCorreo} disabled={enviandoCorreo || generandoPdf} className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#3A9AF2] text-xs font-black text-[#FFFFFF] transition hover:bg-[#238BEA] disabled:cursor-not-allowed disabled:opacity-60"><Mail size={14} />{enviandoCorreo ? "Enviando..." : correoEnviado ? "Reenviar por correo" : "Enviar por correo"}</button>
-              <button type="button" onClick={downloadPdf} disabled={enviandoCorreo || generandoPdf} className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#eee8dc] text-xs font-black text-[#6f6584] disabled:cursor-not-allowed disabled:opacity-60"><Download size={14} />{generandoPdf ? "Generando..." : "Descargar PDF"}</button>
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-between sm:gap-12">
+              <button type="button" onClick={enviarCorreo} disabled={enviandoCorreo || generandoPdf} className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#3A9AF2] px-4 text-xs font-black text-[#FFFFFF] transition hover:bg-[#238BEA] disabled:cursor-not-allowed disabled:opacity-60"><Mail size={14} />{enviandoCorreo ? "Enviando..." : correoEnviado ? "Reenviar por correo" : "Enviar por correo"}</button>
+              <button type="button" onClick={downloadPdf} disabled={enviandoCorreo || generandoPdf} className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#eee8dc] px-4 text-xs font-black text-[#6f6584] disabled:cursor-not-allowed disabled:opacity-60"><Download size={14} />{generandoPdf ? "Generando..." : "Descargar PDF"}</button>
             </div>
           </div>
         </section>
@@ -1150,7 +1151,7 @@ function ResguardoEditor({ resguardo, onBack, onAddItem, onRemoveItem, onGenerat
         </section>
       </div>
 
-      {generatedOpen && <GeneratedResguardoModal data={{ ...data, folio: generatedResult?.folio || data.folio }} signature={signature} idResguardo={source.idResguardo || generatedResult?.id_resguardo} onClose={() => { setGeneratedOpen(false); if (generatedResult) onBack?.(); }} />}
+      {generatedOpen && <GeneratedResguardoModal data={{ ...data, folio: generatedResult?.folio || data.folio, configuracionInstitucional: generatedResult?.configuracion_institucional || data.configuracionInstitucional }} signature={signature} idResguardo={source.idResguardo || generatedResult?.id_resguardo} onClose={() => { setGeneratedOpen(false); if (generatedResult) onBack?.(); }} />}
     </div>
   );
 }
@@ -1207,7 +1208,8 @@ function mapApiResguardo(payload) {
     accesorios: first.accesorios_entregados || "",
     estadoFisico: first.estado_fisico_entrega || "Buen estado",
     ubicacionTrabajo: colaborador.area || colaborador.departamento || "-",
-    responsableEntrega: payload.responsable?.nombre_completo || "-",
+    responsableEntrega: payload.configuracion_institucional?.nombre_responsable || payload.responsable?.nombre_completo || "-",
+    configuracionInstitucional: payload.configuracion_institucional || null,
     observaciones: payload.asignacion.observaciones_generales || "",
     firmaColaborador: payload.resguardo.firma_colaborador || "",
     firmaResponsable: payload.resguardo.firma_responsable || "",

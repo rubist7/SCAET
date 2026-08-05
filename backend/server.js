@@ -1251,6 +1251,10 @@ async function consultarAsignacionCompleta(ejecutor, idAsignacion) {
       u.id_usuario AS id_responsable, u.nombre_completo AS responsable_nombre, u.rol AS responsable_rol,
       r.id_resguardo, r.folio, r.tipo_documento, r.estado AS estado_resguardo,
       r.firma_colaborador, r.firma_responsable, r.pdf_key, r.pdf_url, r.correo_enviado,
+      cs.nombre_empresa AS institucion_nombre_empresa,
+      cs.nombre_responsable AS institucion_nombre_responsable,
+      cs.puesto_responsable AS institucion_puesto_responsable,
+      cs.firma_key AS institucion_firma_key,
       d.id_detalle, d.id_equipo, d.tipo_asignacion, d.fecha_asignacion,
       d.fecha_devolucion_programada, d.fecha_devolucion_real, d.accesorios_entregados,
       d.estado_fisico_entrega, d.observaciones, d.estado_detalle, d.estado_fisico_devolucion,
@@ -1264,6 +1268,7 @@ async function consultarAsignacionCompleta(ejecutor, idAsignacion) {
     JOIN colaboradores c ON c.id_colaborador = a.id_colaborador
     LEFT JOIN usuarios u ON u.id_usuario = a.id_usuario_entrega
     LEFT JOIN resguardos r ON r.id_asignacion = a.id_asignacion AND r.tipo_documento = 'asignacion'
+    LEFT JOIN configuracion_sistema cs ON cs.id_configuracion = 1
     JOIN asignacion_detalles d ON d.id_asignacion = a.id_asignacion
     JOIN equipos e ON e.id_equipo = d.id_equipo
     WHERE a.id_asignacion = ?
@@ -1286,6 +1291,12 @@ async function consultarAsignacionCompleta(ejecutor, idAsignacion) {
       nombre_completo: filas[0].responsable_nombre,
       rol: filas[0].responsable_rol,
     } : null,
+    configuracion_institucional: {
+      nombre_empresa: filas[0].institucion_nombre_empresa || null,
+      nombre_responsable: filas[0].institucion_nombre_responsable || null,
+      puesto_responsable: filas[0].institucion_puesto_responsable || null,
+      firma_url: filas[0].institucion_firma_key ? "/uploads/configuracion/firma-responsable.webp" : null,
+    },
     resguardo: agrupada.resguardo ? {
       ...agrupada.resguardo,
       estado: filas[0].estado_resguardo,

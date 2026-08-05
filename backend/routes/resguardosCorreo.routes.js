@@ -4,6 +4,7 @@ const {
   enviarDevolucionCorreo,
   enviarResguardoCorreo,
   esCorreoValido,
+  resolverCorreoCc,
 } = require("../services/resguardoCorreo.service");
 
 const TAMANO_MAXIMO_PDF_BYTES = 10 * 1024 * 1024;
@@ -86,6 +87,14 @@ function crearRouterResguardosCorreo({ pool, verificarToken, autorizarRoles, reg
           return res.status(422).json({ mensaje: "El resguardo no tiene un correo de colaborador valido" });
         }
 
+        const [configuraciones] = await pool.query(
+          "SELECT correo_cc FROM configuracion_sistema WHERE id_configuracion = 1 LIMIT 1"
+        );
+        const correoCc = resolverCorreoCc(configuraciones[0]?.correo_cc);
+        if (!correoCc.correo) {
+          console.warn("Advertencia: resguardo enviado sin correo de copia configurado", { id_resguardo: idResguardo });
+        }
+
         const esDevolucion = resguardo.tipo_documento === "devolucion";
         const [equipos] = await pool.query(
           esDevolucion
@@ -114,6 +123,7 @@ function crearRouterResguardosCorreo({ pool, verificarToken, autorizarRoles, reg
           folio: resguardo.folio,
           nombreColaborador: resguardo.nombre_completo,
           correoColaborador,
+          correoCc: correoCc.correo,
           equipos,
           pdfBuffer: req.file.buffer,
         });
@@ -130,7 +140,7 @@ function crearRouterResguardosCorreo({ pool, verificarToken, autorizarRoles, reg
           idEntidad: idResguardo,
           descripcion: `${esDevolucion ? "Devolucion" : "Resguardo"} enviado por correo: ${resguardo.folio}`,
           req,
-          detalles: { id_resguardo: idResguardo, folio: resguardo.folio, correo_enviado_previamente: Boolean(resguardo.correo_enviado) },
+          detalles: { id_resguardo: idResguardo, folio: resguardo.folio, correo_enviado_previamente: Boolean(resguardo.correo_enviado), fuente_cc: correoCc.fuente || "sin_cc" },
         });
         return res.json({
           mensaje: esDevolucion ? "Devolucion enviada correctamente" : "Resguardo enviado correctamente",

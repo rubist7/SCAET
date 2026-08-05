@@ -10,6 +10,7 @@ const configuracionVacia = {
 
 const tiposImagenPermitidos = new Set(["image/jpeg", "image/png", "image/webp"]);
 const tamanoMaximoImagen = 5 * 1024 * 1024;
+const correoValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function crearUrlActualizada(url, fechaActualizacion) {
   if (!url) return null;
@@ -38,23 +39,23 @@ function validarImagen(archivo) {
   return "";
 }
 
-function PreviewCard({ title, description, previewUrl, onFileChange, inputId }) {
+function FirmaPreview({ previewUrl, onFileChange }) {
   return (
     <section className="rounded-2xl border border-[#f1edf5] bg-[#fbf9f4] p-4">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 className="text-sm font-extrabold text-[#201d31]">{title}</h3>
-          <p className="mt-1 text-xs font-bold text-[#8d88a2]">{description}</p>
+          <h3 className="text-sm font-extrabold text-[#201d31]">Firma institucional</h3>
+          <p className="mt-1 text-xs font-bold text-[#8d88a2]">Se utilizara en una fase posterior para documentos nuevos.</p>
         </div>
         <label
-          htmlFor={inputId}
+          htmlFor="firma-institucional"
           className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white px-4 text-xs font-extrabold text-blue-600 transition hover:bg-blue-50"
         >
           <AppIcon name="image" />
-          Cambiar imagen
+          Cambiar firma
         </label>
         <input
-          id={inputId}
+          id="firma-institucional"
           type="file"
           accept="image/jpeg,image/png,image/webp"
           className="sr-only"
@@ -63,9 +64,9 @@ function PreviewCard({ title, description, previewUrl, onFileChange, inputId }) 
       </div>
       <div className="mt-4 flex h-40 items-center justify-center overflow-hidden rounded-xl border border-dashed border-[#d9d1c1] bg-white p-3">
         {previewUrl ? (
-          <img src={previewUrl} alt={title} className="h-full w-full object-contain" />
+          <img src={previewUrl} alt="Firma institucional" className="h-full w-full object-contain" />
         ) : (
-          <p className="text-center text-xs font-bold text-[#9b95ac]">Aun no se ha cargado una imagen.</p>
+          <p className="text-center text-xs font-bold text-[#9b95ac]">Aun no se ha cargado una firma.</p>
         )}
       </div>
     </section>
@@ -76,8 +77,8 @@ export default function ConfiguracionSistema() {
   const [formulario, setFormulario] = useState(configuracionVacia);
   const [configuracionCargada, setConfiguracionCargada] = useState(null);
   const [firmaSeleccionada, setFirmaSeleccionada] = useState(null);
-  const [logoSeleccionado, setLogoSeleccionado] = useState(null);
   const [estado, setEstado] = useState({ tipo: "", texto: "" });
+  const [errores, setErrores] = useState({});
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
 
@@ -115,16 +116,16 @@ export default function ConfiguracionSistema() {
 
   useEffect(() => () => {
     if (firmaSeleccionada?.preview) URL.revokeObjectURL(firmaSeleccionada.preview);
-    if (logoSeleccionado?.preview) URL.revokeObjectURL(logoSeleccionado.preview);
-  }, [firmaSeleccionada, logoSeleccionado]);
+  }, [firmaSeleccionada]);
 
   const manejarCambio = (event) => {
     const { name, value } = event.target;
     setFormulario((actual) => ({ ...actual, [name]: value }));
+    setErrores((actual) => ({ ...actual, [name]: "" }));
     setEstado({ tipo: "", texto: "" });
   };
 
-  const manejarImagen = (tipo) => (event) => {
+  const manejarFirma = (event) => {
     const archivo = event.target.files?.[0];
     const error = validarImagen(archivo);
     event.target.value = "";
@@ -135,20 +136,30 @@ export default function ConfiguracionSistema() {
     if (!archivo) return;
 
     const seleccion = { archivo, preview: URL.createObjectURL(archivo) };
-    if (tipo === "firma") setFirmaSeleccionada(seleccion);
-    else setLogoSeleccionado(seleccion);
+    setFirmaSeleccionada(seleccion);
     setEstado({ tipo: "", texto: "" });
   };
 
-  const subirImagen = async (tipo, seleccion) => {
+  const subirFirma = async (seleccion) => {
     if (!seleccion) return null;
     const datos = new FormData();
-    datos.append("imagen", seleccion.archivo);
-    return apiRequest(`/configuracion-sistema/${tipo}`, { method: "POST", body: datos });
+    datos.append("firma", seleccion.archivo);
+    return apiRequest("/configuracion-sistema/firma", { method: "POST", body: datos });
   };
 
   const guardarConfiguracion = async (event) => {
     event.preventDefault();
+    const siguientesErrores = {
+      nombre_empresa: formulario.nombre_empresa.trim() ? "" : "El nombre de la empresa es obligatorio.",
+      nombre_responsable: formulario.nombre_responsable.trim() ? "" : "El nombre del responsable es obligatorio.",
+      puesto_responsable: formulario.puesto_responsable.trim() ? "" : "El puesto es obligatorio.",
+      correo_cc: formulario.correo_cc.trim() && !correoValido.test(formulario.correo_cc.trim())
+        ? "Ingresa un correo de copia valido."
+        : "",
+    };
+    setErrores(siguientesErrores);
+    if (Object.values(siguientesErrores).some(Boolean)) return;
+
     setGuardando(true);
     setEstado({ tipo: "", texto: "" });
 
@@ -162,16 +173,9 @@ export default function ConfiguracionSistema() {
 
       const firmaGuardada = firmaSeleccionada;
       if (firmaGuardada) {
-        data = await subirImagen("firma", firmaGuardada);
+        data = await subirFirma(firmaGuardada);
         aplicarConfiguracion(data.configuracion);
         setFirmaSeleccionada(null);
-      }
-
-      const logoGuardado = logoSeleccionado;
-      if (logoGuardado) {
-        data = await subirImagen("logo", logoGuardado);
-        aplicarConfiguracion(data.configuracion);
-        setLogoSeleccionado(null);
       }
 
       setEstado({ tipo: "exito", texto: "Configuracion del sistema guardada correctamente." });
@@ -182,17 +186,8 @@ export default function ConfiguracionSistema() {
     }
   };
 
-  const restaurarValores = () => {
-    aplicarConfiguracion(configuracionCargada);
-    setFirmaSeleccionada(null);
-    setLogoSeleccionado(null);
-    setEstado({ tipo: "", texto: "" });
-  };
-
   const firmaUrl = firmaSeleccionada?.preview
     || crearUrlActualizada(configuracionCargada?.firma_url, configuracionCargada?.fecha_actualizacion);
-  const logoUrl = logoSeleccionado?.preview
-    || crearUrlActualizada(configuracionCargada?.logo_url, configuracionCargada?.fecha_actualizacion);
 
   if (cargando) {
     return <p className="rounded-xl bg-white px-4 py-3 text-sm font-bold text-[#6f6584]">Cargando configuracion del sistema...</p>;
@@ -208,16 +203,7 @@ export default function ConfiguracionSistema() {
         </p>
       </section>
 
-      {estado.texto && (
-        <p
-          className={`rounded-xl px-4 py-3 text-sm font-bold ${estado.tipo === "error" ? "bg-rose-50 text-rose-600" : "bg-emerald-50 text-emerald-600"}`}
-          role="status"
-        >
-          {estado.texto}
-        </p>
-      )}
-
-      <form onSubmit={guardarConfiguracion} className="space-y-6 rounded-2xl bg-white p-5 shadow-sm sm:p-6">
+      <form noValidate onSubmit={guardarConfiguracion} className="space-y-6 rounded-2xl bg-white p-5 shadow-sm sm:p-6">
         <section className="space-y-4">
           <div className="border-b border-[#f1edf5] pb-3">
             <h2 className="text-base font-extrabold text-[#201d31]">Empresa</h2>
@@ -230,8 +216,10 @@ export default function ConfiguracionSistema() {
               onChange={manejarCambio}
               maxLength={150}
               required
+              aria-invalid={Boolean(errores.nombre_empresa)}
               className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-2 focus:ring-blue-100"
             />
+            {errores.nombre_empresa && <p className="mt-1 text-xs font-bold text-rose-600">{errores.nombre_empresa}</p>}
           </label>
         </section>
 
@@ -248,8 +236,10 @@ export default function ConfiguracionSistema() {
                 onChange={manejarCambio}
                 maxLength={150}
                 required
+                aria-invalid={Boolean(errores.nombre_responsable)}
                 className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-2 focus:ring-blue-100"
               />
+              {errores.nombre_responsable && <p className="mt-1 text-xs font-bold text-rose-600">{errores.nombre_responsable}</p>}
             </label>
             <label className="block">
               <span className="mb-2 block text-[11px] font-extrabold text-[#8d88a2]">Puesto o cargo</span>
@@ -259,33 +249,20 @@ export default function ConfiguracionSistema() {
                 onChange={manejarCambio}
                 maxLength={150}
                 required
+                aria-invalid={Boolean(errores.puesto_responsable)}
                 className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-2 focus:ring-blue-100"
               />
+              {errores.puesto_responsable && <p className="mt-1 text-xs font-bold text-rose-600">{errores.puesto_responsable}</p>}
             </label>
           </div>
         </section>
 
         <section className="space-y-4">
           <div className="border-b border-[#f1edf5] pb-3">
-            <h2 className="text-base font-extrabold text-[#201d31]">Imagenes institucionales</h2>
+            <h2 className="text-base font-extrabold text-[#201d31]">Firma institucional</h2>
             <p className="mt-1 text-xs font-bold text-[#8d88a2]">Formatos JPG, PNG o WEBP; maximo 5 MB.</p>
           </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <PreviewCard
-              title="Firma institucional"
-              description="Se utilizara en una fase posterior para documentos nuevos."
-              previewUrl={firmaUrl}
-              onFileChange={manejarImagen("firma")}
-              inputId="firma-institucional"
-            />
-            <PreviewCard
-              title="Logo de la empresa"
-              description="Queda preparado para futuras mejoras de documentos."
-              previewUrl={logoUrl}
-              onFileChange={manejarImagen("logo")}
-              inputId="logo-empresa"
-            />
-          </div>
+          <FirmaPreview previewUrl={firmaUrl} onFileChange={manejarFirma} />
         </section>
 
         <section className="space-y-4">
@@ -300,21 +277,23 @@ export default function ConfiguracionSistema() {
               value={formulario.correo_cc}
               onChange={manejarCambio}
               maxLength={254}
-              required
+              aria-invalid={Boolean(errores.correo_cc)}
               className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-2 focus:ring-blue-100"
             />
+            {errores.correo_cc && <p className="mt-1 text-xs font-bold text-rose-600">{errores.correo_cc}</p>}
           </label>
         </section>
 
-        <div className="flex flex-col-reverse gap-3 border-t border-[#f1edf5] pt-5 sm:flex-row sm:justify-end">
-          <button
-            type="button"
-            onClick={restaurarValores}
-            disabled={guardando}
-            className="h-11 rounded-xl border border-[#e2d9c9] bg-white px-5 text-sm font-extrabold text-[#5d5870] transition hover:bg-[#f7f4ec] disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            Restaurar valores
-          </button>
+        <div className="border-t border-[#f1edf5] pt-5">
+          {estado.texto && (
+            <p
+              className={`mb-3 rounded-xl px-4 py-3 text-sm font-bold ${estado.tipo === "error" ? "bg-rose-50 text-rose-600" : "bg-emerald-50 text-emerald-600"}`}
+              role="status"
+            >
+              {estado.texto}
+            </p>
+          )}
+          <div className="flex justify-end">
           <button
             type="submit"
             disabled={guardando}
@@ -323,6 +302,7 @@ export default function ConfiguracionSistema() {
             <AppIcon name="check" />
             {guardando ? "Guardando..." : "Guardar configuracion"}
           </button>
+          </div>
         </div>
       </form>
     </div>

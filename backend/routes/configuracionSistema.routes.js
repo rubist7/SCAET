@@ -6,23 +6,11 @@ const multer = require("multer");
 const sharp = require("sharp");
 
 const CONFIGURACION_ID = 1;
+const FIRMA_KEY = "firma-responsable.webp";
 const TAMANO_MAXIMO_BYTES = 5 * 1024 * 1024;
 const TIPOS_PERMITIDOS = new Set(["image/jpeg", "image/png", "image/webp"]);
 const CORREO_VALIDO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const CARPETA_CONFIGURACION = path.join(__dirname, "../../uploads/configuracion");
-
-const imagenes = {
-  firma: {
-    campo: "firma_key",
-    key: "firma-responsable.webp",
-    etiqueta: "firma institucional",
-  },
-  logo: {
-    campo: "logo_key",
-    key: "logo-empresa.webp",
-    etiqueta: "logo de la empresa",
-  },
-};
 
 function normalizarTexto(valor, maximo) {
   if (typeof valor !== "string") return null;
@@ -35,25 +23,38 @@ function normalizarCorreo(valor) {
   return correo && CORREO_VALIDO.test(correo) ? correo.toLowerCase() : null;
 }
 
+function normalizarCorreoOpcional(valor) {
+  if (valor === null || valor === undefined || (typeof valor === "string" && !valor.trim())) return "";
+  return normalizarCorreo(valor);
+}
+
 function serializarConfiguracion(configuracion) {
-  if (!configuracion) return null;
+  const datos = configuracion || {
+    id_configuracion: CONFIGURACION_ID,
+    nombre_empresa: "",
+    nombre_responsable: "",
+    puesto_responsable: "",
+    correo_cc: "",
+    firma_key: null,
+    fecha_actualizacion: null,
+  };
 
   return {
-    id_configuracion: configuracion.id_configuracion,
-    nombre_empresa: configuracion.nombre_empresa,
-    nombre_responsable: configuracion.nombre_responsable,
-    puesto_responsable: configuracion.puesto_responsable,
-    correo_cc: configuracion.correo_cc,
-    firma_url: configuracion.firma_key ? "/uploads/configuracion/firma-responsable.webp" : null,
-    logo_url: configuracion.logo_key ? "/uploads/configuracion/logo-empresa.webp" : null,
-    fecha_actualizacion: configuracion.fecha_actualizacion,
+    id_configuracion: datos.id_configuracion,
+    nombre_empresa: datos.nombre_empresa,
+    nombre_responsable: datos.nombre_responsable,
+    puesto_responsable: datos.puesto_responsable,
+    correo_cc: datos.correo_cc,
+    firma_key: datos.firma_key,
+    firma_url: datos.firma_key ? "/uploads/configuracion/firma-responsable.webp" : null,
+    fecha_actualizacion: datos.fecha_actualizacion,
   };
 }
 
 async function obtenerConfiguracion(pool) {
   const [filas] = await pool.query(
     `SELECT id_configuracion, nombre_empresa, nombre_responsable, puesto_responsable,
-            firma_key, logo_key, correo_cc, fecha_actualizacion
+            firma_key, correo_cc, fecha_actualizacion
        FROM configuracion_sistema
       WHERE id_configuracion = ?
       LIMIT 1`,
@@ -62,7 +63,7 @@ async function obtenerConfiguracion(pool) {
   return filas[0] || null;
 }
 
-function crearSubidaImagen() {
+function procesarFirma(req, res, next) {
   const upload = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: TAMANO_MAXIMO_BYTES, files: 1 },
@@ -76,27 +77,25 @@ function crearSubidaImagen() {
     },
   });
 
-  return (req, res, next) => {
-    upload.single("imagen")(req, res, (error) => {
-      if (!error) return next();
-      if (error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE") {
-        return res.status(400).json({ mensaje: "La imagen no puede superar 5 MB" });
-      }
-      if (error.code === "TIPO_IMAGEN_NO_PERMITIDO") {
-        return res.status(400).json({ mensaje: error.message });
-      }
-      return next(error);
-    });
-  };
+  upload.single("firma")(req, res, (error) => {
+    if (!error) return next();
+    if (error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE") {
+      return res.status(400).json({ mensaje: "La firma no puede superar 5 MB" });
+    }
+    if (error.code === "TIPO_IMAGEN_NO_PERMITIDO") {
+      return res.status(400).json({ mensaje: error.message });
+    }
+    return next(error);
+  });
 }
 
-async function reemplazarImagen({ archivo, imagen }) {
+async function prepararReemplazoFirma(archivo) {
   await fs.mkdir(CARPETA_CONFIGURACION, { recursive: true });
 
-  const rutaFinal = path.join(CARPETA_CONFIGURACION, imagen.key);
   const sufijoTemporal = crypto.randomUUID();
-  const rutaTemporal = path.join(CARPETA_CONFIGURACION, `.${imagen.key}.${sufijoTemporal}.tmp.webp`);
-  const rutaRespaldo = path.join(CARPETA_CONFIGURACION, `.${imagen.key}.${sufijoTemporal}.previous.webp`);
+  const rutaFinal = path.join(CARPETA_CONFIGURACION, FIRMA_KEY);
+  const rutaTemporal = path.join(CARPETA_CONFIGURACION, `.${FIRMA_KEY}.${sufijoTemporal}.tmp.webp`);
+  const rutaRespaldo = path.join(CARPETA_CONFIGURACION, `.${FIRMA_KEY}.${sufijoTemporal}.previous.webp`);
   let respaldoCreado = false;
 
   try {
@@ -120,10 +119,7 @@ async function reemplazarImagen({ archivo, imagen }) {
       throw error;
     }
 
-    return {
-      rutaFinal,
-      rutaRespaldo: respaldoCreado ? rutaRespaldo : null,
-    };
+    return { rutaFinal, rutaRespaldo: respaldoCreado ? rutaRespaldo : null };
   } catch (error) {
     await fs.rm(rutaTemporal, { force: true }).catch(() => {});
     throw error;
@@ -133,7 +129,6 @@ async function reemplazarImagen({ archivo, imagen }) {
 function crearRouterConfiguracionSistema({ pool, verificarToken, autorizarRoles, registrarLogActividad }) {
   const router = express.Router();
   const soloAdmin = [verificarToken, autorizarRoles("admin")];
-  const procesarImagen = crearSubidaImagen();
 
   router.get("/", ...soloAdmin, async (_req, res) => {
     try {
@@ -149,14 +144,15 @@ function crearRouterConfiguracionSistema({ pool, verificarToken, autorizarRoles,
   });
 
   router.put("/", ...soloAdmin, async (req, res) => {
-    const nombreEmpresa = normalizarTexto(req.body.nombre_empresa, 150);
-    const nombreResponsable = normalizarTexto(req.body.nombre_responsable, 150);
-    const puestoResponsable = normalizarTexto(req.body.puesto_responsable, 150);
-    const correoCc = normalizarCorreo(req.body.correo_cc);
+    const body = req.body && typeof req.body === "object" ? req.body : {};
+    const nombreEmpresa = normalizarTexto(body.nombre_empresa, 150);
+    const nombreResponsable = normalizarTexto(body.nombre_responsable, 150);
+    const puestoResponsable = normalizarTexto(body.puesto_responsable, 150);
+    const correoCc = normalizarCorreoOpcional(body.correo_cc);
 
-    if (!nombreEmpresa || !nombreResponsable || !puestoResponsable || !correoCc) {
+    if (!nombreEmpresa || !nombreResponsable || !puestoResponsable || correoCc === null) {
       return res.status(400).json({
-        mensaje: "Nombre de empresa, responsable, puesto y correo de copia validos son obligatorios",
+        mensaje: "Nombre de empresa, responsable y puesto son obligatorios; el correo de copia debe ser valido si se proporciona",
       });
     }
 
@@ -205,66 +201,63 @@ function crearRouterConfiguracionSistema({ pool, verificarToken, autorizarRoles,
     }
   });
 
-  for (const [tipo, imagen] of Object.entries(imagenes)) {
-    router.post(`/${tipo}`, ...soloAdmin, procesarImagen, async (req, res) => {
-      if (!req.file) return res.status(400).json({ mensaje: "Debes seleccionar una imagen" });
+  router.post("/firma", ...soloAdmin, procesarFirma, async (req, res) => {
+    if (!req.file) return res.status(400).json({ mensaje: "Debes seleccionar una firma" });
 
-      let resultadoArchivo;
-      try {
-        const configuracion = await obtenerConfiguracion(pool);
-        if (!configuracion) {
-          return res.status(409).json({ mensaje: "Guarda primero los datos de configuracion" });
-        }
-
-        resultadoArchivo = await reemplazarImagen({ archivo: req.file, imagen });
-        try {
-          await pool.query(
-            `UPDATE configuracion_sistema
-                SET ${imagen.campo} = ?, fecha_actualizacion = NOW()
-              WHERE id_configuracion = ?`,
-            [imagen.key, CONFIGURACION_ID]
-          );
-        } catch (errorBaseDatos) {
-          await fs.rm(resultadoArchivo.rutaFinal, { force: true }).catch(() => {});
-          if (resultadoArchivo.rutaRespaldo) {
-            await fs.rename(resultadoArchivo.rutaRespaldo, resultadoArchivo.rutaFinal).catch(() => {});
-          }
-          throw errorBaseDatos;
-        }
-
-        if (resultadoArchivo.rutaRespaldo) {
-          await fs.rm(resultadoArchivo.rutaRespaldo, { force: true }).catch(() => {});
-        }
-
-        const actualizada = await obtenerConfiguracion(pool);
-        void registrarLogActividad({
-          usuario: req.usuario,
-          accion: "Edicion",
-          modulo: "Configuracion del sistema",
-          entidad: "configuracion_sistema",
-          idEntidad: CONFIGURACION_ID,
-          descripcion: `${imagen.etiqueta} actualizada`,
-          req,
-          detalles: { campos_modificados: [imagen.campo] },
-        });
-
-        return res.json({
-          mensaje: `${imagen.etiqueta.charAt(0).toUpperCase()}${imagen.etiqueta.slice(1)} actualizada correctamente`,
-          configuracion: serializarConfiguracion(actualizada),
-        });
-      } catch (error) {
-        if (resultadoArchivo?.rutaRespaldo) {
-          await fs.rm(resultadoArchivo.rutaRespaldo, { force: true }).catch(() => {});
-        }
-        if (error.name === "Error" && /Input buffer contains unsupported image format|Input file contains unsupported image format/i.test(error.message)) {
-          return res.status(400).json({ mensaje: "El archivo seleccionado no contiene una imagen valida" });
-        }
-        console.error(`Error al actualizar ${imagen.etiqueta}:`, error);
-        return res.status(500).json({ mensaje: `No se pudo guardar ${imagen.etiqueta}` });
+    let resultadoArchivo;
+    try {
+      const configuracion = await obtenerConfiguracion(pool);
+      if (!configuracion) {
+        return res.status(409).json({ mensaje: "Guarda primero los datos de configuracion" });
       }
-    });
 
-  }
+      resultadoArchivo = await prepararReemplazoFirma(req.file);
+      try {
+        await pool.query(
+          `UPDATE configuracion_sistema
+              SET firma_key = ?, fecha_actualizacion = NOW()
+            WHERE id_configuracion = ?`,
+          [FIRMA_KEY, CONFIGURACION_ID]
+        );
+      } catch (errorBaseDatos) {
+        await fs.rm(resultadoArchivo.rutaFinal, { force: true }).catch(() => {});
+        if (resultadoArchivo.rutaRespaldo) {
+          await fs.rename(resultadoArchivo.rutaRespaldo, resultadoArchivo.rutaFinal).catch(() => {});
+        }
+        throw errorBaseDatos;
+      }
+
+      if (resultadoArchivo.rutaRespaldo) {
+        await fs.rm(resultadoArchivo.rutaRespaldo, { force: true }).catch(() => {});
+      }
+
+      const actualizada = await obtenerConfiguracion(pool);
+      void registrarLogActividad({
+        usuario: req.usuario,
+        accion: "Edicion",
+        modulo: "Configuracion del sistema",
+        entidad: "configuracion_sistema",
+        idEntidad: CONFIGURACION_ID,
+        descripcion: "Firma institucional actualizada",
+        req,
+        detalles: { campos_modificados: ["firma_key"] },
+      });
+
+      return res.json({
+        mensaje: "Firma institucional actualizada correctamente",
+        configuracion: serializarConfiguracion(actualizada),
+      });
+    } catch (error) {
+      if (resultadoArchivo?.rutaRespaldo) {
+        await fs.rm(resultadoArchivo.rutaRespaldo, { force: true }).catch(() => {});
+      }
+      if (error.name === "Error" && /Input buffer contains unsupported image format|Input file contains unsupported image format/i.test(error.message)) {
+        return res.status(400).json({ mensaje: "El archivo seleccionado no contiene una imagen valida" });
+      }
+      console.error("Error al actualizar firma institucional:", error);
+      return res.status(500).json({ mensaje: "No se pudo guardar la firma institucional" });
+    }
+  });
 
   return router;
 }

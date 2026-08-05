@@ -1,9 +1,22 @@
 import { signatures } from "../config/signatures";
 
-export default function Signature({ type }) {
-  const signature = signatures[type];
+export default function Signature({ type, institucion }) {
+  const fallback = signatures[type];
 
-  if (!signature) return null;
+  if (!fallback) return null;
+
+  const signature = {
+    image: institucion?.firma_url || fallback.image,
+    name: institucion?.nombre_responsable || fallback.name,
+    position: institucion?.puesto_responsable || fallback.position,
+    label: fallback.label,
+    scale: institucion?.firma_url ? 1 : fallback.scale,
+  };
+
+  const restaurarFirmaEstatica = (event) => {
+    event.currentTarget.onerror = null;
+    event.currentTarget.src = fallback.image;
+  };
 
   return (
     <div>
@@ -14,6 +27,7 @@ export default function Signature({ type }) {
             alt={signature.label}
             className="mx-auto h-full w-full object-contain"
             style={{ transform: `scale(${signature.scale || 1})` }}
+            onError={restaurarFirmaEstatica}
           />
         ) : (
           <p className="font-serif text-2xl text-[#21192c]">{signature.name}</p>
