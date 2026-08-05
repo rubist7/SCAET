@@ -121,7 +121,11 @@ function Configuracion() {
   const [userForm, setUserForm] = useState(emptyUserForm)
   const [resetForm, setResetForm] = useState(emptyResetForm)
   const [users, setUsers] = useState([])
-  const [showPasswords, setShowPasswords] = useState(false)
+  const [visiblePasswordFields, setVisiblePasswordFields] = useState({
+    currentPassword: false,
+    newPassword: false,
+    confirmPassword: false,
+  })
   const [showUserPassword, setShowUserPassword] = useState(false)
   const [showResetPassword, setShowResetPassword] = useState(false)
   const [showHiddenUsers, setShowHiddenUsers] = useState(false)
@@ -470,7 +474,12 @@ function Configuracion() {
     }
   }
 
-  const passwordInputType = showPasswords ? 'text' : 'password'
+  const togglePasswordVisibility = (fieldName) => {
+    setVisiblePasswordFields((currentFields) => ({
+      ...currentFields,
+      [fieldName]: !currentFields[fieldName],
+    }))
+  }
   const userPasswordInputType = showUserPassword ? 'text' : 'password'
   const resetPasswordInputType = showResetPassword ? 'text' : 'password'
   const resettableUsers = profile.roleKey === 'capturista'
@@ -519,7 +528,7 @@ function Configuracion() {
 
             <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(340px,0.75fr)]">
               <form onSubmit={handleProfileSubmit} className="space-y-5 rounded-2xl bg-white p-5 shadow-sm">
-                <div className="flex items-center justify-between gap-4 border-b border-[#f1edf5] pb-4">
+                <div className="border-b border-[#f1edf5] pb-4">
                   <div>
                     <h2 className="text-base font-extrabold text-[#201d31]">Datos del Perfil</h2>
                     <p className="mt-1 text-xs font-bold text-[#8d88a2]">{profile.role}</p>
@@ -587,49 +596,40 @@ function Configuracion() {
                     <h2 className="text-base font-extrabold text-[#201d31]">Contraseña</h2>
                     <p className="mt-1 text-xs font-bold text-[#8d88a2]">Seguridad de la cuenta</p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowPasswords((currentValue) => !currentValue)}
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#f2ece0] text-[#5d5870] transition hover:bg-[#e9dfd0]"
-                    aria-label={showPasswords ? 'Ocultar contraseñas' : 'Mostrar contraseñas'}
-                    title={showPasswords ? 'Ocultar contraseñas' : 'Mostrar contraseñas'}
-                  >
-                    <AppIcon name={showPasswords ? 'eyeOff' : 'eye'} />
-                  </button>
                 </div>
 
                 <div className="space-y-4">
                   <SettingsField
                     label="Contraseña actual"
                     name="currentPassword"
-                    type={passwordInputType}
+                    type={visiblePasswordFields.currentPassword ? 'text' : 'password'}
                     value={passwordForm.currentPassword}
                     onChange={handlePasswordChange}
                     autoComplete="current-password"
-                    passwordVisible={showPasswords}
-                    onTogglePassword={() => setShowPasswords((currentValue) => !currentValue)}
+                    passwordVisible={visiblePasswordFields.currentPassword}
+                    onTogglePassword={() => togglePasswordVisibility('currentPassword')}
                     required
                   />
                   <SettingsField
                     label="Nueva contraseña"
                     name="newPassword"
-                    type={passwordInputType}
+                    type={visiblePasswordFields.newPassword ? 'text' : 'password'}
                     value={passwordForm.newPassword}
                     onChange={handlePasswordChange}
                     autoComplete="new-password"
-                    passwordVisible={showPasswords}
-                    onTogglePassword={() => setShowPasswords((currentValue) => !currentValue)}
+                    passwordVisible={visiblePasswordFields.newPassword}
+                    onTogglePassword={() => togglePasswordVisibility('newPassword')}
                     required
                   />
                   <SettingsField
                     label="Confirmar contraseña"
                     name="confirmPassword"
-                    type={passwordInputType}
+                    type={visiblePasswordFields.confirmPassword ? 'text' : 'password'}
                     value={passwordForm.confirmPassword}
                     onChange={handlePasswordChange}
                     autoComplete="new-password"
-                    passwordVisible={showPasswords}
-                    onTogglePassword={() => setShowPasswords((currentValue) => !currentValue)}
+                    passwordVisible={visiblePasswordFields.confirmPassword}
+                    onTogglePassword={() => togglePasswordVisibility('confirmPassword')}
                     required
                   />
                 </div>

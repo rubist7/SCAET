@@ -42,7 +42,7 @@ function validarImagen(archivo) {
 
 function FirmaPreview({ previewUrl, usaFirmaPredeterminada, onFileChange }) {
   return (
-    <section className="rounded-2xl border border-[#f1edf5] bg-[#fbf9f4] p-4">
+    <section className="rounded-2xl border border-[#f1edf5] bg-[#fbf9f4] p-4 dark:border-[#393141] dark:bg-[#211b2a]">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="text-sm font-extrabold text-[#201d31]">Firma institucional</h3>
@@ -52,7 +52,7 @@ function FirmaPreview({ previewUrl, usaFirmaPredeterminada, onFileChange }) {
         </div>
         <label
           htmlFor="firma-institucional"
-          className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white px-4 text-xs font-extrabold text-blue-600 transition hover:bg-blue-50"
+          className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white px-4 text-xs font-extrabold text-blue-600 transition hover:bg-blue-50 dark:border-blue-800 dark:bg-[#191521] dark:text-blue-300 dark:hover:bg-blue-900/35"
         >
           <AppIcon name="image" />
           Cambiar firma
@@ -65,7 +65,7 @@ function FirmaPreview({ previewUrl, usaFirmaPredeterminada, onFileChange }) {
           onChange={onFileChange}
         />
       </div>
-      <div className="mt-4 flex h-40 items-center justify-center overflow-hidden rounded-xl border border-dashed border-[#d9d1c1] bg-white p-3">
+      <div className="mt-4 flex h-40 items-center justify-center overflow-hidden rounded-xl border border-dashed border-[#d9d1c1] bg-white p-3 dark:border-[#4a4256] dark:bg-[#191521]">
         {previewUrl ? (
           <img src={previewUrl} alt="Firma institucional" className="h-full w-full object-contain" />
         ) : (
