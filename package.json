@@ -13,7 +13,6 @@
     "@tailwindcss/postcss": "^4.3.0",
     "@tailwindcss/vite": "^4.3.0",
     "browser-image-compression": "^2.0.2",
-    "firebase": "^12.13.0",
     "fs-extra": "^11.4.0",
     "html2canvas": "^1.4.1",
     "html2canvas-pro": "^2.3.3",
