@@ -4,6 +4,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const path = require("path");
+const fs = require("fs");
 const pool = require("./config/db");
 const crearRouterMantenimientos = require("./routes/mantenimientos.routes");
 const crearRouterLogsActividad = require("./routes/logsActividad.routes");
@@ -18,6 +19,7 @@ require("dotenv").config();
 verificarTransporterCorreo();
 
 const app = express();
+const distPath = path.resolve(__dirname, "../dist");
 
 app.use(cors());
 app.use(express.json());
@@ -25,10 +27,6 @@ app.use(
   "/uploads",
   express.static(path.join(__dirname, "../uploads"))
 );
-
-app.get("/", (req, res) => {
-  res.send("Backend de SCAET funcionando");
-});
 
 app.get("/api/test-db", async (req, res) => {
   try {
@@ -2004,6 +2002,27 @@ app.use(
   "/api/resguardos",
   crearRouterResguardosCorreo({ pool, verificarToken, autorizarRoles, registrarLogActividad })
 );
+
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+
+  // Express 5: /{*splat} incluye también la ruta raíz (/).
+  app.get("/{*splat}", (req, res, next) => {
+    if (
+      req.path === "/api" ||
+      req.path.startsWith("/api/") ||
+      req.path === "/uploads" ||
+      req.path.startsWith("/uploads/")
+    ) {
+      return next();
+    }
+
+    return res.sendFile(path.join(distPath, "index.html"));
+  });
+} else {
+  console.warn(`No se encontró el frontend compilado en ${distPath}. Las rutas API continuarán disponibles.`);
+}
+
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, "0.0.0.0", () => {
