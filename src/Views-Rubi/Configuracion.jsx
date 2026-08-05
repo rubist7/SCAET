@@ -241,7 +241,11 @@ function Configuracion() {
       })
       setProfile(updateStoredUser({ debe_cambiar_contrasena: 0 }))
       setPasswordForm(emptyPasswordForm)
-      setShowPasswords(false)
+      setVisiblePasswordFields({
+        currentPassword: false,
+        newPassword: false,
+        confirmPassword: false,
+      })
       setPasswordStatus({ type: 'success', text: data.mensaje })
     } catch (error) {
       setPasswordStatus({ type: 'error', text: error.message })
