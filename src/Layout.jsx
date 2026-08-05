@@ -45,7 +45,7 @@ const routesByLabel = {
   Logs: "/asignacion/logs",
   Auditoria: "/asignacion/auditoria",
   Configuracion: "/configuracion",
-  Sistema: "/sistema",
+  ConfiguracionSistema: "/configuracion/sistema",
 };
 
 const headerTitles = {
