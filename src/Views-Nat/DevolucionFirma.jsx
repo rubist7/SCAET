@@ -572,11 +572,33 @@ function GeneratedDevolucionModal({ data, items, signature, idResguardo, onClose
     return pdfRef.current;
   };
 
+  const guardarPdfEnServidor = async (pdf) => {
+    if (!idResguardo) throw new Error("No se encontro el identificador de la devolucion");
+    const formData = new FormData();
+    formData.append("pdf", pdf, "devolucion.pdf");
+    const response = await fetch(`/api/resguardos/${idResguardo}/guardar-pdf`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${localStorage.getItem("scaet-token")}` },
+      body: formData,
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.mensaje || "No se pudo guardar el PDF en el servidor");
+    return payload;
+  };
+
   const downloadPdf = async () => {
     setGenerandoPdf(true);
+    setErrorCorreo(false);
     setMensajeCorreo("");
     try {
-      descargarPdfResguardo(await crearPdf(), data.folio);
+      const pdf = await crearPdf();
+      descargarPdfResguardo(pdf, data.folio);
+      try {
+        await guardarPdfEnServidor(pdf);
+      } catch (errorGuardar) {
+        setErrorCorreo(true);
+        setMensajeCorreo(`El PDF se descargo, pero no pudo guardarse en el servidor: ${errorGuardar.message || "intenta nuevamente."}`);
+      }
     } catch (error) {
       setErrorCorreo(true);
       setMensajeCorreo(error.message || "No se pudo generar el PDF de devolucion");
@@ -617,7 +639,9 @@ function GeneratedDevolucionModal({ data, items, signature, idResguardo, onClose
       if (!response.ok) throw new Error(payload.mensaje || "No se pudo enviar la devolucion por correo");
 
       setCorreoEnviado(true);
-      setMensajeCorreo("Devolucion enviada correctamente al colaborador y con copia al responsable.");
+      setMensajeCorreo(payload.advertencia_almacenamiento
+        ? `Devolucion enviada correctamente al colaborador y con copia al responsable. ${payload.advertencia_almacenamiento}`
+        : "Devolucion enviada correctamente al colaborador y con copia al responsable.");
     } catch (error) {
       setErrorCorreo(true);
       setMensajeCorreo(

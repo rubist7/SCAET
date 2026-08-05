@@ -8,6 +8,8 @@ const sharp = require("sharp");
 const TAMANO_MAXIMO_BYTES = 5 * 1024 * 1024;
 const TIPOS_PERMITIDOS = new Set(["image/jpeg", "image/png", "image/webp"]);
 const CARPETA_EQUIPOS = path.join(__dirname, "../../uploads/equipos");
+const CARPETA_QRS = path.join(__dirname, "../../uploads/qrs");
+const FIRMA_PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 function obtenerIdEquipo(valor) {
   return /^\d+$/.test(String(valor)) && Number(valor) > 0 ? Number(valor) : null;
@@ -28,6 +30,24 @@ function esFotoKeySeguro(fotoKey) {
   return Boolean(fotoKey) && path.basename(fotoKey) === fotoKey;
 }
 
+function crearQrKey(codigoEquipo) {
+  const codigoSeguro = String(codigoEquipo ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9_-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^[-_]+|[-_]+$/g, "");
+
+  return codigoSeguro ? `QR-${codigoSeguro}.png` : null;
+}
+
+function esPngValido(archivo) {
+  return archivo?.mimetype === "image/png"
+    && Buffer.isBuffer(archivo.buffer)
+    && archivo.buffer.length >= FIRMA_PNG.length
+    && archivo.buffer.subarray(0, FIRMA_PNG.length).equals(FIRMA_PNG);
+}
+
 function crearRouterImagenesEquipos({ pool, verificarToken, autorizarRoles, registrarLogActividad }) {
   const router = express.Router();
   const upload = multer({
@@ -37,6 +57,20 @@ function crearRouterImagenesEquipos({ pool, verificarToken, autorizarRoles, regi
       if (!TIPOS_PERMITIDOS.has(archivo.mimetype)) {
         const error = new Error("Solo se permiten imagenes JPG, JPEG, PNG o WEBP");
         error.code = "TIPO_IMAGEN_NO_PERMITIDO";
+        return callback(error);
+      }
+
+      return callback(null, true);
+    },
+  });
+
+  const uploadQr = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: TAMANO_MAXIMO_BYTES, files: 1 },
+    fileFilter: (_req, archivo, callback) => {
+      if (archivo.mimetype !== "image/png") {
+        const error = new Error("Solo se permite el codigo QR en formato PNG");
+        error.code = "TIPO_QR_NO_PERMITIDO";
         return callback(error);
       }
 
@@ -56,6 +90,62 @@ function crearRouterImagenesEquipos({ pool, verificarToken, autorizarRoles, regi
       return next(error);
     });
   };
+
+  const procesarQr = (req, res, next) => {
+    uploadQr.single("qr")(req, res, (error) => {
+      if (!error) return next();
+      if (error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE") {
+        return res.status(400).json({ mensaje: "El codigo QR no puede superar 5 MB" });
+      }
+      if (error.code === "TIPO_QR_NO_PERMITIDO") {
+        return res.status(400).json({ mensaje: error.message });
+      }
+      return next(error);
+    });
+  };
+
+  router.post(
+    "/:id_equipo/qr",
+    verificarToken,
+    autorizarRoles("admin", "capturista"),
+    procesarQr,
+    async (req, res) => {
+      const idEquipo = obtenerIdEquipo(req.params.id_equipo);
+      if (!idEquipo) return res.status(400).json({ mensaje: "El identificador del equipo no es valido" });
+      if (!esPngValido(req.file)) return res.status(400).json({ mensaje: "Debes adjuntar un codigo QR PNG valido" });
+
+      let rutaTemporal;
+      try {
+        const [equipos] = await pool.query(
+          "SELECT id_equipo, codigo_equipo FROM equipos WHERE id_equipo = ? LIMIT 1",
+          [idEquipo]
+        );
+        const equipo = equipos[0];
+        if (!equipo) return res.status(404).json({ mensaje: "Equipo no encontrado" });
+
+        const qrKey = crearQrKey(equipo.codigo_equipo);
+        if (!qrKey || path.basename(qrKey) !== qrKey) {
+          return res.status(409).json({ mensaje: "El equipo no tiene un codigo valido para nombrar su QR" });
+        }
+
+        await fs.mkdir(CARPETA_QRS, { recursive: true });
+        rutaTemporal = path.join(CARPETA_QRS, `.${qrKey}.${crypto.randomUUID()}.tmp.png`);
+        const rutaFinal = path.join(CARPETA_QRS, qrKey);
+        await fs.writeFile(rutaTemporal, req.file.buffer, { flag: "wx" });
+        await fs.rename(rutaTemporal, rutaFinal);
+        rutaTemporal = null;
+
+        return res.status(201).json({
+          mensaje: "Codigo QR guardado correctamente",
+          nombre_archivo: qrKey,
+        });
+      } catch (error) {
+        if (rutaTemporal) await fs.rm(rutaTemporal, { force: true }).catch(() => {});
+        console.error("Error al guardar codigo QR del equipo:", error);
+        return res.status(500).json({ mensaje: "No se pudo guardar el codigo QR en el servidor" });
+      }
+    }
+  );
 
   router.post(
     "/:id_equipo",
