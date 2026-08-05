@@ -616,6 +616,7 @@ function DocumentPreview({ data, signature }) {
 function GeneratedResguardoModal({ data, signature, idResguardo, onClose }) {
   const TIEMPO_MAXIMO_ENVIO_MS = 60_000;
   const documentRef = useRef(null);
+  const pdfRef = useRef(null);
   const [generandoPdf, setGenerandoPdf] = useState(false);
   const [enviandoCorreo, setEnviandoCorreo] = useState(false);
   const [correoEnviado, setCorreoEnviado] = useState(Boolean(data.correoEnviado));
@@ -624,14 +625,39 @@ function GeneratedResguardoModal({ data, signature, idResguardo, onClose }) {
 
   const crearPdf = async () => {
     if (!documentRef.current) throw new Error("No se encontro el documento del resguardo");
-    return generarPdfResguardo(documentRef.current, { cantidadEquipos: data.items?.length || 1 });
+    if (!pdfRef.current) {
+      pdfRef.current = await generarPdfResguardo(documentRef.current, { cantidadEquipos: data.items?.length || 1 });
+    }
+    return pdfRef.current;
+  };
+
+  const guardarPdfEnServidor = async (pdf) => {
+    if (!idResguardo) throw new Error("No se encontro el identificador del resguardo");
+    const formData = new FormData();
+    formData.append("pdf", pdf, "resguardo.pdf");
+    const response = await fetch(`/api/resguardos/${idResguardo}/guardar-pdf`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${localStorage.getItem("scaet-token")}` },
+      body: formData,
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.mensaje || "No se pudo guardar el PDF en el servidor");
+    return payload;
   };
 
   const downloadPdf = async () => {
     setGenerandoPdf(true);
+    setErrorCorreo(false);
     setMensajeCorreo("");
     try {
-      descargarPdfResguardo(await crearPdf(), data.folio);
+      const pdf = await crearPdf();
+      descargarPdfResguardo(pdf, data.folio);
+      try {
+        await guardarPdfEnServidor(pdf);
+      } catch (errorGuardar) {
+        setErrorCorreo(true);
+        setMensajeCorreo(`El PDF se descargo, pero no pudo guardarse en el servidor: ${errorGuardar.message || "intenta nuevamente."}`);
+      }
     } catch (error) {
       setErrorCorreo(true);
       setMensajeCorreo(error.message || "No se pudo generar el PDF");
@@ -674,7 +700,9 @@ function GeneratedResguardoModal({ data, signature, idResguardo, onClose }) {
       if (!response.ok) throw new Error(payload.mensaje || "No se pudo enviar el resguardo por correo");
 
       setCorreoEnviado(true);
-      setMensajeCorreo("Resguardo enviado correctamente al colaborador y con copia al responsable.");
+      setMensajeCorreo(payload.advertencia_almacenamiento
+        ? `Resguardo enviado correctamente al colaborador y con copia al responsable. ${payload.advertencia_almacenamiento}`
+        : "Resguardo enviado correctamente al colaborador y con copia al responsable.");
     } catch (error) {
       setErrorCorreo(true);
       setMensajeCorreo(

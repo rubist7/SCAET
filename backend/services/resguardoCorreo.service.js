@@ -77,6 +77,10 @@ function formatearCodigosEquipo(codigosEquipo) {
   return `${codigosEquipo.slice(0, -1).join(", ")} y ${codigosEquipo.at(-1)}`;
 }
 
+function crearListaConVinetas(codigosEquipo) {
+  return codigosEquipo.map((codigo) => `• ${codigo}`).join("\n");
+}
+
 function crearNombreAdjunto(folio, codigosEquipo) {
   const folioSeguro = texto(folio)
     .replace(/[^a-zA-Z0-9_-]+/g, "_")
@@ -137,9 +141,12 @@ function crearMensajeResguardo({ folio, nombreColaborador, equipos }) {
 
   const lineas = [`Hola ${texto(nombreColaborador) || "colaborador"},`, ""];
   if (codigosCompletos) {
-    const destinatario = unSoloEquipo ? `al equipo ${listaCodigos}` : `a los equipos ${listaCodigos}`;
     const tipo = soloTemporales ? " temporal" : "";
-    lineas.push(`Adjuntamos el resguardo${tipo} correspondiente ${destinatario}.`);
+    if (unSoloEquipo) {
+      lineas.push(`Adjuntamos el resguardo${tipo} correspondiente al equipo ${listaCodigos}.`);
+    } else {
+      lineas.push(`Adjuntamos el resguardo${tipo} correspondiente a los siguientes equipos:`, "", crearListaConVinetas(codigosEquipo));
+    }
   } else {
     lineas.push("Adjuntamos tu resguardo de equipo.");
   }
@@ -168,6 +175,9 @@ function crearMensajeDevolucion({ folio, nombreColaborador, equipos }) {
     .map((equipo) => texto(equipo.codigo_equipo).toUpperCase())
     .filter(Boolean))]
     .sort((codigoA, codigoB) => codigoA.localeCompare(codigoB, "es"));
+  const codigosEquipoEnOrden = (equipos || [])
+    .map((equipo) => texto(equipo.codigo_equipo).toUpperCase())
+    .filter(Boolean);
   const unSoloEquipo = codigosEquipo.length === 1;
   const listaCodigos = codigosEquipo.length ? formatearCodigosEquipo(codigosEquipo) : "";
   const asunto = codigosEquipo.length
@@ -176,7 +186,9 @@ function crearMensajeDevolucion({ folio, nombreColaborador, equipos }) {
       : `Devolución de equipos ${listaCodigos}`
     : `Devolución de equipo ${folio}`;
   const contenido = codigosEquipo.length
-    ? `Hola ${texto(nombreColaborador) || "colaborador"},\n\nAdjuntamos el comprobante de devolución correspondiente ${unSoloEquipo ? "al equipo" : "a los equipos"} ${listaCodigos}.\n\nFolio de devolución: ${folio}.`
+    ? unSoloEquipo
+      ? `Hola ${texto(nombreColaborador) || "colaborador"},\n\nAdjuntamos el comprobante de devolución correspondiente al equipo ${listaCodigos}.\n\nFolio de devolución: ${folio}.`
+      : `Hola ${texto(nombreColaborador) || "colaborador"},\n\nAdjuntamos el comprobante de devolución correspondiente a los siguientes equipos:\n\n${crearListaConVinetas(codigosEquipoEnOrden)}\n\nFolio de devolución: ${folio}.`
     : `Hola ${texto(nombreColaborador) || "colaborador"},\n\nAdjuntamos el comprobante de devolución.\n\nFolio de devolución: ${folio}.`;
 
   return { asunto, contenido, codigosEquipo };

@@ -407,7 +407,7 @@ function groupAssignmentsByCollaborator(assignments) {
   return [...groups.values()];
 }
 
-function ActiveAssignments({ rows, onOpenResguardo, onOpenDevolucion }) {
+function ActiveAssignments({ rows, onOpenResguardo, onOpenDevolucion, readOnly = false }) {
   const [expandedKey, setExpandedKey] = useState(null);
   const [search, setSearch] = useState("");
   const normalizedSearch = search.toLowerCase();
@@ -501,22 +501,26 @@ function ActiveAssignments({ rows, onOpenResguardo, onOpenDevolucion }) {
                           >
                             Ver asignaciones
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => onOpenResguardo?.(resguardo)}
-                            className="inline-flex h-8 items-center gap-1 rounded-[8px] bg-blue-50 px-3 text-xs font-black text-blue-600 transition hover:bg-blue-100"
-                          >
-                            <FileText size={13} />
-                            Resguardo
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => onOpenDevolucion?.(resguardo, items.map((item) => item.key))}
-                            className="inline-flex h-8 items-center gap-1 rounded-[8px] bg-emerald-50 px-3 text-xs font-black text-emerald-600 transition hover:bg-emerald-100 dark:bg-emerald-400/15 dark:text-emerald-300 dark:hover:bg-emerald-400/20"
-                          >
-                            <RotateCcw size={13} />
-                            Devolver
-                          </button>
+                          {!readOnly && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => onOpenResguardo?.(resguardo)}
+                                className="inline-flex h-8 items-center gap-1 rounded-[8px] bg-blue-50 px-3 text-xs font-black text-blue-600 transition hover:bg-blue-100"
+                              >
+                                <FileText size={13} />
+                                Resguardo
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => onOpenDevolucion?.(resguardo, items.map((item) => item.key))}
+                                className="inline-flex h-8 items-center gap-1 rounded-[8px] bg-emerald-50 px-3 text-xs font-black text-emerald-600 transition hover:bg-emerald-100 dark:bg-emerald-400/15 dark:text-emerald-300 dark:hover:bg-emerald-400/20"
+                              >
+                                <RotateCcw size={13} />
+                                Devolver
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -551,7 +555,7 @@ function ActiveAssignments({ rows, onOpenResguardo, onOpenDevolucion }) {
   );
 }
 
-export default function NuevaAsignacion({ addMode = false, initialColaborador, initialStep = 0, initialItems = [], onOpenResguardo, onOpenDevolucion, onCreateResguardo, onBack }) {
+export default function NuevaAsignacion({ addMode = false, initialColaborador, initialStep = 0, initialItems = [], onOpenResguardo, onOpenDevolucion, onCreateResguardo, onBack, readOnly = false }) {
   const [step, setStep] = useState(initialStep);
   const [colaborador, setColaborador] = useState(addMode ? initialColaborador || null : null);
   const [tipoActivo, setTipoActivo] = useState("equipo");
@@ -679,47 +683,52 @@ export default function NuevaAsignacion({ addMode = false, initialColaborador, i
 
   return (
     <div className="mx-auto min-w-0 max-w-4xl space-y-6">
-      {addingToExistingResguardo && (
+      {!readOnly && addingToExistingResguardo && (
         <BackButton onBack={onBack} hasUnsavedChanges={hasUnsavedChanges} label="Volver al resguardo" />
       )}
-      <div>
-        <h1 className="text-xl font-black tracking-tight text-gray-900 dark:text-white">
-          {addingToExistingResguardo ? "Agregar activo al resguardo" : "Nueva asignacion"}
-        </h1>
-        <p className="mt-1 text-sm text-gray-400">
-          {addingToExistingResguardo
-            ? `Selecciona otro activo para ${initialColaborador.nombre}.`
-            : "Selecciona colaborador y activo para generar el resguardo de firma."}
-        </p>
-      </div>
+      {!readOnly && (
+        <>
+          <div>
+            <h1 className="text-xl font-black tracking-tight text-gray-900 dark:text-white">
+              {addingToExistingResguardo ? "Agregar activo al resguardo" : "Nueva asignacion"}
+            </h1>
+            <p className="mt-1 text-sm text-gray-400">
+              {addingToExistingResguardo
+                ? `Selecciona otro activo para ${initialColaborador.nombre}.`
+                : "Selecciona colaborador y activo para generar el resguardo de firma."}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-[#16131F] sm:p-6">
+            <StepIndicator current={step} />
+            <div className="min-h-[180px]">
+              {step === 0 && <Step1 selected={colaborador} onSelect={handleSelectCollaborator} />}
+              {step === 1 && <Step2 assets={assets} tipoActivo={tipoActivo} setTipoActivo={setTipoActivo} selected={activo} onSelect={setActivo} selectedIds={selectedIds} />}
+              {step === 2 && <Step3 tipo={tipo} setTipo={(value) => { setTipo(value); if (value === "Permanente") setFechaDev(""); }} fechaDev={fechaDev} setFechaDev={setFechaDev} />}
+              {step === 3 && <Step4 colaborador={colaborador} items={confirmationItems} />}
+            </div>
+            <div className="mt-6 flex flex-col-reverse gap-3 border-t border-gray-100 pt-4 dark:border-gray-800 sm:flex-row sm:items-center sm:justify-end">
+              {!(addingToExistingResguardo && step === 0) && (
+                <button type="button" onClick={() => (step === 0 ? reset() : setStep((value) => value - 1))} className="rounded-lg px-4 py-2 text-sm font-semibold text-gray-500 transition hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800">
+                  {step === 0 ? "Cancelar" : "Regresar"}
+                </button>
+              )}
+              {step < 3 ? (
+                <button type="button" onClick={() => setStep((value) => value + 1)} disabled={!canNext[step]} className="rounded-lg bg-[#3A9AF2] px-5 py-2 text-sm font-semibold text-[#FFFFFF] shadow-sm transition hover:bg-[#238BEA] disabled:cursor-not-allowed disabled:opacity-40">Continuar</button>
+              ) : (
+                <button type="button" onClick={handleConfirm} className="rounded-lg bg-[#3A9AF2] px-5 py-2 text-sm font-semibold text-[#FFFFFF] shadow-sm transition hover:bg-[#238BEA]">Confirmar y generar resguardo</button>
+              )}
+            </div>
+          </div>
+        </>
+      )}
 
       {message && (
         <p className="rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600 dark:border-red-400/20 dark:bg-red-400/10 dark:text-red-300">
           {message}
         </p>
       )}
-      <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-[#16131F] sm:p-6">
-        <StepIndicator current={step} />
-        <div className="min-h-[180px]">
-          {step === 0 && <Step1 selected={colaborador} onSelect={handleSelectCollaborator} />}
-          {step === 1 && <Step2 assets={assets} tipoActivo={tipoActivo} setTipoActivo={setTipoActivo} selected={activo} onSelect={setActivo} selectedIds={selectedIds} />}
-          {step === 2 && <Step3 tipo={tipo} setTipo={(value) => { setTipo(value); if (value === "Permanente") setFechaDev(""); }} fechaDev={fechaDev} setFechaDev={setFechaDev} />}
-          {step === 3 && <Step4 colaborador={colaborador} items={confirmationItems} />}
-        </div>
-        <div className="mt-6 flex flex-col-reverse gap-3 border-t border-gray-100 pt-4 dark:border-gray-800 sm:flex-row sm:items-center sm:justify-end">
-          {!(addingToExistingResguardo && step === 0) && (
-            <button type="button" onClick={() => (step === 0 ? reset() : setStep((value) => value - 1))} className="rounded-lg px-4 py-2 text-sm font-semibold text-gray-500 transition hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800">
-              {step === 0 ? "Cancelar" : "Regresar"}
-            </button>
-          )}
-          {step < 3 ? (
-            <button type="button" onClick={() => setStep((value) => value + 1)} disabled={!canNext[step]} className="rounded-lg bg-[#3A9AF2] px-5 py-2 text-sm font-semibold text-[#FFFFFF] shadow-sm transition hover:bg-[#238BEA] disabled:cursor-not-allowed disabled:opacity-40">Continuar</button>
-          ) : (
-            <button type="button" onClick={handleConfirm} className="rounded-lg bg-[#3A9AF2] px-5 py-2 text-sm font-semibold text-[#FFFFFF] shadow-sm transition hover:bg-[#238BEA]">Confirmar y generar resguardo</button>
-          )}
-        </div>
-      </div>
-      <ActiveAssignments rows={asignacionesActivas} onOpenResguardo={onOpenResguardo} onOpenDevolucion={onOpenDevolucion} />
+      <ActiveAssignments rows={asignacionesActivas} onOpenResguardo={onOpenResguardo} onOpenDevolucion={onOpenDevolucion} readOnly={readOnly} />
     </div>
   );
 }
