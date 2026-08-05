@@ -31,7 +31,7 @@ const navItems = [
 
 const systemItems = [
   { label: "Logs", displayLabel: "Auditoría del sistema", icon: Boxes },
-  { label: "ConfiguracionSistema", displayLabel: "Configuracion del sistema", icon: Settings },
+  { label: "ConfiguracionSistema", displayLabel: "Sistema", icon: Settings },
 ];
 
 const routesByLabel = {
@@ -45,7 +45,7 @@ const routesByLabel = {
   Logs: "/asignacion/logs",
   Auditoria: "/asignacion/auditoria",
   Configuracion: "/configuracion",
-  ConfiguracionSistema: "/configuracion/sistema",
+  Sistema: "/sistema",
 };
 
 const headerTitles = {
@@ -59,7 +59,7 @@ const headerTitles = {
   Logs: "Auditoría del sistema",
   Auditoria: "Auditoria",
   Configuracion: "Configuracion de cuenta",
-  ConfiguracionSistema: "Configuracion del sistema",
+  Sistema: "Sistema",
 };
 
 function Logo({ compact = false, iconOnly = false, onClick }) {

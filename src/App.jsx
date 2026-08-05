@@ -66,6 +66,7 @@ function AdminRoute({ children }) {
 
 function NataliaFlow({ initialScreen = "asignacion" }) {
   const navigate = useNavigate();
+  const readOnlyAssignments = loadStoredUser()?.rol === "usuario";
   const [screen, setScreen] = useState(initialScreen);
   const [resguardo, setResguardo] = useState(null);
   const [resguardosPorColaborador, setResguardosPorColaborador] = useState({});
@@ -360,6 +361,7 @@ function NataliaFlow({ initialScreen = "asignacion" }) {
           onOpenDevolucion={handleOpenDevolucionActivo}
           onCreateResguardo={handleCreateResguardo}
           onBack={asignacionInicial ? handleBackFromAddAssignment : undefined}
+          readOnly={readOnlyAssignments}
         />
       );
     }
