@@ -64,7 +64,7 @@ function mapProviderFromApi(provider) {
 
 function buildProviderPayload(form) {
   return {
-    nombre_proveedor: form.providerName.trim(),
+    nombre_proveedor: form.providerName.trim() || form.companyName.trim(),
     empresa: form.companyName.trim(),
     nombre_vendedor: form.sellerName.trim(),
     rfc_empresa: form.rfc.trim().toUpperCase(),
@@ -295,11 +295,6 @@ function Proveedores() {
 
     if (!canManageProvider) {
       setStatus({ type: 'error', text: 'No tienes permiso para guardar proveedores.' })
-      return
-    }
-
-    if (!form.providerName.trim()) {
-      setStatus({ type: 'error', text: 'El nombre del proveedor es obligatorio.' })
       return
     }
 
@@ -640,14 +635,6 @@ function Proveedores() {
 
                 <form onSubmit={handleSubmit} className="mt-5 space-y-5">
                   <div className="grid gap-4 lg:grid-cols-2">
-                    <Field
-                      label="Nombre del proveedor"
-                      name="providerName"
-                      value={form.providerName}
-                      onChange={handleInputChange}
-                      placeholder="Nombre completo"
-                      required
-                    />
                     <Field
                       label="Nombre de la empresa"
                       name="companyName"

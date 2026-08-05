@@ -17,6 +17,7 @@ import ListadoEquipos from "./Views-Rubi/ListadoEquipos";
 import EquipoAlta from "./Views-Rubi/EquipoAlta";
 import EquipoFichaTecnica from "./Views-Rubi/EquipoFichaTecnica";
 import Configuracion from "./Views-Rubi/Configuracion";
+import ConfiguracionSistema from "./Views-Rubi/ConfiguracionSistema";
 import { loadStoredUser } from "./utils/userProfile";
 
 const natRoutes = {
@@ -33,12 +34,14 @@ const appRoutes = {
   Colaboradores: "/colaboradores",
   Equipos: "/equipos",
   Configuracion: "/configuracion",
+  ConfiguracionSistema: "/configuracion/sistema",
 };
 
 function activeNavFromPath(pathname) {
   if (pathname.startsWith("/proveedores")) return "Proveedores";
   if (pathname.startsWith("/colaboradores")) return "Colaboradores";
   if (pathname.startsWith("/equipos")) return "Equipos";
+  if (pathname.startsWith("/configuracion/sistema")) return "ConfiguracionSistema";
   if (pathname.startsWith("/configuracion")) return "Configuracion";
   return "Dashboard";
 }
@@ -427,6 +430,7 @@ export default function App() {
         <Route path="/equipos/ficha/:equipmentId" element={<AppLayoutRoute><EquipoFichaTecnica /></AppLayoutRoute>} />
         <Route path="/equipos/qr/:qrToken" element={<AppLayoutRoute><EquipoFichaTecnica /></AppLayoutRoute>} />
         <Route path="/configuracion" element={<AppLayoutRoute><Configuracion /></AppLayoutRoute>} />
+        <Route path="/configuracion/sistema" element={<AdminRoute><AppLayoutRoute><ConfiguracionSistema /></AppLayoutRoute></AdminRoute>} />
         <Route path="/asignacion" element={<NataliaFlow initialScreen="asignacion" />} />
         <Route path="/asignacion/mantenimiento" element={<NataliaFlow initialScreen="mantenimiento" />} />
         <Route path="/asignacion/reportes" element={<NataliaFlow initialScreen="reportes" />} />

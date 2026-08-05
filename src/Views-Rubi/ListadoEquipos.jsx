@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Html5Qrcode } from 'html5-qrcode'
 import { AppIcon } from '../components/Sidebar'
 import {
@@ -11,9 +11,10 @@ import {
 } from './equiposShared'
 import {
   formatDate,
+  customTypeOption,
   normalizeText,
+  buildEquipmentTypeOptions,
   statusOptions,
-  typeOptions,
 } from './equiposData'
 
 const qrReaderId = 'equipment-qr-reader'
@@ -267,7 +268,9 @@ function EquipmentTable({ equipments, showHidden, onToggleHidden, canChangeState
 
 function ListadoEquipos() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [equipments, setEquipments] = useState([])
+  const [allLoadedEquipments, setAllLoadedEquipments] = useState([])
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('all')
   const [brandFilter, setBrandFilter] = useState('all')
@@ -295,11 +298,14 @@ function ListadoEquipos() {
     if (!hiddenResponse.ok) throw new Error(hiddenData.mensaje || 'No se pudieron cargar los equipos ocultos')
     const activeEquipments = activeData.equipos || []
     const hiddenEquipments = hiddenData.equipos || []
-    setEquipments((showHidden ? hiddenEquipments : activeEquipments).map(mapEquipment))
+    const mappedActiveEquipments = activeEquipments.map(mapEquipment)
+    const mappedHiddenEquipments = hiddenEquipments.map(mapEquipment)
+    setAllLoadedEquipments([...mappedActiveEquipments, ...mappedHiddenEquipments])
+    setEquipments(showHidden ? mappedHiddenEquipments : mappedActiveEquipments)
     setHiddenEquipmentsCount(hiddenEquipments.length)
   }, [showHidden])
 
-  useEffect(() => { loadEquipmentList().catch((error) => setScannerError(error.message)) }, [loadEquipmentList])
+  useEffect(() => { loadEquipmentList().catch((error) => setScannerError(error.message)) }, [loadEquipmentList, location.state?.refreshEquipmentList])
 
   const navigateFromQrValue = useCallback((qrValue) => {
     const token = qrValue.split('/').filter(Boolean).at(-1)
@@ -409,6 +415,8 @@ function ListadoEquipos() {
   }
 
   const visibleEquipments = equipments
+  const typeFilterOptions = useMemo(() => buildEquipmentTypeOptions(allLoadedEquipments).filter((type) => type !== customTypeOption), [allLoadedEquipments])
+
   const brandOptions = useMemo(() => {
     const brandsByName = new Map()
 
@@ -435,7 +443,7 @@ function ListadoEquipos() {
     const term = normalizeText(search)
 
     return visibleEquipments.filter((equipment) => {
-      const matchesType = typeFilter === 'all' || equipment.type === typeFilter
+      const matchesType = typeFilter === 'all' || normalizeText(equipment.type) === normalizeText(typeFilter)
       const matchesBrand = brandFilter === 'all' || equipment.brand === brandFilter
       const matchesStatus = statusFilter === 'all' || equipment.status === statusFilter
 
@@ -527,7 +535,7 @@ function ListadoEquipos() {
               className="h-12 rounded-2xl border border-[#e8dfd0] bg-[#f2ece0] px-4 text-sm font-extrabold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-2 focus:ring-blue-100"
             >
               <option value="all">Todos los tipos</option>
-              {typeOptions.map((type) => (
+              {typeFilterOptions.map((type) => (
                 <option key={type} value={type}>{type}</option>
               ))}
             </select>

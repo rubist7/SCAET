@@ -1,6 +1,36 @@
 export const equipmentStorageKey = 'scaet_equipments'
 
-export const typeOptions = ['Laptop', 'iPad', 'Tablet', 'Celular', 'Computadora', 'Monitor', 'Impresora', 'Teclado', 'Mouse', 'YubiKey', 'Tarjeta', 'Cargador', 'Teléfono', 'Otro']
+export const customTypeOption = 'Otro'
+export const typeOptions = ['Laptop', 'iPad', 'Tablet', 'Celular', 'Computadora', 'Monitor', 'Impresora', 'Teclado', 'Mouse', 'YubiKey', 'Tarjeta', 'Cargador', 'Teléfono', customTypeOption]
+export const standardTypeOptions = typeOptions.filter((type) => type !== customTypeOption)
+
+export function normalizeEquipmentType(value) {
+  return String(value ?? '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLocaleLowerCase('es')
+    .replace(/(^|\s)\S/g, (letter) => letter.toLocaleUpperCase('es'))
+}
+
+export function buildEquipmentTypeOptions(equipments = []) {
+  const standardTypesByName = new Set(standardTypeOptions.map(normalizeText))
+  const customTypesByName = new Map()
+
+  equipments.forEach((equipment) => {
+    const value = typeof equipment === 'string' ? equipment : equipment?.tipo_equipo ?? equipment?.type
+    const type = normalizeEquipmentType(value)
+    const key = normalizeText(type)
+
+    if (type && key !== normalizeText(customTypeOption) && !standardTypesByName.has(key) && !customTypesByName.has(key)) {
+      customTypesByName.set(key, type)
+    }
+  })
+
+  const customTypes = [...customTypesByName.values()]
+    .sort((first, second) => first.localeCompare(second, 'es', { sensitivity: 'base' }))
+
+  return [...standardTypeOptions, ...customTypes, customTypeOption]
+}
 
 
 export const statusOptions = ['Disponible', 'Asignado', 'Mantenimiento', 'Baja']

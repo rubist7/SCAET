@@ -74,21 +74,26 @@ export function QrCode({ equipment, value, size = 'md' }) {
   )
 }
 
-export function Field({ label, name, value, onChange, placeholder, type = 'text', required = false, min, readOnly = false, className = '' }) {
+export function Field({ label, name, value, onChange, placeholder, type = 'text', required = false, min, readOnly = false, error = '', inputRef, className = '' }) {
   return (
-    <label className={`block ${className}`}>
-      <span className="mb-2 block text-[11px] font-extrabold text-[#8d88a2]">{label}</span>
-      <input
-        name={name}
-        type={type}
-        min={min}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        required={required}
-        readOnly={readOnly}
-        className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-2 focus:ring-blue-100 read-only:text-[#8d88a2]"
-      />
-    </label>
+    <div className={className}>
+      <label className="block">
+        <span className="mb-2 block text-[11px] font-extrabold text-[#8d88a2]">{label}</span>
+        <input
+          ref={inputRef}
+          name={name}
+          type={type}
+          min={min}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          required={required}
+          readOnly={readOnly}
+          aria-invalid={error ? 'true' : undefined}
+          className={`h-11 w-full scroll-mt-28 rounded-xl border bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:bg-white focus:ring-2 read-only:text-[#8d88a2] ${error ? 'border-rose-400 focus:border-rose-400 focus:ring-rose-100' : 'border-[#e2d9c9] focus:border-blue-300 focus:ring-blue-100'}`}
+        />
+      </label>
+      {error && <p className="mt-1 text-xs font-bold text-rose-600" role="alert">{error}</p>}
+    </div>
   )
 }

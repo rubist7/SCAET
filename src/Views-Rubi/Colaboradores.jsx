@@ -113,7 +113,7 @@ function CollaboratorDetails({ collaborator }) {
   )
 }
 
-function Field({ label, name, value, onChange, placeholder, type = 'text', required = false, className = '', min }) {
+function Field({ label, name, value, onChange, placeholder, type = 'text', required = false, className = '', min, readOnly = false }) {
   return (
     <label className={`block ${className}`}>
       <span className="mb-2 block text-[11px] font-extrabold text-[#8d88a2]">{label}</span>
@@ -125,7 +125,9 @@ function Field({ label, name, value, onChange, placeholder, type = 'text', requi
         onChange={onChange}
         placeholder={placeholder}
         required={required}
-        className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-2 focus:ring-blue-100"
+        readOnly={readOnly}
+        aria-readonly={readOnly || undefined}
+        className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-2 focus:ring-blue-100 read-only:cursor-default read-only:bg-[#e7e1d7] read-only:text-[#8d88a2]"
       />
     </label>
   )
@@ -783,8 +785,7 @@ function Colaboradores() {
                         value={form.equipmentCount}
                         readOnly
                         placeholder="0"
-                        type="number"
-                        min="0"
+                        type="text"
                       />
 
                       <label className="block">

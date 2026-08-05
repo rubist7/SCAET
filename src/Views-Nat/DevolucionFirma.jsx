@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, Download, Eraser, FileText, Mail, PenLine, X } from "lucide-react";
+import { ChevronDown, Download, Eraser, Mail, PenLine, X } from "lucide-react";
 import { formatDate, formatResguardoDate } from "./dateUtils";
 import BackButton from "../components/BackButton";
 import Signature from "../components/Signature";
@@ -627,25 +627,6 @@ function GeneratedDevolucionModal({ data, items, signature, idResguardo, onClose
     }
   };
 
-  const downloadTxt = () => {
-    if (!documentRef.current) return;
-
-    const content = documentRef.current.innerText
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .join("\n");
-    const blob = new Blob([`${content}\n`], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    const safeName = String(data.folio || "devolucion").replace(/[^\w-]+/g, "_");
-
-    link.href = url;
-    link.download = `${safeName}.txt`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 px-3 py-4 sm:p-5">
       <div className="mx-auto flex min-h-full w-full max-w-4xl items-start">
@@ -672,10 +653,6 @@ function GeneratedDevolucionModal({ data, items, signature, idResguardo, onClose
               <button type="button" onClick={enviarCorreo} disabled={enviandoCorreo || generandoPdf} className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#3A9AF2] text-xs font-black text-[#FFFFFF] transition hover:bg-[#238BEA] disabled:cursor-not-allowed disabled:opacity-60">
                 <Mail size={14} />
                 {enviandoCorreo ? "Enviando..." : correoEnviado ? "Reenviar por correo" : "Enviar por correo"}
-              </button>
-              <button type="button" onClick={downloadTxt} className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#eee8dc] text-xs font-black text-[#6f6584] transition hover:bg-[#e4dccf]">
-                <FileText size={14} />
-                Descargar TXT
               </button>
               <button type="button" onClick={downloadPdf} disabled={enviandoCorreo || generandoPdf} className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#eee8dc] text-xs font-black text-[#6f6584] disabled:cursor-not-allowed disabled:opacity-60">
                 <Download size={14} />

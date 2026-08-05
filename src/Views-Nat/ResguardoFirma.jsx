@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Download, Eraser, FileText, Mail, PenLine, Plus, Send, Trash2, X } from "lucide-react";
+import { Download, Eraser, Mail, PenLine, Plus, Send, Trash2, X } from "lucide-react";
 import DateInput from "./DateInput";
 import { formatDate, formatResguardoDate } from "./dateUtils";
 import BackButton from "../components/BackButton";
@@ -686,25 +686,6 @@ function GeneratedResguardoModal({ data, signature, idResguardo, onClose }) {
     }
   };
 
-  const downloadTxt = () => {
-    if (!documentRef.current) return;
-
-    const content = documentRef.current.innerText
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .join("\n");
-    const blob = new Blob([`${content}\n`], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    const safeName = String(data.folio || "resguardo").replace(/[^\w-]+/g, "_");
-
-    link.href = url;
-    link.download = `${safeName}.txt`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 px-3 py-4 sm:p-5">
       <div className="mx-auto flex min-h-full w-full max-w-4xl items-start">
@@ -721,7 +702,6 @@ function GeneratedResguardoModal({ data, signature, idResguardo, onClose }) {
             {mensajeCorreo && <p className={`mt-3 rounded-[8px] px-3 py-2 text-xs font-bold ${errorCorreo ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-700"}`}>{mensajeCorreo}</p>}
             <div className="mt-3 grid gap-2 sm:grid-cols-3">
               <button type="button" onClick={enviarCorreo} disabled={enviandoCorreo || generandoPdf} className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#3A9AF2] text-xs font-black text-[#FFFFFF] transition hover:bg-[#238BEA] disabled:cursor-not-allowed disabled:opacity-60"><Mail size={14} />{enviandoCorreo ? "Enviando..." : correoEnviado ? "Reenviar por correo" : "Enviar por correo"}</button>
-              <button type="button" onClick={downloadTxt} className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#eee8dc] text-xs font-black text-[#6f6584] transition hover:bg-[#e4dccf]"><FileText size={14} />Descargar TXT</button>
               <button type="button" onClick={downloadPdf} disabled={enviandoCorreo || generandoPdf} className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[#eee8dc] text-xs font-black text-[#6f6584] disabled:cursor-not-allowed disabled:opacity-60"><Download size={14} />{generandoPdf ? "Generando..." : "Descargar PDF"}</button>
             </div>
           </div>

@@ -9,6 +9,7 @@ const crearRouterMantenimientos = require("./routes/mantenimientos.routes");
 const crearRouterLogsActividad = require("./routes/logsActividad.routes");
 const crearRouterImagenesEquipos = require("./routes/equiposImagen.routes");
 const crearRouterImagenesColaboradores = require("./routes/colaboradoresImagen.routes");
+const crearRouterConfiguracionSistema = require("./routes/configuracionSistema.routes");
 const crearRouterResguardosCorreo = require("./routes/resguardosCorreo.routes");
 const { registrarLogActividad } = require("./utils/logsActividad");
 const { verificarTransporterCorreo } = require("./services/resguardoCorreo.service");
@@ -1164,7 +1165,7 @@ app.put("/api/equipos/:id_equipo", verificarToken, autorizarRoles("admin", "capt
       detalles: { id: req.params.id_equipo, nombre: equipo.nombre_equipo, codigo: equipo.codigo_equipo },
     });
     return res.json({ mensaje: "Equipo actualizado correctamente", equipo: await obtenerEquipo("e.id_equipo = ?", req.params.id_equipo) });
-  } catch (err) { if (err.code === "ER_DUP_ENTRY") return res.status(409).json({ mensaje: "El numero de serie o codigo ya esta registrado en otro equipo" }); return res.status(500).json({ mensaje: "Error al editar equipo" }); }
+  } catch (err) { if (err.code === "ER_DUP_ENTRY") return res.status(409).json({ mensaje: err.message.toLowerCase().includes("serie") ? "El numero de serie ya esta registrado" : "El codigo del equipo ya esta registrado" }); return res.status(500).json({ mensaje: "Error al editar equipo" }); }
 });
 
 const tiposAsignacionValidos = ["temporal", "permanente"];
@@ -1981,6 +1982,11 @@ app.use(
 app.use(
   "/api/colaboradores-imagenes",
   crearRouterImagenesColaboradores({ pool, verificarToken, autorizarRoles, registrarLogActividad })
+);
+
+app.use(
+  "/api/configuracion-sistema",
+  crearRouterConfiguracionSistema({ pool, verificarToken, autorizarRoles, registrarLogActividad })
 );
 
 app.use(
