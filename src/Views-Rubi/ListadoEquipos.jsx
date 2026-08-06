@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Html5Qrcode } from 'html5-qrcode'
 import { AppIcon } from '../components/Sidebar'
 import {
   EquipmentPhoto,
@@ -17,8 +16,9 @@ import {
   statusOptions,
 } from './equiposData'
 
-const qrReaderId = 'equipment-qr-reader'
 const apiUrl = '/api'
+const qrImageMaxSize = 10 * 1024 * 1024
+const qrImageTypes = new Set(['image/jpeg', 'image/png', 'image/webp'])
 const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('scaet-token')}`, 'Content-Type': 'application/json' })
 const mapEquipment = (e) => ({
   id: String(e.id_equipo), publicId: e.codigo_equipo, title: e.nombre_equipo,
@@ -30,134 +30,13 @@ const mapEquipment = (e) => ({
   area: e.area_actual || '-', specs: e.especificaciones_tecnicas || '-', photoUrl: e.foto_url || '',
   qrValue: e.qr_url || `/equipos/qr/${e.qr_token}`, qrToken: e.qr_token, active: Number(e.activo) === 1,
 })
-const qrScannerConfig = {
-  fps: 10,
-  qrbox: { width: 220, height: 220 },
-  experimentalFeatures: {
-    useBarCodeDetectorIfSupported: false,
-  },
+
+function isValidImageFile(file) {
+  return file instanceof File
+    && file.size > 0
+    && file.size <= qrImageMaxSize
+    && qrImageTypes.has(file.type)
 }
-
-const ultraWideCameraPattern = /ultra[\s-]?wide|0[.,]5x?|gran angular|super wide/i
-const backCameraPattern = /back|rear|environment|trasera|posterior|facing back/i
-const frontCameraPattern = /front|user|frontal|delantera|selfie|facing front/i
-
-function getFacingMode(cameraMode) {
-  return cameraMode === 'front' ? 'user' : 'environment'
-}
-
-function getCameraForMode(cameras, cameraMode) {
-  if (!cameras.length) {
-    return null
-  }
-
-  const modePattern = cameraMode === 'front' ? frontCameraPattern : backCameraPattern
-  const modeCameras = cameras.filter((camera) => modePattern.test(camera.label || ''))
-  const normalModeCameras = modeCameras.filter((camera) => !ultraWideCameraPattern.test(camera.label || ''))
-
-  if (normalModeCameras.length) {
-    return normalModeCameras[0]
-  }
-
-  if (modeCameras.length) {
-    return modeCameras[0]
-  }
-
-  return null
-}
-
-function getScannerVideoConstraints(cameraMode, preferredCamera) {
-  return {
-    ...(preferredCamera?.id ? { deviceId: { ideal: preferredCamera.id } } : {}),
-    facingMode: { ideal: getFacingMode(cameraMode) },
-    width: { ideal: 1920 },
-    height: { ideal: 1080 },
-    aspectRatio: { ideal: 4 / 3 },
-  }
-}
-
-async function startScanner(scanner, onSuccess, cameraMode) {
-  const cameras = await Html5Qrcode.getCameras().catch(() => [])
-  const preferredCamera = getCameraForMode(cameras, cameraMode)
-  const videoConstraints = getScannerVideoConstraints(cameraMode, preferredCamera)
-
-  try {
-    await scanner.start(
-      { facingMode: getFacingMode(cameraMode) },
-      { ...qrScannerConfig, videoConstraints },
-      onSuccess,
-    )
-  } catch {
-    await scanner.start(
-      { facingMode: getFacingMode(cameraMode) },
-      qrScannerConfig,
-      onSuccess,
-    )
-  }
-}
-
-function getScannerErrorMessage() {
-  const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname)
-
-  if (!window.isSecureContext && !isLocalhost) {
-    return 'La camara del navegador requiere HTTPS o localhost. Abre el sistema en una URL segura o prueba desde localhost.'
-  }
-
-  return 'No pude abrir la camara. Puedes pegar el codigo o URL del QR abajo.'
-}
-
-function getNormalizedZoomValue(value, min, max, step) {
-  const safeStep = step > 0 ? step : 0.1
-  const clampedValue = Math.min(Math.max(value, min), max)
-  const steppedValue = min + Math.round((clampedValue - min) / safeStep) * safeStep
-
-  return Number(Math.min(Math.max(steppedValue, min), max).toFixed(2))
-}
-
-async function getScannerZoomControl(scanner) {
-  try {
-    const capabilities = scanner.getRunningTrackCapabilities()
-    const settings = scanner.getRunningTrackSettings()
-    const zoomCapability = capabilities.zoom
-
-    if (!zoomCapability || typeof zoomCapability !== 'object') {
-      return null
-    }
-
-    const min = Number(zoomCapability.min ?? 1)
-    const max = Number(zoomCapability.max ?? min)
-    const step = Number(zoomCapability.step ?? 0.1)
-
-    if (max <= min) {
-      return null
-    }
-
-    const currentZoom = Number(settings.zoom ?? min)
-    const zoom = getNormalizedZoomValue(currentZoom, min, max, step)
-
-    return { min, max, step: step > 0 ? step : 0.1, value: zoom }
-  } catch {
-    return null
-  }
-}
-
-function stopScanner(scanner, shouldClear = true) {
-  scanner
-    .stop()
-    .catch(() => undefined)
-    .then(() => {
-      if (!shouldClear) {
-        return
-      }
-
-      try {
-        scanner.clear()
-      } catch {
-        return
-      }
-    })
-}
-
 function EquipmentCard({ equipment, showHidden, onToggleHidden, canChangeState }) {
   return (
     <article className="rounded-2xl bg-white p-4 shadow-sm">
@@ -278,12 +157,10 @@ function ListadoEquipos() {
   const [viewMode, setViewMode] = useState('cards')
   const [showHidden, setShowHidden] = useState(false)
   const [hiddenEquipmentsCount, setHiddenEquipmentsCount] = useState(0)
-  const [scannerOpen, setScannerOpen] = useState(false)
-  const [scannerError, setScannerError] = useState('')
-  const [cameraMode, setCameraMode] = useState('back')
-  const [zoomControl, setZoomControl] = useState(null)
-  const [manualQrValue, setManualQrValue] = useState('')
-  const scannerRef = useRef(null)
+  const [qrError, setQrError] = useState('')
+  const [isQrScanLoading, setIsQrScanLoading] = useState(false)
+  const photoInputRef = useRef(null)
+  const photoScanInProgressRef = useRef(false)
   const user = useMemo(() => { try { return JSON.parse(localStorage.getItem('scaet-user') || '{}') } catch { return {} } }, [])
   const canCreate = ['admin', 'capturista'].includes(user.rol)
   const canChangeState = user.rol === 'admin'
@@ -305,113 +182,108 @@ function ListadoEquipos() {
     setHiddenEquipmentsCount(hiddenEquipments.length)
   }, [showHidden])
 
-  useEffect(() => { loadEquipmentList().catch((error) => setScannerError(error.message)) }, [loadEquipmentList, location.state?.refreshEquipmentList])
+  useEffect(() => {
+    let isCurrent = true
 
-  const navigateFromQrValue = useCallback((qrValue) => {
+    const load = async () => {
+      try {
+        await loadEquipmentList()
+      } catch (error) {
+        if (isCurrent) {
+          setQrError(error.message)
+        }
+      }
+    }
+
+    void load()
+    return () => { isCurrent = false }
+  }, [loadEquipmentList, location.state?.refreshEquipmentList])
+
+  const navigateFromQrValue = useCallback(async (qrValue) => {
     const token = qrValue.split('/').filter(Boolean).at(-1)
-    fetch(`${apiUrl}/equipos/qr/${encodeURIComponent(token)}`, { headers: authHeaders() }).then(async (response) => {
-      const data = await response.json(); if (!response.ok) throw new Error(data.mensaje || 'QR no reconocido')
-      setScannerOpen(false); navigate(`/equipos/ficha/${data.equipo.id_equipo}`)
-    }).catch((error) => setScannerError(error.message))
+
+    try {
+      const response = await fetch(`${apiUrl}/equipos/qr/${encodeURIComponent(token)}`, { headers: authHeaders() })
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(response.status === 404 ? 'El código QR no corresponde a un equipo registrado.' : (data.mensaje || 'QR no reconocido'))
+      }
+
+      navigate(`/equipos/ficha/${data.equipo.id_equipo}`)
+      return true
+    } catch (error) {
+      setQrError(error.message)
+      return false
+    }
   }, [navigate])
 
-  useEffect(() => {
-    if (!scannerOpen) {
-      return undefined
-    }
-
-    let cancelled = false
-    let started = false
-    let scanner = null
-    const startTimer = window.setTimeout(() => {
-      if (cancelled) {
-        return
-      }
-
-      scanner = new Html5Qrcode(qrReaderId)
-      scannerRef.current = scanner
-
-      startScanner(scanner, (decodedText) => {
-        if (!cancelled) {
-          navigateFromQrValue(decodedText)
-        }
-      }, cameraMode)
-      .then(async () => {
-        started = true
-
-        if (cancelled) {
-          stopScanner(scanner, scannerRef.current === scanner)
-          return
-        }
-
-        const nextZoomControl = await getScannerZoomControl(scanner)
-
-        if (!cancelled) {
-          setZoomControl(nextZoomControl)
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          if (scannerRef.current === scanner) {
-            scannerRef.current = null
-          }
-
-          try {
-            scanner.clear()
-          } catch {
-            void scanner
-          }
-
-          setScannerError(getScannerErrorMessage())
-        }
-      })
-    }, 120)
-
-    return () => {
-      cancelled = true
-      window.clearTimeout(startTimer)
-
-      if (!scanner) {
-        return
-      }
-
-      const shouldClear = scannerRef.current === scanner
-
-      if (shouldClear) {
-        scannerRef.current = null
-      }
-
-      if (started) {
-        stopScanner(scanner, shouldClear)
-      }
-    }
-  }, [cameraMode, navigateFromQrValue, scannerOpen])
-
-  const handleCameraModeChange = (nextCameraMode) => {
-    if (nextCameraMode === cameraMode) {
+  const handlePhotoPicker = () => {
+    if (isQrScanLoading) {
       return
     }
 
-    setScannerError('')
-    setZoomControl(null)
-    setCameraMode(nextCameraMode)
+    try {
+      if (!photoInputRef.current) {
+        throw new Error('Photo input unavailable')
+      }
+
+      setQrError('')
+      photoInputRef.current.click()
+    } catch {
+      setQrError('No fue posible procesar la imagen seleccionada.')
+    }
   }
 
-  const handleZoomChange = (event) => {
-    const nextZoom = Number(event.target.value)
+  const handlePhotoScan = async (event) => {
+    const imageFile = event.target.files?.[0]
 
-    setZoomControl((currentControl) => (
-      currentControl ? { ...currentControl, value: nextZoom } : currentControl
-    ))
+    if (!imageFile) {
+      return
+    }
 
-    scannerRef.current
-      ?.applyVideoConstraints({ advanced: [{ zoom: nextZoom }] })
-      .catch(() => setScannerError('No pude ajustar el zoom de esta camara.'))
-  }
+    if (photoScanInProgressRef.current) {
+      event.target.value = ''
+      return
+    }
 
-  const handleManualScan = (event) => {
-    event.preventDefault()
-    navigateFromQrValue(manualQrValue.trim())
+    photoScanInProgressRef.current = true
+    setQrError('')
+    setIsQrScanLoading(true)
+
+    try {
+      if (!isValidImageFile(imageFile)) {
+        setQrError('No fue posible procesar la imagen seleccionada.')
+        return
+      }
+
+      const formData = new FormData()
+      formData.append('image', imageFile)
+      const response = await fetch(`${apiUrl}/equipos/qr/decode-image`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${localStorage.getItem('scaet-token')}` },
+        body: formData,
+      })
+      const data = await response.json().catch(() => ({}))
+
+      if (!response.ok) {
+        setQrError(data.message || data.mensaje || 'No fue posible procesar la imagen seleccionada.')
+        return
+      }
+
+      if (typeof data.decodedText !== 'string' || !data.decodedText.trim()) {
+        setQrError('No fue posible procesar la imagen seleccionada.')
+        return
+      }
+
+      await navigateFromQrValue(data.decodedText)
+    } catch {
+      setQrError('No fue posible procesar la imagen seleccionada.')
+    } finally {
+      event.target.value = ''
+      photoScanInProgressRef.current = false
+      setIsQrScanLoading(false)
+    }
   }
 
   const visibleEquipments = equipments
@@ -436,7 +308,7 @@ function ListadoEquipos() {
       const response = await fetch(`${apiUrl}/equipos/${equipmentId}/estado`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify({ activo: shouldHide ? 0 : 1 }) })
       const data = await response.json(); if (!response.ok) throw new Error(data.mensaje)
       await loadEquipmentList()
-    } catch (error) { setScannerError(error.message) }
+    } catch (error) { setQrError(error.message) }
   }
 
   const filteredEquipments = useMemo(() => {
@@ -492,13 +364,8 @@ function ListadoEquipos() {
             </button>
             <button
               type="button"
-              onClick={() => {
-                setScannerError('')
-                setCameraMode('back')
-                setZoomControl(null)
-                setManualQrValue('')
-                setScannerOpen(true)
-              }}
+              onClick={handlePhotoPicker}
+              disabled={isQrScanLoading}
               className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#f2ece0] px-5 text-sm font-extrabold text-[#5d5870] shadow-sm transition hover:bg-[#e9dfd0]"
             >
               <AppIcon name="scan" />
@@ -513,6 +380,27 @@ function ListadoEquipos() {
             </Link>}
           </div>
         </section>
+
+        <input
+          ref={photoInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={handlePhotoScan}
+          disabled={isQrScanLoading}
+          className="sr-only"
+          tabIndex={-1}
+        />
+        {isQrScanLoading && (
+          <p role="status" className="rounded-xl bg-blue-50 px-4 py-3 text-sm font-bold text-blue-600">
+            Leyendo código QR…
+          </p>
+        )}
+        {qrError && (
+          <p role="alert" className="rounded-xl bg-amber-50 px-4 py-3 text-sm font-bold text-amber-600">
+            {qrError}
+          </p>
+        )}
 
         <section className="space-y-4">
           <div className="grid gap-3 2xl:grid-cols-[1fr_190px_190px_190px_auto]">
@@ -633,117 +521,6 @@ function ListadoEquipos() {
         </section>
       </div>
 
-      {scannerOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#201d31]/40 px-4 py-5">
-          <section className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-5">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-extrabold text-[#201d31]">Escanear QR</h2>
-                <p className="mt-1 text-sm font-bold text-[#8d88a2]">Apunta la camara al codigo del equipo.</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setScannerOpen(false)}
-                className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f2ece0] text-[#5d5870]"
-                aria-label="Cerrar scanner"
-              >
-                <AppIcon name="x" />
-              </button>
-            </div>
-
-            <style>{`
-              #${qrReaderId} {
-                border: 0 !important;
-                min-height: 300px;
-                width: 100% !important;
-              }
-
-              #${qrReaderId} > div,
-              #${qrReaderId}__scan_region,
-              #${qrReaderId}__dashboard {
-                width: 100% !important;
-              }
-
-              #${qrReaderId}__scan_region {
-                min-height: 300px;
-              }
-
-              #${qrReaderId} #qr-shaded-region {
-                border-color: transparent !important;
-              }
-
-              #${qrReaderId} video {
-                background: #000;
-                height: 100% !important;
-                min-height: 300px;
-                object-fit: contain;
-                width: 100% !important;
-              }
-            `}</style>
-            <div id={qrReaderId} className="mt-5 aspect-[4/3] w-full overflow-hidden rounded-2xl bg-[#f2ece0] sm:min-h-[360px]" />
-
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <div className="block">
-                <span className="mb-1 block text-[10px] font-extrabold uppercase tracking-[0.22em] text-[#8d88a2]">Camara</span>
-                <div className="grid h-10 grid-cols-2 rounded-xl border border-[#e2d9c9] bg-[#f2ece0] p-1">
-                  <button
-                    type="button"
-                    onClick={() => handleCameraModeChange('back')}
-                    className={`rounded-lg text-xs font-extrabold transition ${cameraMode === 'back' ? 'bg-[#3A9AF2] text-[#FFFFFF] shadow-sm' : 'text-[#6f6a85]'}`}
-                  >
-                    Trasera
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleCameraModeChange('front')}
-                    className={`rounded-lg text-xs font-extrabold transition ${cameraMode === 'front' ? 'bg-[#3A9AF2] text-[#FFFFFF] shadow-sm' : 'text-[#6f6a85]'}`}
-                  >
-                    Frontal
-                  </button>
-                </div>
-              </div>
-
-              {zoomControl && (
-                <label className="block">
-                  <span className="mb-1 block text-[10px] font-extrabold uppercase tracking-[0.22em] text-[#8d88a2]">
-                    Zoom {zoomControl.value.toFixed(1)}x
-                  </span>
-                  <input
-                    type="range"
-                    min={zoomControl.min}
-                    max={zoomControl.max}
-                    step={zoomControl.step}
-                    value={zoomControl.value}
-                    onChange={handleZoomChange}
-                    className="h-10 w-full accent-blue-500"
-                  />
-                </label>
-              )}
-              </div>
-
-            {scannerError && (
-              <p className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm font-bold text-amber-600">
-                {scannerError}
-              </p>
-            )}
-
-            <form onSubmit={handleManualScan} className="mt-4 flex flex-col gap-3 sm:flex-row">
-              <input
-                value={manualQrValue}
-                onChange={(event) => setManualQrValue(event.target.value)}
-                placeholder="Pega aqui el codigo o URL del QR"
-                className="h-11 min-w-0 flex-1 rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none focus:border-blue-300 focus:bg-white"
-              />
-              <button
-                type="submit"
-                className="h-11 rounded-xl bg-[#3A9AF2] px-5 text-sm font-extrabold text-[#FFFFFF] transition hover:bg-[#238BEA]"
-              >
-                Abrir ficha
-              </button>
-            </form>
-          </section>
-        </div>
-      )}
     </EquipmentShell>
   )
 }

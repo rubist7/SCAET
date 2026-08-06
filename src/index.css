@@ -3,6 +3,11 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+:root {
+  --app-header-height: 4rem;
+  --app-header-total-height: calc(var(--app-header-height) + env(safe-area-inset-top));
+}
+
 @theme {
   --font-sans: Roboto, ui-sans-serif, system-ui, sans-serif;
   --font-logo: "Archivo Black", Roboto, ui-sans-serif, system-ui, sans-serif;
@@ -14,6 +19,15 @@
 
 html {
   background: #f4f1ec;
+}
+
+.app-shell-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  height: var(--app-header-total-height);
+  padding-top: env(safe-area-inset-top);
+  background-color: #fff;
 }
 
 body {

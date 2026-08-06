@@ -264,8 +264,8 @@ export default function Layout({ children, activeNav, onNavigate }) {
           </div>
         </aside>
 
-        <main className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
-          <header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-[#ebe5db] bg-white px-4 shadow-sm sm:px-5">
+        <main className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <header className="app-shell-header flex shrink-0 items-center justify-between gap-3 border-b border-[#ebe5db] bg-white px-4 shadow-sm sm:px-5">
            <div className="flex min-w-0 flex-1 items-center gap-0 overflow-hidden">
               <button
                 type="button"
@@ -301,7 +301,7 @@ export default function Layout({ children, activeNav, onNavigate }) {
             </div>
           </header>
 
-          <div className="min-w-0 flex-1 overflow-auto p-2 sm:p-5 md:p-7">{children}</div>
+          <div className="min-h-0 min-w-0 flex-1 overflow-auto p-2 sm:p-5 md:p-7">{children}</div>
         </main>
       </div>
 

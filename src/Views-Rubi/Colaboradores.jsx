@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import imageCompression from 'browser-image-compression'
 import { AppIcon } from '../components/Sidebar'
+import { useFormErrorFocus } from '../hooks/useFormErrorFocus'
 import { loadUserProfile } from '../utils/userProfile'
 
 const apiUrl = '/api'
@@ -44,8 +45,40 @@ const emptyCollaboratorForm = {
 
 const statusOptions = ['Activo', 'Temporal', 'Inactivo']
 
-function createCollaboratorId() {
-  return globalThis.crypto?.randomUUID?.() ?? `collaborator-${Date.now()}`
+function getCollaboratorValidationError(form) {
+  const requiredFields = [
+    ['employeeNumber', 'El número de colaborador es obligatorio.'],
+    ['fullName', 'El nombre completo es obligatorio.'],
+    ['area', 'El área es obligatoria.'],
+    ['department', 'El departamento es obligatorio.'],
+    ['position', 'El puesto es obligatorio.'],
+    ['email', 'El correo de contacto es obligatorio.'],
+  ]
+
+  const requiredError = requiredFields.find(([field]) => !form[field].trim())
+  if (requiredError) {
+    return { field: requiredError[0], message: requiredError[1] }
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+    return { field: 'email', message: 'El formato del correo no es válido.' }
+  }
+
+  return null
+}
+
+function getCollaboratorErrorField(message) {
+  const normalizedMessage = String(message || '').toLocaleLowerCase('es')
+
+  if (normalizedMessage.includes('correo')) return 'email'
+  if (normalizedMessage.includes('número de colaborador') || normalizedMessage.includes('numero de colaborador')) return 'employeeNumber'
+  if (normalizedMessage.includes('nombre completo')) return 'fullName'
+  if (normalizedMessage.includes('área') || normalizedMessage.includes('area')) return 'area'
+  if (normalizedMessage.includes('departamento')) return 'department'
+  if (normalizedMessage.includes('puesto')) return 'position'
+  if (normalizedMessage.includes('estado')) return 'status'
+
+  return ''
 }
 
 function normalizeText(value) {
@@ -113,7 +146,9 @@ function CollaboratorDetails({ collaborator }) {
   )
 }
 
-function Field({ label, name, value, onChange, placeholder, type = 'text', required = false, className = '', min, readOnly = false }) {
+function Field({ label, name, value, onChange, placeholder, type = 'text', required = false, className = '', min, readOnly = false, error = '', inputRef }) {
+  const errorId = error ? `${name}-error` : undefined
+
   return (
     <label className={`block ${className}`}>
       <span className="mb-2 block text-[11px] font-extrabold text-[#8d88a2]">{label}</span>
@@ -127,8 +162,12 @@ function Field({ label, name, value, onChange, placeholder, type = 'text', requi
         required={required}
         readOnly={readOnly}
         aria-readonly={readOnly || undefined}
-        className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-2 focus:ring-blue-100 read-only:cursor-default read-only:bg-[#e7e1d7] read-only:text-[#8d88a2]"
+        aria-invalid={error ? 'true' : undefined}
+        aria-describedby={errorId}
+        ref={inputRef}
+        className={`h-11 w-full scroll-mt-[var(--app-header-total-height)] rounded-xl border bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:bg-white focus:ring-2 read-only:cursor-default read-only:bg-[#e7e1d7] read-only:text-[#8d88a2] ${error ? 'border-rose-400 focus:border-rose-400 focus:ring-rose-100' : 'border-[#e2d9c9] focus:border-blue-300 focus:ring-blue-100'}`}
       />
+      {error && <p id={errorId} role="alert" className="mt-1 text-xs font-bold text-rose-600">{error}</p>}
     </label>
   )
 }
@@ -156,8 +195,10 @@ function Colaboradores() {
   const [showForm, setShowForm] = useState(false)
   const [expandedCollaboratorId, setExpandedCollaboratorId] = useState(null)
   const [showHidden, setShowHidden] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const [, setLoading] = useState(true)
   const [message, setMessage] = useState('')
+  const [fieldErrors, setFieldErrors] = useState({})
+  const [formError, setFormError] = useState('')
   const [photoFile, setPhotoFile] = useState(null)
   const role = loadUserProfile().roleKey
   const canManage = role === 'admin' || role === 'capturista'
@@ -166,6 +207,21 @@ function Colaboradores() {
   const listRef = useRef(null)
   const uploadInputRef = useRef(null)
   const cameraInputRef = useRef(null)
+  const fieldRefs = useRef({})
+  const formErrorRef = useRef(null)
+
+  const getFieldTarget = useCallback(() => {
+    const field = Object.keys(fieldErrors)[0]
+    return field ? fieldRefs.current[field] : null
+  }, [fieldErrors])
+
+  const getFormErrorTarget = useCallback(() => formErrorRef.current, [])
+
+  useFormErrorFocus(
+    Object.entries(fieldErrors).map(([field, error]) => `${field}:${error}`).join('|'),
+    getFieldTarget,
+  )
+  useFormErrorFocus(formError, getFormErrorTarget, { focus: false })
 
   const loadCollaborators = useCallback(async () => {
     setLoading(true)
@@ -185,7 +241,11 @@ function Colaboradores() {
   }, [showHidden])
 
   useEffect(() => {
-    loadCollaborators()
+    const loadTimer = window.setTimeout(() => {
+      loadCollaborators()
+    }, 0)
+
+    return () => window.clearTimeout(loadTimer)
   }, [loadCollaborators])
 
   const visibleCollaborators = collaborators
@@ -253,6 +313,15 @@ function Colaboradores() {
     const { name, value } = event.target
     const fieldName = name === 'area' || name.toLowerCase().includes('rea') ? 'area' : name
     setForm((currentForm) => ({ ...currentForm, [fieldName]: value }))
+    setFieldErrors((currentErrors) => {
+      if (!currentErrors[fieldName]) {
+        return currentErrors
+      }
+
+      const nextErrors = { ...currentErrors }
+      delete nextErrors[fieldName]
+      return nextErrors
+    })
   }
 
   const handlePhotoChange = async (event) => {
@@ -260,7 +329,7 @@ function Colaboradores() {
     event.target.value = ''
     if (!file) return
     if (!allowedImageTypes.includes(file.type)) {
-      setMessage('Solo puedes seleccionar imagenes JPG, JPEG, PNG o WEBP.')
+      setFormError('Solo puedes seleccionar imagenes JPG, JPEG, PNG o WEBP.')
       return
     }
 
@@ -271,7 +340,7 @@ function Colaboradores() {
         useWebWorker: true,
       })
       if (compressedFile.size > maxImageBytes) {
-        setMessage('La imagen comprimida supera el limite de 5 MB.')
+        setFormError('La imagen comprimida supera el limite de 5 MB.')
         return
       }
 
@@ -284,9 +353,9 @@ function Colaboradores() {
           photoName: compressedFile.name,
         }
       })
-      setMessage('')
+      setFormError('')
     } catch (error) {
-      setMessage(error.message || 'No se pudo comprimir la imagen seleccionada.')
+      setFormError(error.message || 'No se pudo comprimir la imagen seleccionada.')
     }
   }
 
@@ -298,6 +367,8 @@ function Colaboradores() {
     setForm(emptyCollaboratorForm)
     setPhotoFile(null)
     setEditingId(null)
+    setFieldErrors({})
+    setFormError('')
     setShowForm(true)
     setExpandedCollaboratorId(null)
     scrollToForm()
@@ -307,12 +378,24 @@ function Colaboradores() {
     setForm(emptyCollaboratorForm)
     setPhotoFile(null)
     setEditingId(null)
+    setFieldErrors({})
+    setFormError('')
     setShowForm(false)
   }
 
   const handleSubmit = async (event) => {
     event.preventDefault()
+    const validationError = getCollaboratorValidationError(form)
+
+    if (validationError) {
+      setFieldErrors({ [validationError.field]: validationError.message })
+      setFormError('')
+      return
+    }
+
     setMessage('')
+    setFieldErrors({})
+    setFormError('')
     const payload = {
       num_colaborador: form.employeeNumber.trim(),
       nombre_completo: form.fullName.trim(),
@@ -365,7 +448,16 @@ function Colaboradores() {
       setMessage(data.mensaje)
       scrollToList()
     } catch (error) {
-      setMessage(collaboratorSaved ? `El colaborador se guardo, pero no se pudo subir la imagen: ${error.message}` : error.message)
+      const errorMessage = collaboratorSaved ? `El colaborador se guardo, pero no se pudo subir la imagen: ${error.message}` : error.message
+      const field = collaboratorSaved ? '' : getCollaboratorErrorField(errorMessage)
+
+      if (field) {
+        setFieldErrors({ [field]: errorMessage })
+        setFormError('')
+      } else {
+        setFieldErrors({})
+        setFormError(errorMessage)
+      }
     }
   }
   const handleEdit = (collaborator) => {
@@ -386,6 +478,8 @@ function Colaboradores() {
     })
     setPhotoFile(null)
     setEditingId(collaborator.id)
+    setFieldErrors({})
+    setFormError('')
     setShowForm(true)
     setExpandedCollaboratorId(null)
     scrollToForm()
@@ -668,7 +762,7 @@ function Colaboradores() {
                   </p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="mt-5 space-y-5">
+                <form noValidate onSubmit={handleSubmit} className="mt-5 space-y-5">
                   <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
                     <div className="flex w-full flex-col items-center gap-3 rounded-xl border border-[#f0edf6] bg-[#fbfaf8] p-4 lg:w-56">
                       <Avatar collaborator={form} size="lg" />
@@ -722,6 +816,8 @@ function Colaboradores() {
                         onChange={handleInputChange}
                         placeholder="EL-0001"
                         required
+                        error={fieldErrors.employeeNumber}
+                        inputRef={(element) => { fieldRefs.current.employeeNumber = element }}
                       />
                       <Field
                         label="Nombre completo"
@@ -730,6 +826,8 @@ function Colaboradores() {
                         onChange={handleInputChange}
                         placeholder="Nombre Apellido Apellido"
                         required
+                        error={fieldErrors.fullName}
+                        inputRef={(element) => { fieldRefs.current.fullName = element }}
                       />
                       <Field
                         label="Área"
@@ -738,6 +836,8 @@ function Colaboradores() {
                         onChange={handleInputChange}
                         placeholder="Recepcion"
                         required
+                        error={fieldErrors.area}
+                        inputRef={(element) => { fieldRefs.current.area = element }}
                       />
                       <Field
                         label="Departamento"
@@ -746,6 +846,8 @@ function Colaboradores() {
                         onChange={handleInputChange}
                         placeholder="Recursos Humanos"
                         required
+                        error={fieldErrors.department}
+                        inputRef={(element) => { fieldRefs.current.department = element }}
                       />
                       <Field
                         label="Puesto"
@@ -754,6 +856,8 @@ function Colaboradores() {
                         onChange={handleInputChange}
                         placeholder="Recepcionista Senior"
                         required
+                        error={fieldErrors.position}
+                        inputRef={(element) => { fieldRefs.current.position = element }}
                       />
                       <Field
                         label="Correo de contacto"
@@ -763,6 +867,8 @@ function Colaboradores() {
                         placeholder="colaborador@breathless.com"
                         type="email"
                         required
+                        error={fieldErrors.email}
+                        inputRef={(element) => { fieldRefs.current.email = element }}
                       />
                       <Field
                         label="Telefono"
@@ -771,6 +877,8 @@ function Colaboradores() {
                         onChange={handleInputChange}
                         placeholder="Telefono de contacto"
                         type="tel"
+                        error={fieldErrors.phone}
+                        inputRef={(element) => { fieldRefs.current.phone = element }}
                       />
                       <Field
                         label="Extension"
@@ -778,6 +886,8 @@ function Colaboradores() {
                         value={form.extension}
                         onChange={handleInputChange}
                         placeholder="Ext. 000"
+                        error={fieldErrors.extension}
+                        inputRef={(element) => { fieldRefs.current.extension = element }}
                       />
                       <Field
                         label="Equipos asignados"
@@ -794,12 +904,16 @@ function Colaboradores() {
                           name="status"
                           value={form.status}
                           onChange={handleInputChange}
-                          className="h-11 w-full rounded-xl border border-[#e2d9c9] bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:border-blue-300 focus:bg-white focus:ring-2 focus:ring-blue-100"
+                          ref={(element) => { fieldRefs.current.status = element }}
+                          aria-invalid={fieldErrors.status ? 'true' : undefined}
+                          aria-describedby={fieldErrors.status ? 'status-error' : undefined}
+                          className={`h-11 w-full scroll-mt-[var(--app-header-total-height)] rounded-xl border bg-[#f2ece0] px-4 text-sm font-bold text-[#2a263a] outline-none transition focus:bg-white focus:ring-2 ${fieldErrors.status ? 'border-rose-400 focus:border-rose-400 focus:ring-rose-100' : 'border-[#e2d9c9] focus:border-blue-300 focus:ring-blue-100'}`}
                         >
                           {statusOptions.map((option) => (
                             <option key={option} value={option}>{option}</option>
                           ))}
                         </select>
+                        {fieldErrors.status && <p id="status-error" role="alert" className="mt-1 text-xs font-bold text-rose-600">{fieldErrors.status}</p>}
                       </label>
 
                       <label className="block lg:col-span-2">
@@ -816,7 +930,9 @@ function Colaboradores() {
                     </div>
                   </div>
 
-                  <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                  <div ref={formErrorRef} className="space-y-3 scroll-mt-[var(--app-header-total-height)]">
+                    {formError && <p role="alert" className="rounded-xl bg-rose-50 px-4 py-3 text-sm font-bold text-rose-600">{formError}</p>}
+                    <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                     <button
                       type="button"
                       onClick={handleCancel}
@@ -830,6 +946,7 @@ function Colaboradores() {
                     >
                       {isEditing ? 'Guardar cambios' : 'Guardar colaborador'}
                     </button>
+                    </div>
                   </div>
                 </form>
               </section>

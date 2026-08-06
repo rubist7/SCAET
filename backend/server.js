@@ -9,6 +9,7 @@ const pool = require("./config/db");
 const crearRouterMantenimientos = require("./routes/mantenimientos.routes");
 const crearRouterLogsActividad = require("./routes/logsActividad.routes");
 const crearRouterImagenesEquipos = require("./routes/equiposImagen.routes");
+const crearRouterEquiposQrDecode = require("./routes/equiposQrDecode.routes");
 const crearRouterImagenesColaboradores = require("./routes/colaboradoresImagen.routes");
 const crearRouterConfiguracionSistema = require("./routes/configuracionSistema.routes");
 const crearRouterResguardosCorreo = require("./routes/resguardosCorreo.routes");
@@ -1118,6 +1119,11 @@ app.get("/api/equipos/qr/:qr_token", verificarToken, async (req, res) => {
   try { const equipo = await obtenerEquipo("e.qr_token = ?", req.params.qr_token); return equipo ? res.json({ equipo }) : res.status(404).json({ mensaje: "Equipo no encontrado" }); }
   catch { return res.status(500).json({ mensaje: "Error al consultar equipo" }); }
 });
+
+app.use(
+  "/api/equipos/qr",
+  crearRouterEquiposQrDecode({ verificarToken })
+);
 
 app.get("/api/equipos/:id_equipo", verificarToken, async (req, res) => {
   try {
