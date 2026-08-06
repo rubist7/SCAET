@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import imageCompression from 'browser-image-compression'
 import { AppIcon } from '../components/Sidebar'
+import ImagePreviewModal from '../components/ImagePreviewModal'
 import { useFormErrorFocus } from '../hooks/useFormErrorFocus'
 import { loadUserProfile } from '../utils/userProfile'
 
@@ -99,11 +100,20 @@ function getInitials(name, fallback = 'CL') {
   return words.slice(0, 2).map((word) => word[0]).join('').toUpperCase()
 }
 
-function Avatar({ collaborator, size = 'md' }) {
+function Avatar({ collaborator, size = 'md', onViewImage }) {
   const sizeClass = size === 'lg' ? 'h-20 w-20 text-xl' : 'h-10 w-10 text-xs'
+  const avatarClass = `flex shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-blue-300 bg-blue-50 font-extrabold text-blue-500 ${sizeClass}`
+
+  if (collaborator.photoUrl && onViewImage) {
+    return (
+      <button type="button" onClick={() => onViewImage(collaborator)} className={`${avatarClass} cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2`} aria-label={`Ver imagen completa de ${collaborator.fullName || 'colaborador'}`}>
+        <img src={collaborator.photoUrl} alt="" className="h-full w-full object-cover" />
+      </button>
+    )
+  }
 
   return (
-    <div className={`flex shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-blue-300 bg-blue-50 font-extrabold text-blue-500 ${sizeClass}`}>
+    <div className={avatarClass}>
       {collaborator.photoUrl ? (
         <img src={collaborator.photoUrl} alt="" className="h-full w-full object-cover" />
       ) : (
@@ -122,11 +132,11 @@ function DetailItem({ label, value, className = '' }) {
   )
 }
 
-function CollaboratorDetails({ collaborator }) {
+function CollaboratorDetails({ collaborator, onViewImage }) {
   return (
     <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-4">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-        <Avatar collaborator={collaborator} size="lg" />
+        <Avatar collaborator={collaborator} size="lg" onViewImage={onViewImage} />
         <div className="grid flex-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <DetailItem label="Num. colaborador" value={collaborator.employeeNumber} />
           <DetailItem label="Nombre completo" value={collaborator.fullName} />
@@ -200,6 +210,7 @@ function Colaboradores() {
   const [fieldErrors, setFieldErrors] = useState({})
   const [formError, setFormError] = useState('')
   const [photoFile, setPhotoFile] = useState(null)
+  const [viewingCollaborator, setViewingCollaborator] = useState(null)
   const role = loadUserProfile().roleKey
   const canManage = role === 'admin' || role === 'capturista'
   const canChangeState = role === 'admin'
@@ -510,6 +521,7 @@ function Colaboradores() {
   }
 
   return (
+    <>
     <div className="min-w-0 space-y-6">
             <section className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between" ref={listRef}>
               <div className="min-w-0">
@@ -596,7 +608,7 @@ function Colaboradores() {
                           <Fragment key={collaborator.id}>
                             <tr className={`transition hover:bg-blue-50/40 ${isExpanded ? 'bg-blue-50/30' : ''}`}>
                               <td className="px-5 py-4">
-                                <Avatar collaborator={collaborator} />
+                                <Avatar collaborator={collaborator} onViewImage={setViewingCollaborator} />
                               </td>
                               <td className="px-5 py-4 font-bold text-[#8d88a2]">{collaborator.employeeNumber}</td>
                               <td className="px-5 py-4 font-extrabold text-[#201d31]">{collaborator.fullName}</td>
@@ -650,7 +662,7 @@ function Colaboradores() {
                             {isExpanded && (
                               <tr>
                                 <td colSpan="8" className="bg-[#fbfaf8] px-5 pb-5">
-                                  <CollaboratorDetails collaborator={collaborator} />
+                                  <CollaboratorDetails collaborator={collaborator} onViewImage={setViewingCollaborator} />
                                 </td>
                               </tr>
                             )}
@@ -684,7 +696,7 @@ function Colaboradores() {
                           }`}
                         >
                           <div className="flex items-start gap-3">
-                            <Avatar collaborator={collaborator} />
+                            <Avatar collaborator={collaborator} onViewImage={setViewingCollaborator} />
                             <div className="min-w-0 flex-1">
                               <div className="flex items-start justify-between gap-3">
                                 <div className="min-w-0">
@@ -706,7 +718,7 @@ function Colaboradores() {
 
                           {isExpanded && (
                             <div className="mt-4">
-                              <CollaboratorDetails collaborator={collaborator} />
+                              <CollaboratorDetails collaborator={collaborator} onViewImage={setViewingCollaborator} />
                             </div>
                           )}
 
@@ -952,6 +964,8 @@ function Colaboradores() {
               </section>
             )}
           </div>
+          <ImagePreviewModal imageUrl={viewingCollaborator?.photoUrl || ''} alt={`Imagen de ${viewingCollaborator?.fullName || 'colaborador'}`} onClose={() => setViewingCollaborator(null)} />
+    </>
   )
 }
 

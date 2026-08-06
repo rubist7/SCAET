@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import BackButton from '../components/BackButton'
+import ImagePreviewModal from '../components/ImagePreviewModal'
 import ResguardoFirma from '../Views-Nat/ResguardoFirma'
 import { EquipmentPhoto, EquipmentShell, QrCode, StatusBadge, WarrantyBadge } from './equiposShared'
 import { formatDate, warrantyLabel } from './equiposData'
@@ -19,6 +20,7 @@ function EquipoFichaTecnica() {
   const [error, setError] = useState('')
   const [qrStorageError, setQrStorageError] = useState('')
   const [viewingResguardoId, setViewingResguardoId] = useState(null)
+  const [viewingImage, setViewingImage] = useState(false)
   const qrRef = useRef(null)
   const user = useMemo(() => { try { return JSON.parse(localStorage.getItem('scaet-user') || '{}') } catch { return {} } }, [])
   const canEdit = ['admin', 'capturista'].includes(user.rol)
@@ -78,7 +80,7 @@ function EquipoFichaTecnica() {
     <BackButton fallback="/equipos" label="Volver a equipos" />
     <section className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"><div className="min-w-0"><p className="break-words text-xs font-extrabold uppercase tracking-widest text-blue-300">Ficha técnica · {equipment.publicId}</p><div className="mt-3 flex min-w-0 flex-wrap items-center gap-3"><h1 className="min-w-0 break-words text-2xl font-extrabold text-[#201d31]">{equipment.title}</h1><StatusBadge status={equipment.status} /></div></div><div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap">{canEdit && <Link to={`/equipos/editar/${equipment.id}`} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#f2ece0] px-6 py-3 text-center font-extrabold">Editar</Link>}<button onClick={downloadQr} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#3A9AF2] px-6 py-3 text-center font-extrabold text-white">Descargar código QR</button></div></section>
     {qrStorageError && <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm font-bold text-amber-700" role="alert">{qrStorageError}</p>}
-    <section className="grid gap-5 xl:grid-cols-[210px_1fr]"><div className="space-y-4"><EquipmentPhoto equipment={equipment} size="lg" /><div ref={qrRef} className="flex justify-center rounded-2xl bg-[#f2ece0] p-5"><QrCode equipment={equipment} size="lg" /></div></div><div className="overflow-hidden rounded-2xl bg-white shadow-sm">
+    <section className="grid gap-5 xl:grid-cols-[minmax(280px,380px)_1fr]"><div className="space-y-4">{equipment.photoUrl ? <button type="button" onClick={() => setViewingImage(true)} className="relative block w-full overflow-hidden rounded-2xl text-left focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2" aria-label="Ver imagen completa del equipo"><EquipmentPhoto equipment={equipment} size="preview" /><span className="absolute bottom-3 right-3 rounded-lg bg-[#201d31]/80 px-3 py-2 text-xs font-extrabold text-white">Ver imagen completa</span></button> : <EquipmentPhoto equipment={equipment} size="preview" />}<div ref={qrRef} className="flex justify-center rounded-2xl bg-[#f2ece0] p-5"><QrCode equipment={equipment} size="lg" /></div></div><div className="overflow-hidden rounded-2xl bg-white shadow-sm">
       <InfoRow label="Código" value={equipment.publicId} /><InfoRow label="Nombre" value={equipment.title} /><InfoRow label="Tipo" value={equipment.type} /><InfoRow label="Marca" value={equipment.brand} /><InfoRow label="Modelo" value={equipment.model} /><InfoRow label="Número de serie" value={equipment.serialNumber} /><InfoRow label="Proveedor" value={equipment.provider} /><InfoRow label="Empresa" value={equipment.company} /><InfoRow label="Vendedor" value={equipment.sellerName} /><InfoRow label="Fecha de compra" value={formatDate(equipment.purchaseDate)} /><InfoRow label="Garantía"><span className="inline-flex items-center gap-3">{warrantyLabel(equipment.warrantyMonths)} <WarrantyBadge warrantyEnd={equipment.warrantyEnd} /></span></InfoRow><InfoRow label="Estado" value={equipment.status} /><InfoRow label="Especificaciones" value={equipment.specs} />
     </div></section>
     <section className="space-y-3">
@@ -90,6 +92,6 @@ function EquipoFichaTecnica() {
         <InfoRow label="Resguardo">{equipment.resguardoId ? <button type="button" onClick={() => setViewingResguardoId(equipment.resguardoId)} className="text-sm font-extrabold text-blue-500">Ver resguardo &gt;</button> : '-'}</InfoRow>
       </div>
     </section>
-  </div></EquipmentShell>
+  </div><ImagePreviewModal imageUrl={viewingImage ? equipment.photoUrl : ''} alt={`Imagen de ${equipment.title}`} onClose={() => setViewingImage(false)} /></EquipmentShell>
 }
 export default EquipoFichaTecnica

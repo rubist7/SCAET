@@ -31,6 +31,7 @@ export function EquipmentPhoto({ equipment, size = 'md' }) {
     sm: 'h-12 w-12',
     md: 'h-16 w-16',
     lg: 'h-40 w-full',
+    preview: 'aspect-video h-auto w-full',
   }
   const iconBoxClass = size === 'lg' ? 'h-20 w-24' : 'h-8 w-8'
   const iconClass = size === 'lg' ? 'h-10 w-10' : 'h-5 w-5'
@@ -52,7 +53,7 @@ export function EquipmentPhoto({ equipment, size = 'md' }) {
   return (
     <div className={`flex shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#e6ddcf] bg-[#f2ece0] text-[#201d31] ${sizes[size]}`}>
       {equipment.photoUrl ? (
-        <img src={equipment.photoUrl} alt="" className="h-full w-full object-cover" />
+        <img src={equipment.photoUrl} alt="" className={`h-full w-full ${size === 'preview' ? 'object-contain p-3' : 'object-cover'}`} />
       ) : (
         <div className={`flex items-center justify-center rounded-xl bg-white/70 ${iconBoxClass}`}>
           <AppIcon name={iconName} className={iconClass} />
